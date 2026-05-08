@@ -269,7 +269,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     const handleSpectatorKeys = (e: KeyboardEvent) => {
-      const isLocalFinished = players.current.find(p => p.onlineId === onlineService.localPlayer?.id)?.finished;
+      const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
       if (!isLocalFinished) return;
 
       const activePlayers = players.current.filter((p) => !p.finished);
@@ -734,7 +734,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }, [gameMode, spawnParticles]);
 
   const triggerWin = useCallback(
-    (winnerName?: string) => {
+    (winnerName?: string, isLocalFinish: boolean = true) => {
       const livesStats: Record<string, number> = {};
       players.current.forEach((p) => {
         if (gameMode === "brawler") {
@@ -744,9 +744,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       });
       const exactTime = (Date.now() - levelStartTime.current) / 1000;
-      onWin(winnerName, livesStats, exactTime);
+      onWin(winnerName, livesStats, exactTime, isLocalFinish);
     },
-    [onWin],
+    [onWin, gameMode],
   );
 
   const checkBrawlerWinCondition = useCallback(() => {
@@ -1114,7 +1114,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (gameMode === "brawler") {
             checkBrawlerWinCondition();
           } else {
-            triggerWin(p.name);
+            triggerWin(p.name, false);
           }
         }
       } else if (event === "lose") {
@@ -1127,7 +1127,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         } else {
           const otherPlayer = players.current.find((p) => p.onlineId !== id);
           if (otherPlayer) {
-            triggerWin(otherPlayer.name);
+            triggerWin(otherPlayer.name, false);
           }
         }
         if (data && data.killerName) {
@@ -5300,7 +5300,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const py = p.pos.y + offY;
 
         // Spectator Highlight
-        const isLocalFinished = players.current.find(pl => pl.onlineId === onlineService.localPlayer?.id)?.finished;
+        const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
         if (isSpectating && isLocalFinished) {
           const activePlayers = players.current.filter((pl) => !pl.finished);
           if (activePlayers.length > 0) {
@@ -6322,7 +6322,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore back to screen space for countdown
 
       // Spectator Overlay
-      const isLocalFinished = players.current.find(p => p.onlineId === onlineService.localPlayer?.id)?.finished;
+      const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
       if (isSpectating && isLocalFinished) {
         const t = TRANSLATIONS[lang];
         ctx.save();

@@ -2836,10 +2836,10 @@ const App: React.FC = () => {
         if (sel === 1) startStoryGame(ADVANCED_LEVELS);
         if (sel === 2) startStoryGame(EXPERT_LEVELS);
         if (sel === 3) startStoryGame(GOD_LEVELS);
-        if (sel === 4) setGameState((p) => ({ ...p, status: "menu" }));
+        if (sel === 4) setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
       }
       if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: "menu" }));
+        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
     } else if (status === "random_run_setup") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
       if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
@@ -2858,10 +2858,10 @@ const App: React.FC = () => {
           setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
         }
         if (sel === 1) startRandomRun();
-        if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
+        if (sel === 2) setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
       }
       if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: "menu" }));
+        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
     } else if (status === "vs_setup" || status === "brawler_setup") {
       // VS Setup Logic
       // 0-5 (P1), 6-11 (P2), 12 (Level Menu), 14 (Play), 15 (Back)
@@ -2958,7 +2958,7 @@ const App: React.FC = () => {
         }
       }
 
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
+      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
     } else if (status === "brawler_powerup_setup") {
       const powerupKeys = Object.keys(st.brawlerPowerups);
       const maxSel = powerupKeys.length + 1; // 0 to length-1 are powerups, length is PLAY button, length+1 is BACK button
@@ -3037,7 +3037,7 @@ const App: React.FC = () => {
       if (e.code === "ArrowRight" || e.code === "KeyD")
         setHighscoreLevelIndex((p) => Math.min(currentList.length - 1, p + 1));
 
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
+      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
     } else if (status === "paused") {
       if (e.code === "KeyR") {
         handleRetry();
@@ -3196,10 +3196,10 @@ const App: React.FC = () => {
           setMenuSelection(0);
         }
         if (sel === 7) {
-          setGameState((p) => ({ ...p, status: "menu" }));
+          setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
         }
       }
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
+      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
     } else if (status === "keybindings") {
       if (st.editingKey) {
         e.preventDefault();
@@ -3301,7 +3301,7 @@ const App: React.FC = () => {
     } else if (status === "online_lobby") {
       if (e.code === "Escape") {
         onlineService.disconnect();
-        setGameState((p) => ({ ...p, status: "online_menu" }));
+        setGameState((p) => ({ ...p, status: "online_menu", previousStatus: undefined }));
         return;
       }
       if (e.code === "ArrowUp" || e.code === "KeyW") {
@@ -3603,7 +3603,7 @@ const App: React.FC = () => {
       }
     } else if (status === "achievements") {
       if (e.code === "Escape") {
-        setGameState((p) => ({ ...p, status: "menu" }));
+        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
       }
     } else if (status === "online_summary") {
       const isHost = onlineService.isHost;
@@ -3805,7 +3805,7 @@ const App: React.FC = () => {
         setBrawlerPowerups(updatedPowerups as any);
       }
 
-      if (newLevel && (!onlineService.isHost || stateRef.current.level?.id !== newLevel.id)) {
+      if (newLevel && stateRef.current.level?.id !== newLevel.id) {
         setLevel(newLevel);
       }
 
@@ -4228,6 +4228,7 @@ const App: React.FC = () => {
       winnerName?: string,
       livesStats?: Record<string, number>,
       exactTime?: number,
+      isLocal?: boolean,
     ) => {
       audio.playWin();
 
@@ -4299,7 +4300,8 @@ const App: React.FC = () => {
             }
           }
 
-          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: true }));
+          const isActuallyLocal = isLocal !== false;
+          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: isActuallyLocal }));
 
           // Locally we don't transition yet, we wait for the timer or host to end it
           // But we should probably show a "Finished" message
