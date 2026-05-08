@@ -2217,7 +2217,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!ctx) return;
 
     // Enable high-resolution rendering
-    const dpr = (settings.resolutionScale || 1080) / GAME_HEIGHT;
+    let resScale = settings.resolutionScale || 1080;
+    if (resScale < 10) {
+      if (resScale === 1) resScale = 720;
+      else if (resScale === 3) resScale = 1440;
+      else if (resScale === 4) resScale = 2160;
+      else resScale = 1080;
+    }
+    const dpr = resScale / GAME_HEIGHT;
     canvas.width = GAME_WIDTH * dpr;
     canvas.height = GAME_HEIGHT * dpr;
     ctx.scale(dpr, dpr);

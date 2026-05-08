@@ -2429,8 +2429,9 @@ const App: React.FC = () => {
   };
 
   const handleNextLevel = () => {
-    const nextIdx = gameState.currentLevelIndex + 1;
-    const collection = gameState.customLevelsQueue || selectedDifficultySet;
+    const currentState = stateRef.current.gameState;
+    const nextIdx = currentState.currentLevelIndex + 1;
+    const collection = currentState.customLevelsQueue || stateRef.current.selectedDifficultySet;
 
     if (nextIdx < collection.length) {
       const nextLevel = collection[nextIdx];
@@ -2580,9 +2581,11 @@ const App: React.FC = () => {
 
   const resolveVote = () => {
     const st = stateRef.current;
-    if (!st.currentVote) return;
+    
+    // Fallback to onlineService.currentVote since stateRef doesn't have it
+    const currentVoteCopy = currentVote || onlineService.currentVote;
+    if (!currentVoteCopy) return;
 
-    const currentVoteCopy = st.currentVote;
     setCurrentVote(null);
     if (onlineService.currentVote) {
       onlineService.currentVote = null;
@@ -4981,8 +4984,15 @@ const App: React.FC = () => {
                   
                   <div className="flex gap-4 w-full px-6 mb-4">
                     <button 
-                      onClick={() => onlineService.castVote('yes')}
-                      className="flex-1 bg-green-600 hover:bg-green-500 py-3 px-4 text-white font-arcade text-sm border-b-4 border-green-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-lg flex flex-col items-center"
+                      onClick={() => (!onlineService.localPlayer || !currentVote.votes[onlineService.localPlayer.id]) && onlineService.castVote('yes')}
+                      disabled={!!(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id])}
+                      className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id]) 
+                          ? currentVote.votes[onlineService.localPlayer?.id || ''] === 'yes'
+                            ? "bg-green-800 text-white border-green-950 opacity-100" 
+                            : "bg-neutral-800 text-neutral-500 border-neutral-900 opacity-50 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-500 text-white border-green-900 active:translate-y-1 active:border-b-0"
+                        }`}
                     >
                       <span className="block mb-1">JA [1]</span>
                       <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
@@ -4990,8 +5000,15 @@ const App: React.FC = () => {
                       </span>
                     </button>
                     <button 
-                      onClick={() => onlineService.castVote('no')}
-                      className="flex-1 bg-red-600 hover:bg-red-500 py-3 px-4 text-white font-arcade text-sm border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-lg flex flex-col items-center"
+                      onClick={() => (!onlineService.localPlayer || !currentVote.votes[onlineService.localPlayer.id]) && onlineService.castVote('no')}
+                      disabled={!!(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id])}
+                      className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id]) 
+                          ? currentVote.votes[onlineService.localPlayer?.id || ''] === 'no'
+                            ? "bg-red-800 text-white border-red-950 opacity-100" 
+                            : "bg-neutral-800 text-neutral-500 border-neutral-900 opacity-50 cursor-not-allowed"
+                          : "bg-red-600 hover:bg-red-500 text-white border-red-900 active:translate-y-1 active:border-b-0"
+                        }`}
                     >
                       <span className="block mb-1">NEIN [2]</span>
                       <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
