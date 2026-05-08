@@ -2216,6 +2216,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Enable high-resolution rendering
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width = GAME_WIDTH * dpr;
+    canvas.height = GAME_HEIGHT * dpr;
+    ctx.scale(dpr, dpr);
+
     let animationFrameId: number;
 
     // Game Loop Logic
@@ -4653,7 +4659,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             const tpIndex = teleporters.indexOf(ent);
             if (tpIndex !== -1) {
               ctx.fillStyle = "white";
-              ctx.font = "bold 12px monospace";
+              ctx.font = 'bold 12px "Inter", sans-serif';
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(
@@ -4673,7 +4679,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
             // Draw "CP" text
             ctx.fillStyle = "black";
-            ctx.font = "10px monospace";
+            ctx.font = '12px "Inter", sans-serif';
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("CP", drawX + ent.w / 2, drawY + ent.h / 2);
@@ -4806,7 +4812,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // Text/Icon
           ctx.fillStyle = "white";
-          ctx.font = "24px Arial";
+          ctx.font = 'bold 24px "Inter", sans-serif';
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
@@ -5070,7 +5076,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         // Put text on screen-space or world-space? It's currently in world-space because we haven't done restore() yet.
         // It makes sense to center it on the camera.
         ctx.fillStyle = `rgba(255, 0, 0, ${fade})`;
-        ctx.font = "900 64px sans-serif";
+        ctx.font = '900 64px "Inter", sans-serif';
         ctx.textAlign = "center";
         const textX = cameraRef.current.x + GAME_WIDTH / 2;
         const textY = cameraRef.current.y + 80 + Math.sin(time) * 5;
@@ -5503,7 +5509,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.shadowColor = indColor;
           ctx.shadowBlur = 10;
           ctx.fillStyle = "white";
-          ctx.font = "18px Arial";
+          ctx.font = 'bold 18px "Inter", sans-serif';
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(letter, px + w / 2, py - 16);
@@ -5514,7 +5520,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         if (gameMode === "vs" || gameMode === "brawler") {
           ctx.fillStyle = "white";
-          ctx.font = "10px monospace";
+          ctx.font = 'bold 12px "Inter", sans-serif';
           const nameOffset =
             gameMode !== "brawler" && (p.inventory || hasOneTime) ? 22 : 8;
           const displayName = p.color === "#130009" ? "ADMIN" : (p.color && p.color.toLowerCase() === "#ff0080" ? "MAGIC" : (p.color && p.color.toLowerCase() === "#ffffff" ? "GHOST" : p.name));
@@ -5589,7 +5595,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               : p.eyes === "hearts"
                 ? "red"
                 : "magenta";
-          ctx.font = "10px Arial";
+          ctx.font = 'bold 12px "Inter", sans-serif';
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const sym =
@@ -5627,7 +5633,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.stroke();
         } else if (p.eyes === "rich") {
           ctx.fillStyle = "#22c55e";
-          ctx.font = "12px Arial";
+          ctx.font = 'bold 14px "Inter", sans-serif';
           ctx.textAlign = "center";
           ctx.fillText("$", px + 6, py + 11);
           ctx.fillText("$", px + w - 6, py + 11);
@@ -5932,7 +5938,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore camera translation to screen space
 
       if (gameMode === "brawler" || gameMode === "vs" || gameMode === "story") {
-        ctx.font = '10px "Press Start 2P", monospace';
+        ctx.font = 'bold 16px "Inter", system-ui, sans-serif';
         ctx.textBaseline = "top";
 
         const isGhostDisabled =
@@ -5946,7 +5952,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ) {
           ctx.save();
           ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-          ctx.font = '5px "Press Start 2P", monospace';
+          ctx.font = '12px "Inter", system-ui, sans-serif';
           ctx.textAlign = "right";
           ctx.fillText(
             `Ghost: ${ghostRun.time.toFixed(2)}s`,
@@ -5977,13 +5983,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ).length : 0;
             
             ctx.save();
-            ctx.font = '5px "Press Start 2P"';
+            ctx.font = 'bold 12px "Inter", system-ui, sans-serif';
             ctx.shadowColor = "rgba(0,0,0,0.5)";
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
 
-            let nextY = 35;
+            let nextY = 40;
 
             if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
               ctx.fillStyle =
@@ -5995,13 +6001,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 20,
                 nextY,
               );
-              nextY += 10;
+              nextY += 15;
             }
 
             // Death counter below coins
             ctx.fillStyle = "#ef4444"; // red-500
             ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, 20, nextY);
-            nextY += 10;
+            nextY += 15;
 
             ctx.restore();
 
@@ -6045,7 +6051,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
 
               if (puName !== "") {
-                ctx.font = '6px "Press Start 2P", monospace';
+                ctx.font = 'bold 12px "Inter", system-ui, sans-serif';
                 ctx.fillStyle = "#fbbf24";
                 ctx.shadowColor = "rgba(0,0,0,0.5)";
                 ctx.shadowBlur = 4;
@@ -6054,9 +6060,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.fillText(
                   `${t.powerup}: ${puName}`,
                   20,
-                  gameMode === "story" ? 20 : 60,
+                  gameMode === "story" ? 20 : 75,
                 );
-                ctx.font = '10px "Press Start 2P", monospace'; // Reset
+                ctx.font = 'bold 16px "Inter", system-ui, sans-serif'; // Reset
                 ctx.shadowBlur = 0; // Reset shadow
               }
             }
@@ -6075,14 +6081,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ).length : 0;
             
             ctx.save();
-            ctx.font = '5px "Press Start 2P"';
+            ctx.font = 'bold 12px "Inter", system-ui, sans-serif';
             ctx.textAlign = "right";
             ctx.shadowColor = "rgba(0,0,0,0.5)";
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
 
-            let nextYSide = 35;
+            let nextYSide = 40;
 
             if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
               ctx.fillStyle =
@@ -6094,7 +6100,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 GAME_WIDTH - 20,
                 nextYSide,
               );
-              nextYSide += 10;
+              nextYSide += 15;
             }
 
             // Death counter below coins
@@ -6143,14 +6149,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
 
               if (puName !== "") {
-                ctx.font = '6px "Press Start 2P", monospace';
+                ctx.font = 'bold 12px "Inter", system-ui, sans-serif';
                 ctx.fillStyle = "#fbbf24";
                 ctx.shadowColor = "rgba(0,0,0,0.5)";
                 ctx.shadowBlur = 4;
                 ctx.shadowOffsetX = 2;
                 ctx.shadowOffsetY = 2;
-                ctx.fillText(`${t.powerup}: ${puName}`, canvas.width - 20, 60);
-                ctx.font = '10px "Press Start 2P", monospace'; // Reset
+                ctx.fillText(`${t.powerup}: ${puName}`, canvas.width - 20, 75);
+                ctx.font = 'bold 16px "Inter", system-ui, sans-serif'; // Reset
                 ctx.shadowBlur = 0; // Reset shadow
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
@@ -6166,7 +6172,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // Draw Ping Indicator
       if (isOnline && onlinePing !== undefined) {
         ctx.save();
-        ctx.font = "10px monospace";
+        ctx.font = '12px "Inter", sans-serif';
         ctx.textAlign = "right";
         ctx.fillStyle =
           onlinePing < 50
@@ -6184,7 +6190,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillRect(0, 100, GAME_WIDTH, 60);
         ctx.fillStyle = "#fbbf24"; // Amber
         ctx.textAlign = "center";
-        ctx.font = "20px 'Press Start 2P'";
+        ctx.font = 'bold 24px "Inter", sans-serif';
         ctx.fillText(abilityMessage, GAME_WIDTH / 2, 140);
         ctx.textAlign = "left"; // Reset
       }
@@ -6353,7 +6359,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillRect(0, 0, GAME_WIDTH, 70);
         
         ctx.fillStyle = "#22d3ee"; // Cyan
-        ctx.font = '900 24px sans-serif';
+        ctx.font = '900 32px "Inter", sans-serif';
         ctx.textAlign = "center";
         ctx.shadowColor = "cyan";
         ctx.shadowBlur = 10;
@@ -6364,13 +6370,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillStyle = "white";
         if (activePlayers.length > 0) {
           const target = activePlayers[spectateTargetIdx % activePlayers.length];
-          ctx.font = 'bold 16px sans-serif';
+          ctx.font = 'bold 20px "Inter", sans-serif';
           ctx.fillText(t.watching + target.name.toUpperCase(), GAME_WIDTH / 2, 50);
-          ctx.font = '10px monospace';
+          ctx.font = '12px "Inter", sans-serif';
           ctx.fillStyle = "rgba(255,255,255,0.6)";
           ctx.fillText(t.switchSpectatorHint, GAME_WIDTH / 2, 62);
         } else {
-          ctx.font = 'bold 16px sans-serif';
+          ctx.font = 'bold 20px "Inter", sans-serif';
           ctx.fillText(lang === 'de' ? "ALLE SPIELER IM ZIEL" : "ALL PLAYERS FINISHED", GAME_WIDTH / 2, 50);
         }
         ctx.restore();
@@ -6380,7 +6386,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       if (startCountdown !== null && startCountdown > 0) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-        ctx.font = '80px "Press Start 2P", monospace';
+        ctx.font = '900 100px "Inter", sans-serif';
         ctx.fillStyle = "#22d3ee"; // cyan-400
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -6393,7 +6399,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         );
         ctx.shadowBlur = 0; // reset
       } else if (startCountdown === 0) {
-        ctx.font = '80px "Press Start 2P", monospace';
+        ctx.font = '900 100px "Inter", sans-serif';
         ctx.fillStyle = "#4ade80"; // green-400
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";

@@ -4576,7 +4576,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
+    <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-sans text-white select-none overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
 
       <div className="relative z-10 w-full h-full flex flex-col gap-2">
