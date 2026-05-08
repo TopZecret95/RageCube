@@ -93,6 +93,7 @@ export interface GameSettings {
   editorScrollSpeed?: number;
   favoriteSkins?: string[];
   favoriteTrails?: string[];
+  playerName?: string;
   keybindingsP1?: Keybindings;
   keybindingsP2?: Keybindings;
 }
@@ -149,6 +150,8 @@ export interface GameState {
   editorTime?: number;
   collisionEnabled?: boolean;
   finishTimerEnabled?: boolean;
+  isSpectating?: boolean;
+  spectateTargetId?: string;
 }
 
 export type KeyState = {

@@ -1506,6 +1506,7 @@ const App: React.FC = () => {
       if (typeof parsed.editorEdgeScroll !== 'boolean') parsed.editorEdgeScroll = true;
       if (typeof parsed.editorScrollSpeed !== 'number' || isNaN(parsed.editorScrollSpeed)) parsed.editorScrollSpeed = 350;
       if (typeof parsed.uiScale !== 'number' || isNaN(parsed.uiScale)) parsed.uiScale = 1;
+      if (typeof parsed.playerName !== 'string') parsed.playerName = "";
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
       else if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
       
@@ -1522,12 +1523,13 @@ const App: React.FC = () => {
       showGhost: true,
       editorEdgeScroll: true,
       editorScrollSpeed: 350,
+      playerName: "",
       keybindingsP1: defaultKeybindingsP1,
       keybindingsP2: defaultKeybindingsP2,
     };
   });
   const [highScores, setHighScores] = useState<HighScore[]>([]);
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(() => settings.playerName || "");
 
   // Custom Levels from Editor
   const [customLevels, setCustomLevels] = useState<LevelData[]>([]);
@@ -1773,6 +1775,8 @@ const App: React.FC = () => {
     brawlerLevelsPlayedCount: 0,
     editorTime: 0,
     collisionEnabled: true,
+    isSpectating: false,
+    spectateTargetId: undefined,
   });
 
   // Track Difficulty for Story Mode flow
@@ -3861,6 +3865,8 @@ const App: React.FC = () => {
         collectedCoins: [],
         blocksPlaced: 0,
         onlineMode: gameMode,
+        isSpectating: false,
+        spectateTargetId: undefined,
         currentLevel: level || p.currentLevel,
         currentLevelIndex:
           levelIndex !== undefined ? levelIndex : p.currentLevelIndex,
@@ -3879,6 +3885,8 @@ const App: React.FC = () => {
         setGameState((p) => ({
           ...p,
           status: "online_lobby",
+          isSpectating: false,
+          spectateTargetId: undefined,
           currentLevelIndex: 0,
         }));
       } else if (status === "summary") {
@@ -4289,7 +4297,7 @@ const App: React.FC = () => {
             }
           }
 
-          setGameState((p) => ({ ...p, winner: p.winner || winnerName }));
+          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: true }));
 
           // Locally we don't transition yet, we wait for the timer or host to end it
           // But we should probably show a "Finished" message
@@ -4885,6 +4893,8 @@ const App: React.FC = () => {
                 onlinePing={onlineService.ping}
                 onlinePlayers={onlinePlayers}
                 lang={lang}
+                isSpectating={gameState.isSpectating}
+                spectateTargetId={gameState.spectateTargetId}
               />
             )}
 
@@ -7895,31 +7905,58 @@ const App: React.FC = () => {
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
                 <h2 className="text-3xl mb-8 text-rage-red">{t.settings}</h2>
                 <div className="w-72 space-y-6">
+                  <div
+                    className={`p-4 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                    onMouseEnter={() => setMenuSelection(0)}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="uppercase text-[10px] font-arcade text-neutral-400 w-full text-left ml-2">
+                        {t.playerNameLabel || "PLAYER NAME"}
+                      </span>
+                      <div className="w-full bg-black border border-neutral-700 p-1">
+                        <input
+                          type="text"
+                          value={settings.playerName || ""}
+                          maxLength={10}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                            setSettings((p) => ({ ...p, playerName: val }));
+                            setPlayerName(val);
+                          }}
+                          className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800"
+                          placeholder="???"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[7px] text-neutral-600 mt-2 text-center uppercase tracking-widest">
+                      Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
+                    </div>
+                  </div>
                   <SettingsSlider
                     label={t.sfx}
                     value={settings.sfxVolume}
-                    index={0}
+                    index={1}
                     colorClass="bg-troll-green"
                     onChange={(v: number) =>
                       setSettings((p) => ({ ...p, sfxVolume: v }))
                     }
-                    isSelected={menuSelection === 0}
+                    isSelected={menuSelection === 1}
                     onHover={setMenuSelection}
                   />
                   <SettingsSlider
                     label={t.deathSounds || "DEATH SOUNDS"}
                     value={settings.deathVolume ?? 0.5}
-                    index={1}
+                    index={2}
                     colorClass="bg-red-500"
                     onChange={(v: number) =>
                       setSettings((p) => ({ ...p, deathVolume: v }))
                     }
-                    isSelected={menuSelection === 1}
+                    isSelected={menuSelection === 2}
                     onHover={setMenuSelection}
                   />
                   <div
-                    className={`p-4 border cursor-pointer ${menuSelection === 2 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(2)}
+                    className={`p-4 border cursor-pointer ${menuSelection === 3 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                    onMouseEnter={() => setMenuSelection(3)}
                     onClick={() => {
                       setSettings((p) => {
                         const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
@@ -7940,8 +7977,8 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div
-                    className={`p-4 border cursor-pointer ${menuSelection === 3 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(3)}
+                    className={`p-4 border cursor-pointer ${menuSelection === 4 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                    onMouseEnter={() => setMenuSelection(4)}
                     onClick={() => {
                       setSettings((p) => {
                         const currentScale = p.uiScale || 1;
@@ -7965,40 +8002,40 @@ const App: React.FC = () => {
                   <SettingsSlider
                     label="SCREEN SHAKE"
                     value={settings.screenShake ?? 1}
-                    index={4}
+                    index={5}
                     colorClass="bg-yellow-500"
                     onChange={(v: number) =>
                       setSettings((p) => ({ ...p, screenShake: v }))
-                    }
-                    isSelected={menuSelection === 4}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={5}
-                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
-                    onClick={() =>
-                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
                     }
                     isSelected={menuSelection === 5}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={6}
-                    label={t.keybindings}
-                    onClick={() => {
-                      setGameState((p) => ({ ...p, status: "keybindings" }));
-                      setMenuSelection(0);
-                    }}
+                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
+                    onClick={() =>
+                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
+                    }
                     isSelected={menuSelection === 6}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={7}
+                    label={t.keybindings}
+                    onClick={() => {
+                      setGameState((p) => ({ ...p, status: "keybindings" }));
+                      setMenuSelection(0);
+                    }}
+                    isSelected={menuSelection === 7}
+                    onHover={setMenuSelection}
+                  />
+                  <MenuButton
+                    index={8}
                     label={t.back}
                     onClick={() =>
                       setGameState((p) => ({ ...p, status: "menu" }))
                     }
-                    isSelected={menuSelection === 7}
+                    isSelected={menuSelection === 8}
                     onHover={setMenuSelection}
                   />
                 </div>

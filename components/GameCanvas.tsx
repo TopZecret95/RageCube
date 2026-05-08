@@ -70,6 +70,8 @@ interface GameCanvasProps {
   onlinePing?: number;
   onlinePlayers?: OnlinePlayer[];
   lang: Language;
+  isSpectating?: boolean;
+  spectateTargetId?: string;
 }
 
 interface TempBlock extends Entity {
@@ -241,6 +243,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   onlinePing,
   onlinePlayers,
   lang,
+  isSpectating,
+  spectateTargetId,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -254,6 +258,42 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const explosions = useRef<Explosion[]>([]);
   const particles = useRef<Particle[]>([]);
   const cameraRef = useRef({ x: 0, y: 0 });
+  const [spectateTargetIdx, setSpectateTargetIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isSpectating) {
+      setSpectateTargetIdx(0);
+      return;
+    }
+
+    const handleSpectatorKeys = (e: KeyboardEvent) => {
+      const activePlayers = players.current.filter((p) => !p.finished);
+      if (activePlayers.length === 0) return;
+
+      const keys = [
+        "KeyA", "ArrowLeft", "KeyD", "ArrowRight",
+        "KeyW", "ArrowUp", "KeyS", "ArrowDown"
+      ];
+      
+      if (!keys.includes(e.code)) return;
+
+      if (
+        e.code === "KeyD" ||
+        e.code === "ArrowRight" ||
+        e.code === "KeyW" ||
+        e.code === "ArrowUp"
+      ) {
+        setSpectateTargetIdx((prev) => (prev + 1) % activePlayers.length);
+      } else {
+        setSpectateTargetIdx(
+          (prev) => (prev - 1 + activePlayers.length) % activePlayers.length,
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleSpectatorKeys);
+    return () => window.removeEventListener("keydown", handleSpectatorKeys);
+  }, [isSpectating]);
   const collectedPowerups = useRef<string[]>([]); // Track collected powerup IDs to hide them
   const getBrawlerStats = (bClass?: string) => {
     // Wenn nicht im Brawler Modus, verwende immer die "standard" Werte
@@ -4197,19 +4237,36 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       
       // Normal Camera Logic for both modes
-      let totalX = 0;
-      let totalY = 0;
-      let activeCount = 0;
-      players.current.forEach((p) => {
-        if (p.lives > 0 || gameMode !== "brawler") {
-          totalX += p.pos.x;
-          totalY += p.pos.y;
-          activeCount++;
+      if (isSpectating) {
+        const activePlayers = players.current.filter((p) => !p.finished);
+        if (activePlayers.length > 0) {
+          const target = activePlayers[spectateTargetIdx % activePlayers.length];
+          targetCameraX = target.pos.x - GAME_WIDTH / 2 + 15;
+          targetCameraY = target.pos.y - GAME_HEIGHT / 2 + 15;
+        } else {
+          const localP = players.current.find(
+            (p) => p.onlineId === onlineService.localPlayer?.id,
+          );
+          if (localP) {
+            targetCameraX = localP.pos.x - GAME_WIDTH / 2 + 15;
+            targetCameraY = localP.pos.y - GAME_HEIGHT / 2 + 15;
+          }
         }
-      });
-      if (activeCount > 0) {
-        targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
-        targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
+      } else {
+        let totalX = 0;
+        let totalY = 0;
+        let activeCount = 0;
+        players.current.forEach((p) => {
+          if (p.lives > 0 || gameMode !== "brawler") {
+            totalX += p.pos.x;
+            totalY += p.pos.y;
+            activeCount++;
+          }
+        });
+        if (activeCount > 0) {
+          targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
+          targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
+        }
       }
       
       targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
@@ -5237,6 +5294,24 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const px = p.pos.x + offX;
         const py = p.pos.y + offY;
 
+        // Spectator Highlight
+        if (isSpectating) {
+          const activePlayers = players.current.filter((p) => !p.finished);
+          if (activePlayers.length > 0) {
+            const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
+            if (currentTarget && currentTarget.onlineId === p.onlineId) {
+              ctx.save();
+              const pulse = Math.sin(Date.now() / 300) * 5;
+              ctx.strokeStyle = "cyan";
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(px + w / 2, py + h / 2, 25 + pulse, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+        }
+
         // Body color
         if (p.color && p.color.toLowerCase() === "#ffffff") {
           ctx.fillStyle = "rgba(0,0,0,0)";
@@ -6240,6 +6315,37 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       ctx.restore(); // Restore back to screen space for countdown
 
+      // Spectator Overlay
+      if (isSpectating) {
+        const t = TRANSLATIONS[lang];
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(0, 0, GAME_WIDTH, 70);
+        
+        ctx.fillStyle = "#22d3ee"; // Cyan
+        ctx.font = '900 24px sans-serif';
+        ctx.textAlign = "center";
+        ctx.shadowColor = "cyan";
+        ctx.shadowBlur = 10;
+        ctx.fillText(t.spectatorMode, GAME_WIDTH / 2, 30);
+        ctx.shadowBlur = 0;
+        
+        const activePlayers = players.current.filter((p) => !p.finished);
+        ctx.fillStyle = "white";
+        if (activePlayers.length > 0) {
+          const target = activePlayers[spectateTargetIdx % activePlayers.length];
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText(t.watching + target.name.toUpperCase(), GAME_WIDTH / 2, 50);
+          ctx.font = '10px monospace';
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
+          ctx.fillText(t.switchSpectatorHint, GAME_WIDTH / 2, 62);
+        } else {
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText(lang === 'de' ? "ALLE SPIELER IM ZIEL" : "ALL PLAYERS FINISHED", GAME_WIDTH / 2, 50);
+        }
+        ctx.restore();
+      }
+
       // Draw Start Countdown Overlay
       if (startCountdown !== null && startCountdown > 0) {
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
@@ -6276,7 +6382,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       accumulator += frameTime;
       if (accumulator > 200) accumulator = 200;
       while (accumulator >= PHYSICS_STEP) {
-        if (!paused) {
+        if (!paused || (isOnline && isSpectating)) {
           updatePhysics();
           // Advance Ghost inside physics loop to match recording frequency
           if (
@@ -6308,6 +6414,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     abilityMessage,
     ghostRun,
     startCountdown,
+    isSpectating,
+    spectateTargetIdx,
   ]);
 
   return (
