@@ -73,6 +73,7 @@ interface GameCanvasProps {
   isSpectating?: boolean;
   spectateTargetId?: string;
   opponentOpacity?: number;
+  status?: string;
 }
 
 interface TempBlock extends Entity {
@@ -247,6 +248,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   isSpectating,
   spectateTargetId,
   opponentOpacity = 0.5,
+  status,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -6479,6 +6481,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     startCountdown,
     isSpectating,
     spectateTargetIdx,
+    status,
   ]);
 
   return (

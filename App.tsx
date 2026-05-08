@@ -3158,7 +3158,7 @@ const App: React.FC = () => {
         }));
     } else if (status === "settings") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(7);
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(10);
       if (
         e.code === "ArrowLeft" ||
         e.code === "ArrowRight" ||
@@ -4893,6 +4893,7 @@ const App: React.FC = () => {
                     return { ...p, hooksUsed: newHooks };
                   });
                 }}
+                status={gameState.status}
                 collectedCoins={gameState.collectedCoins}
                 paused={
                   gameState.status === "paused" ||
@@ -5037,7 +5038,7 @@ const App: React.FC = () => {
 
             {/* Difficulty Select */}
             {gameState.status === "difficulty_select" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30 overflow-y-auto py-10">
                 <h2 className="text-2xl mb-8 text-white uppercase tracking-widest">{t.selectDifficulty || "SELECT DIFFICULTY"}</h2>
                 <div className="w-72 flex flex-col gap-2">
                   <MenuButton
@@ -5913,14 +5914,14 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Center Content (Character Preview) */}
-                <div className="flex-1 w-full flex items-center justify-center pointer-events-none z-10 relative mt-2 md:mt-4 lg:-mt-8">
-                  <div className="w-[280px] h-[280px] sm:w-[380px] sm:h-[380px] md:w-[480px] md:h-[480px] lg:w-[640px] lg:h-[640px] aspect-square max-h-full max-w-full drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)] absolute">
+                <div className="flex-1 w-full flex items-center justify-center pointer-events-none z-10 relative mt-2 md:mt-4 lg:-mt-8 mb-4 min-h-0">
+                  <div className="w-[30vh] h-[30vh] sm:w-[40vh] sm:h-[40vh] md:w-[50vh] md:h-[50vh] lg:w-[60vh] lg:h-[60vh] aspect-square max-h-full max-w-full drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)] relative">
                      <CharacterPreview customization={customization} scale={16} />
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-end w-full max-w-6xl mt-auto pb-6 z-10">
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-3 w-full max-w-3xl mb-3">
+                <div className="flex flex-col items-center justify-end w-full max-w-6xl mt-auto pb-6 z-10 scale-[0.85] sm:scale-100 origin-bottom">
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-2 sm:gap-y-3 w-full max-w-3xl mb-3">
                     <div className="space-y-3">
                       <MenuButton
                         index={0}
@@ -7261,7 +7262,7 @@ const App: React.FC = () => {
 
             {/* Online Summary Screen */}
             {gameState.status === "online_summary" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
                 <h2 className="text-4xl text-cyan-400 font-arcade mb-8 tracking-widest">
                   GAME RESULTS
                 </h2>
@@ -8004,7 +8005,7 @@ const App: React.FC = () => {
 
             {/* Settings Menu */}
             {gameState.status === "settings" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-12">
                 <h2 className="text-3xl mb-8 text-rage-red">{t.settings}</h2>
                 <div className="w-72 space-y-6">
                   <div
