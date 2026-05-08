@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
   Vector2,
   LevelData,
@@ -2210,6 +2210,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
+  const resScale = useMemo(() => {
+    let scale = settings.resolutionScale || 1080;
+    if (scale < 10) {
+      if (scale === 1) return 720;
+      if (scale === 3) return 1440;
+      if (scale === 4) return 2160;
+      return 1080;
+    }
+    return scale;
+  }, [settings.resolutionScale]);
+
+  const dpr = resScale / GAME_HEIGHT;
+  const canvasWidth = GAME_WIDTH * dpr;
+  const canvasHeight = GAME_HEIGHT * dpr;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2217,16 +2232,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!ctx) return;
 
     // Enable high-resolution rendering
-    let resScale = settings.resolutionScale || 1080;
-    if (resScale < 10) {
-      if (resScale === 1) resScale = 720;
-      else if (resScale === 3) resScale = 1440;
-      else if (resScale === 4) resScale = 2160;
-      else resScale = 1080;
-    }
-    const dpr = resScale / GAME_HEIGHT;
-    canvas.width = GAME_WIDTH * dpr;
-    canvas.height = GAME_HEIGHT * dpr;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
 
@@ -2735,8 +2742,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           isLocal &&
           (p.controls.up.some((k) => keys.current[k]) || gamepadJump);
 
-        if (isLocal && !pressingJump) {
-          p.canJump = true;
+        if (isLocal) {
+          if (!pressingJump) {
+            p.canJump = true;
+          } else {
+            // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
+            if (p.onGround || p.isWallSliding) {
+              p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
+              p.canJump = true; 
+            }
+          }
         }
 
         const pressingDown =
@@ -6457,6 +6472,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     gameMode,
     fpsCap,
     settings.resolutionScale,
+    canvasWidth,
+    canvasHeight,
     abilityMessage,
     ghostRun,
     startCountdown,
@@ -6467,8 +6484,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   return (
     <canvas
       ref={canvasRef}
-      width={GAME_WIDTH}
-      height={GAME_HEIGHT}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}

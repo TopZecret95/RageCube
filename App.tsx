@@ -8179,7 +8179,7 @@ const App: React.FC = () => {
                         setMenuSelection(0);
                       }
                     }}
-                    isSelected={menuSelection === 9}
+                    isSelected={menuSelection === 10}
                     onHover={setMenuSelection}
                   />
                 </div>
