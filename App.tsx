@@ -60,7 +60,7 @@ const DEFAULT_CUSTOMIZATION: PlayerCustomization = {
 
 const FPS_OPTIONS = [30, 60, 120, 144, 165, 240, 0]; // 0 = Unlimited
 const UI_SCALE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5];
-const RESOLUTION_OPTIONS = [1, 2, 3, 4];
+const RESOLUTION_OPTIONS = [720, 1080, 1440, 2160];
 
 const BRAWLER_CLASS_OPTIONS = ["standard", "fighter", "dasher", "jumper", "tank", "ninja", "heavy", "vampire"] as const;
 
@@ -267,7 +267,7 @@ const LevelMenu = ({
   t: any;
 }) => {
   return (
-    <div className="absolute inset-0 bg-black/98 z-[100] flex flex-col p-6 md:p-10 overflow-hidden animate-fade-in font-sans">
+    <div className="absolute inset-0 bg-black/98 z-[100] flex flex-col p-6 md:p-10 overflow-hidden animate-fade-in font-arcade">
       <div className="flex justify-between items-center mb-8 border-b-2 border-neutral-800 pb-4">
         <div>
           <h2 className="text-4xl font-arcade text-rage-red tracking-tighter">
@@ -1509,7 +1509,7 @@ const App: React.FC = () => {
       if (typeof parsed.uiScale !== 'number' || isNaN(parsed.uiScale)) parsed.uiScale = 1;
       if (typeof parsed.playerName !== 'string') parsed.playerName = "";
       if (typeof parsed.opponentOpacity !== 'number' || isNaN(parsed.opponentOpacity)) parsed.opponentOpacity = 0.5;
-      if (typeof parsed.resolutionScale !== 'number' || isNaN(parsed.resolutionScale)) parsed.resolutionScale = window.devicePixelRatio || 2;
+      if (typeof parsed.resolutionScale !== 'number' || isNaN(parsed.resolutionScale)) parsed.resolutionScale = 1080;
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
       else if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
       
@@ -1524,7 +1524,7 @@ const App: React.FC = () => {
       fpsCap: 60,
       uiScale: 1,
       showGhost: true,
-      resolutionScale: window.devicePixelRatio || 2,
+      resolutionScale: 1080,
       editorEdgeScroll: true,
       editorScrollSpeed: 350,
       playerName: "",
@@ -3194,7 +3194,7 @@ const App: React.FC = () => {
         }
         if (sel === 4) {
           setSettings((p) => {
-            const currentScale = p.resolutionScale || window.devicePixelRatio || 2;
+            const currentScale = p.resolutionScale || 1080;
             const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
             let nextIndex =
               e.code === "ArrowRight" || e.code === "KeyD"
@@ -4598,7 +4598,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-sans text-white select-none overflow-hidden">
+    <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
 
       <div className="relative z-10 w-full h-full flex flex-col gap-2">
@@ -4649,37 +4649,6 @@ const App: React.FC = () => {
               )}
             </div>
             <div className="flex flex-col items-end gap-1">
-              <div className="flex gap-4 items-center">
-                {level?.id !== "tutorial" &&
-                  gameState.status !== "testing" &&
-                  gameState.status !== "brawler_testing" &&
-                  gameState.status !== "vs_playing" &&
-                  gameState.status !== "brawler_playing" && (
-                    <div className="text-yellow-500 text-[8px] md:text-xs hidden sm:block">
-                      {t.score}: {gameState.score}
-                    </div>
-                  )}
-                 {gameState.status !== "vs_playing" &&
-                  gameState.status !== "brawler_playing" &&
-                  gameState.status !== "brawler_testing" && (
-                  <div className="flex flex-col items-end">
-                    <div
-                      className={`${isGoalUnlocked ? "text-green-400 animate-pulse" : "text-neutral-400"} text-[8px] md:text-xs font-bold`}
-                    >
-                      {t.coins}: {collectedInLevelCount}/
-                      {currentLevelCoins.length}{" "}
-                      {!isGoalUnlocked && (
-                        <span className="text-[6px] opacity-70">
-                          ({t.locked})
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-red-500 text-[8px] md:text-xs font-bold uppercase tracking-wider">
-                      {t.deaths}: {gameState.levelDeaths || 0}
-                    </div>
-                  </div>
-                  )}
-              </div>
               <div className="flex gap-2">
                 {onlineFinishTimer !== null && (
                   <div className="bg-red-600 text-white px-2 py-0.5 animate-pulse border border-white rounded shadow-lg flex items-center gap-1">
@@ -4691,13 +4660,6 @@ const App: React.FC = () => {
                     </span>
                   </div>
                 )}
-                {gameState.status !== "vs_playing" &&
-                  gameState.status !== "brawler_playing" &&
-                  gameState.status !== "brawler_testing" && (
-                    <div className="bg-red-900 text-white px-2 py-0.5 text-[10px] md:text-xs">
-                      {t.deaths}: {gameState.deaths}
-                    </div>
-                  )}
                 <div className="bg-neutral-800 text-white px-2 py-0.5 text-[10px] md:text-xs border border-neutral-700">
                   {t.time}: {gameState.time}s
                 </div>
@@ -8103,7 +8065,7 @@ const App: React.FC = () => {
                     onMouseEnter={() => setMenuSelection(5)}
                     onClick={() => {
                       setSettings((p) => {
-                        const currentScale = p.resolutionScale || window.devicePixelRatio || 2;
+                        const currentScale = p.resolutionScale || 1080;
                         const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
                         let nextIndex = currentIndex + 1;
                         if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = 0;
@@ -8112,9 +8074,9 @@ const App: React.FC = () => {
                     }}
                   >
                     <div className="flex justify-between items-center">
-                      <span>RESOLUTION / AUFLÖSUNG</span>
+                      <span>AUFLÖSUNG / RESOLUTION</span>
                       <span className="text-blue-400 font-bold">
-                        {settings.resolutionScale === 1 ? "1x (Low)" : settings.resolutionScale === 2 ? "2x (Normal)" : settings.resolutionScale === 3 ? "3x (High)" : "4x (4K)"}
+                        {settings.resolutionScale === 720 ? "720p (HD)" : settings.resolutionScale === 1080 ? "1080p (FHD)" : settings.resolutionScale === 1440 ? "1440p (WQHD)" : "2160p (4K)"}
                       </span>
                     </div>
                     <div className="text-[10px] text-neutral-500 mt-1">
