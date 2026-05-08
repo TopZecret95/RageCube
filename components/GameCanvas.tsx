@@ -269,6 +269,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     const handleSpectatorKeys = (e: KeyboardEvent) => {
+      const isLocalFinished = players.current.find(p => p.onlineId === onlineService.localPlayer?.id)?.finished;
+      if (!isLocalFinished) return;
+
       const activePlayers = players.current.filter((p) => !p.finished);
       if (activePlayers.length === 0) return;
 
@@ -5297,8 +5300,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const py = p.pos.y + offY;
 
         // Spectator Highlight
-        if (isSpectating) {
-          const activePlayers = players.current.filter((p) => !p.finished);
+        const isLocalFinished = players.current.find(pl => pl.onlineId === onlineService.localPlayer?.id)?.finished;
+        if (isSpectating && isLocalFinished) {
+          const activePlayers = players.current.filter((pl) => !pl.finished);
           if (activePlayers.length > 0) {
             const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
             if (currentTarget && currentTarget.onlineId === p.onlineId) {

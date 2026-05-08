@@ -4812,6 +4812,7 @@ const App: React.FC = () => {
               "dead",
               "won",
               "paused",
+              "settings",
               "random_run",
               "tutorial",
               "testing",
@@ -6996,6 +6997,14 @@ const App: React.FC = () => {
                     }
 
                     buttons.push({
+                      label: t.settings,
+                      onClick: () => {
+                        setGameState((p) => ({ ...p, status: "settings", previousStatus: "paused" }));
+                        setMenuSelection(0);
+                      },
+                    });
+
+                    buttons.push({
                       label: t.quit,
                       danger: true,
                       onClick: () => {
@@ -8093,13 +8102,17 @@ const App: React.FC = () => {
                   <MenuButton
                     index={9}
                     label={t.back}
-                    onClick={() =>
+                    onClick={() => {
+                      const nextStatus = gameState.previousStatus || "menu";
                       setGameState((p) => ({ 
                         ...p, 
-                        status: p.previousStatus || "menu",
+                        status: nextStatus,
                         previousStatus: undefined 
-                      }))
-                    }
+                      }));
+                      if (nextStatus === "paused") {
+                        setMenuSelection(0);
+                      }
+                    }}
                     isSelected={menuSelection === 9}
                     onHover={setMenuSelection}
                   />
