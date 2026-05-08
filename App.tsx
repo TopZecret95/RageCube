@@ -2582,7 +2582,13 @@ const App: React.FC = () => {
     const st = stateRef.current;
     if (!st.currentVote) return;
 
-    const votes = st.currentVote.votes;
+    const currentVoteCopy = st.currentVote;
+    setCurrentVote(null);
+    if (onlineService.currentVote) {
+      onlineService.currentVote = null;
+    }
+
+    const votes = currentVoteCopy.votes;
     const ids = Object.keys(votes);
     let yesCount = 0;
     let noCount = 0;
@@ -2597,11 +2603,11 @@ const App: React.FC = () => {
 
     if (success) {
       // System message about success
-      onlineService.sendChatMessage(`VOTE PASSED: ${st.currentVote.type.toUpperCase()} (${yesCount} vs ${noCount})`);
+      onlineService.sendChatMessage(`VOTE PASSED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`);
 
-      if (st.currentVote.type === "next" || st.currentVote.type === "skip") {
+      if (currentVoteCopy.type === "next" || currentVoteCopy.type === "skip") {
         handleNextLevel();
-      } else if (st.currentVote.type === "repeat" || st.currentVote.type === "restart") {
+      } else if (currentVoteCopy.type === "repeat" || currentVoteCopy.type === "restart") {
         setOnlineResults([]);
         setOnlineFinishTimer(null);
         onlineService.startGame();
@@ -2619,12 +2625,12 @@ const App: React.FC = () => {
           collectedCoins: [],
         }));
         setRespawnTrigger((t) => t + 1);
-      } else if (st.currentVote.type === "kick" && st.currentVote.targetId) {
-        onlineService.kickPlayer(st.currentVote.targetId);
+      } else if (currentVoteCopy.type === "kick" && currentVoteCopy.targetId) {
+        onlineService.kickPlayer(currentVoteCopy.targetId);
       }
     } else {
       // System message about failure
-      onlineService.sendChatMessage(`VOTE FAILED: ${st.currentVote.type.toUpperCase()} (${yesCount} vs ${noCount})`);
+      onlineService.sendChatMessage(`VOTE FAILED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`);
     }
 
     if (onlineService.isHost) {
@@ -4675,20 +4681,32 @@ const App: React.FC = () => {
                     )}
                     <button
                       onClick={() => {
+                        if (currentVote) return;
                         const type = window.confirm("Restart level?") ? "restart" : null;
                         if (type) onlineService.initiateVote(type);
                       }}
-                      className="bg-blue-600 text-white px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 border-blue-900 active:translate-y-px"
+                      disabled={!!currentVote}
+                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                        currentVote 
+                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
+                          : "bg-blue-600 text-white border-blue-900 active:translate-y-px"
+                      }`}
                       title="Initiate Restart Vote"
                     >
                       RESET
                     </button>
                     <button
                       onClick={() => {
+                        if (currentVote) return;
                         const type = window.confirm("Skip level?") ? "skip" : null;
                         if (type) onlineService.initiateVote(type);
                       }}
-                      className="bg-purple-600 text-white px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 border-purple-900 active:translate-y-px"
+                      disabled={!!currentVote}
+                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                        currentVote 
+                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
+                          : "bg-purple-600 text-white border-purple-900 active:translate-y-px"
+                      }`}
                       title="Initiate Skip Vote"
                     >
                       SKIP
@@ -4696,6 +4714,7 @@ const App: React.FC = () => {
                     {onlineService.isHost && (
                       <button
                         onClick={() => {
+                          if (currentVote) return;
                           const players = Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id);
                           if (players.length === 0) return;
                           const target = players[0]; // Simple kick first other player for now or I'll add a better list if possible
@@ -4703,7 +4722,12 @@ const App: React.FC = () => {
                             onlineService.initiateVote("kick", target.id);
                           }
                         }}
-                        className="bg-red-600 text-white px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 border-red-900 active:translate-y-px"
+                        disabled={!!currentVote}
+                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                          currentVote
+                            ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed"
+                            : "bg-red-600 text-white border-red-900 active:translate-y-px"
+                        }`}
                         title="Initiate Kick Vote"
                       >
                         KICK
