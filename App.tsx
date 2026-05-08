@@ -2774,7 +2774,7 @@ const App: React.FC = () => {
             setGameState((p) => ({ ...p, status: "online_menu" }));
             break; 
           case 10: // Settings
-            setGameState((p) => ({ ...p, status: "settings" }));
+            setGameState((p) => ({ ...p, status: "settings", previousStatus: "menu" }));
             break;
           case 11: // Book
             setGameState((p) => ({ ...p, status: "book" }));
@@ -4901,6 +4901,23 @@ const App: React.FC = () => {
               />
             )}
 
+            {/* Settings Quick Access during Gameplay */}
+            {[
+              "playing",
+              "vs_playing",
+              "brawler_playing",
+            ].includes(gameState.status) && (
+              <div className="absolute top-4 right-4 z-[45]">
+                <button
+                  onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: p.status }))}
+                  className="w-10 h-10 bg-black/40 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-110 active:scale-95"
+                  title={t.settings}
+                >
+                  <span className="text-xl">⚙️</span>
+                </button>
+              </div>
+            )}
+
             {/* Online Pause Overlay */}
             {onlineService.lobbyCode && onlineService.isPaused && (
               <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-[60] backdrop-blur-sm">
@@ -5007,6 +5024,12 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 4}
                       onHover={setMenuSelection}
                     />
+                    <button
+                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "difficulty_select" }))}
+                      className="mt-4 px-6 py-2 bg-neutral-800 text-white hover:bg-neutral-700 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-px active:border-b-0 flex items-center justify-center gap-2"
+                    >
+                      ⚙️ {t.settings || "SETTINGS"}
+                    </button>
                 </div>
               </div>
             )}
@@ -5030,6 +5053,12 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 1}
                       onHover={setMenuSelection}
                     />
+                    <button
+                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "random_run_setup" }))}
+                      className="mt-4 px-6 py-2 bg-neutral-800 text-white hover:bg-neutral-700 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-px active:border-b-0 flex items-center justify-center gap-2"
+                    >
+                      ⚙️ {t.settings || "SETTINGS"}
+                    </button>
                 </div>
               </div>
             )}
@@ -5411,6 +5440,12 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 16}
                       onHover={setMenuSelection}
                     />
+                    <button
+                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: gameState.status }))}
+                      className="mt-2 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
+                    >
+                      ⚙️ {t.settings || "SETTINGS"}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -5964,7 +5999,7 @@ const App: React.FC = () => {
                       index={10}
                       label={t.settings}
                       onClick={() =>
-                        setGameState((p) => ({ ...p, status: "settings" }))
+                        setGameState((p) => ({ ...p, status: "settings", previousStatus: "menu" }))
                       }
                       isSelected={menuSelection === 10}
                       onHover={setMenuSelection}
@@ -6063,6 +6098,12 @@ const App: React.FC = () => {
                     isSelected={menuSelection === 4}
                     onHover={setMenuSelection}
                   />
+                  <button
+                    onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "online_menu" }))}
+                    className="mt-4 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-xs transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
+                  >
+                    ⚙️ {t.settings || "SETTINGS"}
+                  </button>
                 </div>
 
                 {showJoinPrompt && (
@@ -6186,6 +6227,12 @@ const App: React.FC = () => {
                             {(t.finishTimerLabel || "LEVEL-TIMER")}: {gameState.finishTimerEnabled !== false ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
                           </button>
                         )}
+                        <button
+                          onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "online_lobby" }))}
+                          className="px-6 py-2 bg-neutral-700 text-white hover:bg-neutral-600 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0"
+                        >
+                          ⚙️ {t.settings || "SETTINGS"}
+                        </button>
                         <button
                           onClick={() => setShowLevelMenu(true)}
                           className="px-6 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-400 active:translate-y-1 active:border-b-0"
@@ -8047,7 +8094,11 @@ const App: React.FC = () => {
                     index={9}
                     label={t.back}
                     onClick={() =>
-                      setGameState((p) => ({ ...p, status: "menu" }))
+                      setGameState((p) => ({ 
+                        ...p, 
+                        status: p.previousStatus || "menu",
+                        previousStatus: undefined 
+                      }))
                     }
                     isSelected={menuSelection === 9}
                     onHover={setMenuSelection}

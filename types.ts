@@ -119,9 +119,11 @@ export interface Achievement {
   rewardId?: string;
 }
 
+export type Status = 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book';
+
 export interface GameState {
-  status: 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book';
-  previousStatus?: 'menu' | 'online_menu';
+  status: Status;
+  previousStatus?: Status;
   currentLevelIndex: number;
   deaths: number; // Total session deaths
   levelDeaths: number; // Deaths in current level for score calc
