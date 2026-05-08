@@ -1,0 +1,20 @@
+57:  respawnTrigger: number;
+199:  respawnTimer?: number;
+233:  respawnTrigger,
+308:  }, [level.id, resetTrigger, respawnTrigger, gameMode, isOnline]);
+540:      pos: { ...currentRespawnPos.current }, // Use dynamic respawn pos
+589:      respawnTimer: 0,
+1140:    // Reset respawn point when level changes
+1210:    if (respawnTrigger > 0) {
+1226:  }, [respawnTrigger]);
+2207:            // If distance is huge (e.g. teleport or respawn), just snap
+2738:                // In VS mode, respawn at start (or checkpoint if we implemented per-player checkpoints, but VS uses shared level start typically)
+3399:                const isGhost = (p.respawnTimer && now - p.respawnTimer < 2000) || (otherP.respawnTimer && now - otherP.respawnTimer < 2000);
+3445:                        // Give invincible overlap on respawn against the person who killed them?
+3448:                        otherP.respawnTimer = Date.now();
+3501:            p.respawnTimer = Date.now();
+3524:                p.respawnTimer = Date.now();
+3542:            p.respawnTimer = Date.now();
+4560:        // Ghosting effect if in ghost state (respawn)
+4562:        const isGhostEffect = p.respawnTimer && now - p.respawnTimer < 2000;
+5394:    respawnTrigger,

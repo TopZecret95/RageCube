@@ -1,0 +1,64 @@
+services:
+  rage-cube:
+    image: node:20-slim
+    container_name: rage-cube
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./game-dateien:/app/game
+      - ./game-daten:/app/game/data
+    working_dir: /app/game
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PUID=1003
+      - PGID=1003
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "========================================"
+        echo " Rage Cube - NAS Auto Update Setup"
+        echo " PUID: $$PUID | PGID: $$PGID"
+        echo "========================================"
+        
+        echo "[Root] Installiere Werkzeuge (Git & Gosu)..."
+        apt-get update >/dev/null 2>&1
+        apt-get install -y git gosu >/dev/null 2>&1
+        
+        echo "[Root] Verknuepfe Container mit NAS-Nutzer..."
+        groupadd -o -g $$PGID gameuser 2>/dev/null || true
+        useradd -o -u $$PUID -g $$PGID -d /app/game gameuser 2>/dev/null || true
+        
+        echo "[Root] Dateirechte auf NAS werden angepasst..."
+        chown -R $$PUID:$$PGID /app/game
+        
+        echo "[Root] Erstelle Start-Skript..."
+        cat << 'EOF' > /tmp/run.sh
+        #!/bin/sh
+        git config --global --add safe.directory /app/game
+        
+        if [ ! -d .git ]; then
+          echo "[Setup] Initialisiere neues Git-Repository..."
+          git init
+          git remote add origin https://github.com/TopZecret95/RageCube.git
+        fi
+        
+        echo "[Update] Ziehe aktuellste Dateien von GitHub..."
+        git fetch origin
+        git reset --hard origin/main
+        git clean -fd -e data/
+        
+        echo "[Setup] Installiere NodeJS Abhaengigkeiten (inkl. Build-Tools)..."
+        npm install --include=dev
+        
+        echo "[Setup] Baue das Spiel (Build)..."
+        npm run build
+        
+        echo "[Start] Server wird auf Port 3000 gestartet!"
+        exec npm run start
+        EOF
+        
+        chmod +x /tmp/run.sh
+        echo "[Root] Uebergabe an gameuser (1003) - Spiel startet!"
+        exec gosu gameuser /tmp/run.sh

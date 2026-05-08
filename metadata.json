@@ -1,0 +1,5 @@
+{
+  "name": "RageCube",
+  "description": "A high-speed, punishing platformer inspired by Super Meat Boy. Features multi-language support, tight controls, and an AI Game Master that generates levels and roasts you when you die.",
+  "requestFramePermissions": []
+}

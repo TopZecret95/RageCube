@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rage-red: #ff0044;
+  --color-troll-green: #00ff88;
+  --color-void-black: #0a0a0a;
+  
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-arcade: "Press Start 2P", cursive;
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+
+  @keyframes flash {
+    0% { opacity: 1; background-color: white; }
+    100% { opacity: 0; background-color: transparent; }
+  }
+
+  --animate-shake: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
+  --animate-pulse-fast: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-flash: flash 0.1s ease-out;
+
+  @keyframes fire-glow {
+    0%, 100% { filter: drop-shadow(0 0 5px #ff4400) drop-shadow(0 0 10px #ff0000); }
+    50% { filter: drop-shadow(0 0 15px #ff6600) drop-shadow(0 0 25px #ff4400); }
+  }
+
+  @keyframes lava-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes electric-fire {
+    0%, 100% { box-shadow: 0 0 10px #ff4400, inset 0 0 5px #ff4400; }
+    33% { box-shadow: 0 0 20px #ffaa00, inset 0 0 8px #ffaa00; border-color: #ffaa00; }
+    66% { box-shadow: 0 0 15px #ffffff, inset 0 0 12px #ffffff; border-color: #ffffff; }
+  }
+
+  --animate-fire: fire-glow 2s ease-in-out infinite;
+  --animate-lava: lava-flow 10s ease infinite;
+  --animate-electric: electric-fire 1s linear infinite;
+}
+
+.lava-text {
+  background: linear-gradient(to bottom, #fff700, #ff8c00, #ff4c00, #960000);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 2px #ff4400);
+  animation: fire-glow 2s ease-in-out infinite;
+}
+
+.lava-btn-bg {
+  background: linear-gradient(-45deg, #1a0a0a, #300a0a, #1a0a0a, #4a0f0f);
+  background-size: 400% 400%;
+  animation: lava-flow 5s ease infinite;
+}
+
+.lava-border {
+  border: 2px solid #ff4400;
+  box-shadow: 0 0 10px #ff4400, inset 0 0 5px #000;
+}
+
+.lava-border-active {
+  border: 2px solid #fff;
+  animation: electric-fire 0.8s linear infinite;
+}
+
+body {
+  background-color: #050505;
+  color: white;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.font-arcade {
+  font-family: var(--font-arcade);
+}
+
+::-webkit-scrollbar {
+  display: none;
+}

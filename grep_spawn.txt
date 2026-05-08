@@ -1,0 +1,91 @@
+402-
+403:  const spawnParticles = useCallback(
+404-    (
+--
+994-            audio.playJump();
+995:            spawnParticles(
+996-              p.pos.x + p.w / 2,
+--
+1263-        if (onJump) onJump();
+1264:        spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 5, "dust");
+1265-      } else if (p.oneTimeDoubleJump && !canDoubleJumpGlobal) {
+--
+1270-        if (onJump) onJump();
+1271:        spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 5, "dust");
+1272-      } else if (p.oneTimeTripleJump && p.jumpCount < 3) {
+--
+1278-        if (onJump) onJump();
+1279:        spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 5, "dust");
+1280-      } else if (p.tripleJumpActive && p.jumpCount < 3) {
+--
+1285-        if (onJump) onJump();
+1286:        spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 5, "dust");
+1287-      }
+--
+1480-        audio.playJump();
+1481:        spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, p.color, 10, "spark");
+1482-      }
+--
+2139-          const spawnY = p.gravity < 0 ? p.pos.y : p.pos.y + p.h;
+2140:          spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 8, "dust");
+2141-        }
+--
+2375-                audio.playJump();
+2376:                spawnParticles(
+2377-                  p.pos.x + p.w / 2,
+--
+2519-            const spawnY = p.gravity < 0 ? p.pos.y : p.pos.y + p.h;
+2520:            spawnParticles(p.pos.x + p.w / 2, spawnY, "#ffffff", 5, "dust");
+2521-          } else if (p.isWallSliding || p.wallCoyoteTimer > 0) {
+--
+2536-              if (onJump) onJump();
+2537:              spawnParticles(
+2538-                p.pos.x + (jumpDir === 1 ? p.w : 0),
+--
+2649-              audio.playCoin();
+2650:              spawnParticles(
+2651-                entity.x + entity.w / 2,
+--
+2744-                // But using currentRespawnPos allows VS checkpoints too if needed.
+2745:                spawnParticles(
+2746-                  p.pos.x + p.w / 2,
+--
+2761-                  p.lives--;
+2762:                  spawnParticles(
+2763-                    p.pos.x + p.w / 2,
+--
+2783-              } else {
+2784:                spawnParticles(
+2785-                  p.pos.x + p.w / 2,
+--
+3048-              audio.playCoin();
+3049:              spawnParticles(
+3050-                entity.x + entity.w / 2,
+--
+3139-              } else if (gameMode === "vs") {
+3140:                spawnParticles(
+3141-                  p.pos.x + p.w / 2,
+--
+3156-                  p.lives--;
+3157:                  spawnParticles(
+3158-                    p.pos.x + p.w / 2,
+--
+3178-              } else {
+3179:                spawnParticles(
+3180-                  p.pos.x + p.w / 2,
+--
+3496-          } else if (gameMode === "vs") {
+3497:            spawnParticles(
+3498-              p.pos.x + p.w / 2,
+--
+3514-              p.lives--;
+3515:              spawnParticles(
+3516-                p.pos.x + p.w / 2,
+--
+3537-          } else {
+3538:            spawnParticles(
+3539-              p.pos.x + p.w / 2,
+--
+3596-            } else {
+3597:              spawnParticles(
+3598-                p.pos.x + p.w / 2,
