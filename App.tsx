@@ -4880,9 +4880,9 @@ const App: React.FC = () => {
                 respawnTrigger={respawnTrigger}
                 resetTrigger={resetTrigger}
                 gameMode={
-                  gameState.status.includes("vs")
+                  (gameState.status === "paused" ? (gameState.previousStatus || "playing") : gameState.status).includes("vs")
                     ? "vs"
-                    : gameState.status.includes("brawler")
+                    : (gameState.status === "paused" ? (gameState.previousStatus || "playing") : gameState.status).includes("brawler")
                       ? "brawler"
                       : "story"
                 }
@@ -6935,16 +6935,6 @@ const App: React.FC = () => {
                 <div className="flex flex-col gap-2 w-72">
                   {(() => {
                     const buttons = [];
-                    buttons.push({
-                      label: t.resume,
-                      onClick: () =>
-                        setGameState((p) => ({
-                          ...p,
-                          status:
-                            p.previousStatus ||
-                            (p.customLevelsQueue ? "random_run" : "playing"),
-                        })),
-                    });
 
                     if (
                       (!onlineService.lobbyCode || onlineService.isHost) &&
