@@ -1507,6 +1507,7 @@ const App: React.FC = () => {
       if (typeof parsed.editorScrollSpeed !== 'number' || isNaN(parsed.editorScrollSpeed)) parsed.editorScrollSpeed = 350;
       if (typeof parsed.uiScale !== 'number' || isNaN(parsed.uiScale)) parsed.uiScale = 1;
       if (typeof parsed.playerName !== 'string') parsed.playerName = "";
+      if (typeof parsed.opponentOpacity !== 'number' || isNaN(parsed.opponentOpacity)) parsed.opponentOpacity = 0.5;
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
       else if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
       
@@ -1524,6 +1525,7 @@ const App: React.FC = () => {
       editorEdgeScroll: true,
       editorScrollSpeed: 350,
       playerName: "",
+      opponentOpacity: 0.5,
       keybindingsP1: defaultKeybindingsP1,
       keybindingsP2: defaultKeybindingsP2,
     };
@@ -4895,6 +4897,7 @@ const App: React.FC = () => {
                 lang={lang}
                 isSpectating={gameState.isSpectating}
                 spectateTargetId={gameState.spectateTargetId}
+                opponentOpacity={settings.opponentOpacity}
               />
             )}
 
@@ -8010,32 +8013,43 @@ const App: React.FC = () => {
                     isSelected={menuSelection === 5}
                     onHover={setMenuSelection}
                   />
-                  <MenuButton
+                  <SettingsSlider
+                    label={t.opponentOpacity || "OPPONENT OPACITY"}
+                    value={settings.opponentOpacity ?? 0.5}
                     index={6}
-                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
-                    onClick={() =>
-                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
+                    colorClass="bg-cyan-500"
+                    onChange={(v: number) =>
+                      setSettings((p) => ({ ...p, opponentOpacity: v }))
                     }
                     isSelected={menuSelection === 6}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={7}
-                    label={t.keybindings}
-                    onClick={() => {
-                      setGameState((p) => ({ ...p, status: "keybindings" }));
-                      setMenuSelection(0);
-                    }}
+                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
+                    onClick={() =>
+                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
+                    }
                     isSelected={menuSelection === 7}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={8}
+                    label={t.keybindings}
+                    onClick={() => {
+                      setGameState((p) => ({ ...p, status: "keybindings" }));
+                      setMenuSelection(0);
+                    }}
+                    isSelected={menuSelection === 8}
+                    onHover={setMenuSelection}
+                  />
+                  <MenuButton
+                    index={9}
                     label={t.back}
                     onClick={() =>
                       setGameState((p) => ({ ...p, status: "menu" }))
                     }
-                    isSelected={menuSelection === 8}
+                    isSelected={menuSelection === 9}
                     onHover={setMenuSelection}
                   />
                 </div>

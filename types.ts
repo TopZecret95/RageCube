@@ -94,6 +94,7 @@ export interface GameSettings {
   favoriteSkins?: string[];
   favoriteTrails?: string[];
   playerName?: string;
+  opponentOpacity?: number;
   keybindingsP1?: Keybindings;
   keybindingsP2?: Keybindings;
 }

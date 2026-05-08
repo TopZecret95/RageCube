@@ -72,6 +72,7 @@ interface GameCanvasProps {
   lang: Language;
   isSpectating?: boolean;
   spectateTargetId?: string;
+  opponentOpacity?: number;
 }
 
 interface TempBlock extends Entity {
@@ -245,6 +246,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   lang,
   isSpectating,
   spectateTargetId,
+  opponentOpacity = 0.5,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -5088,11 +5090,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const isLocalPlayer =
           !isOnline || p.onlineId === onlineService.localPlayer?.id;
-        const shouldBeTransparent = gameMode === "vs" && !isLocalPlayer;
+        const shouldBeTransparent = (gameMode === "vs" || isOnline) && !isLocalPlayer;
 
         ctx.save();
         if (shouldBeTransparent) {
-          ctx.globalAlpha = 0.5;
+          ctx.globalAlpha = opponentOpacity;
         }
 
         // Hook Rope
@@ -5131,7 +5133,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
 
           const currentAlpha = ctx.globalAlpha;
-          ctx.globalAlpha = shouldBeTransparent ? 0.2 : 0.4;
+          ctx.globalAlpha = shouldBeTransparent ? opponentOpacity * 0.4 : 0.4;
           const sizeW = pos.w * (i / 8);
           const sizeH = pos.h * (i / 8);
 
@@ -6316,7 +6318,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore back to screen space for countdown
 
       // Spectator Overlay
-      if (isSpectating) {
+      const isLocalFinished = players.current.find(p => p.onlineId === onlineService.localPlayer?.id)?.finished;
+      if (isSpectating && isLocalFinished) {
         const t = TRANSLATIONS[lang];
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
