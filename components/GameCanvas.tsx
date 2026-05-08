@@ -2749,7 +2749,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.canJump = true;
           } else {
             // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
-            if (p.onGround || p.isWallSliding) {
+            if (p.isGrounded || p.isWallSliding) {
               p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
               p.canJump = true; 
             }
@@ -6198,7 +6198,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // Draw Ping Indicator
       if (isOnline && onlinePing !== undefined) {
         ctx.save();
-        ctx.font = '12px "Press Start 2P", monospace';
+        ctx.font = '8px "Press Start 2P", monospace';
         ctx.textAlign = "right";
         ctx.fillStyle =
           onlinePing < 50
@@ -6206,7 +6206,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             : onlinePing < 150
               ? "#facc15"
               : "#ef4444";
-        ctx.fillText(`Ping: ${onlinePing}ms`, GAME_WIDTH - 10, 20);
+        ctx.fillText(`Ping: ${onlinePing}ms`, GAME_WIDTH - 10, GAME_HEIGHT - 10);
         ctx.restore();
       }
 
