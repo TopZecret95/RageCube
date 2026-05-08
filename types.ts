@@ -89,6 +89,7 @@ export interface GameSettings {
   uiScale?: number; // 1 = 100%, 0.8 = 80%, etc.
   showGhost?: boolean;
   screenShake?: number; // 0 to 1, default 1
+  resolutionScale?: number; // 1 = 1x, 2 = 2x, 4 = 4K etc
   editorEdgeScroll?: boolean;
   editorScrollSpeed?: number;
   favoriteSkins?: string[];

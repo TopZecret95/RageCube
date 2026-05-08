@@ -2217,7 +2217,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (!ctx) return;
 
     // Enable high-resolution rendering
-    const dpr = window.devicePixelRatio || 2;
+    const dpr = settings.resolutionScale || window.devicePixelRatio || 2;
     canvas.width = GAME_WIDTH * dpr;
     canvas.height = GAME_HEIGHT * dpr;
     ctx.scale(dpr, dpr);
@@ -4320,7 +4320,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
-    const draw = () => {
+    const draw = (alpha: number) => {
       ctx.fillStyle = COLORS.BG;
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -5302,8 +5302,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           offY = p.h * 0.15;
         }
 
-        const px = p.pos.x + offX;
-        const py = p.pos.y + offY;
+        const visualAlpha = typeof alpha === "number" ? alpha : 0;
+        const px = p.pos.x + offX + (p.vel.x * visualAlpha);
+        const py = p.pos.y + offY + (p.vel.y * visualAlpha);
 
         // Spectator Highlight
         const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
@@ -6434,7 +6435,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         accumulator -= PHYSICS_STEP;
       }
 
-      draw();
+      draw(accumulator / PHYSICS_STEP);
     };
 
     animationFrameId = requestAnimationFrame(loop);

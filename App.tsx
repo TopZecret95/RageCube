@@ -60,6 +60,7 @@ const DEFAULT_CUSTOMIZATION: PlayerCustomization = {
 
 const FPS_OPTIONS = [30, 60, 120, 144, 165, 240, 0]; // 0 = Unlimited
 const UI_SCALE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5];
+const RESOLUTION_OPTIONS = [1, 2, 3, 4];
 
 const BRAWLER_CLASS_OPTIONS = ["standard", "fighter", "dasher", "jumper", "tank", "ninja", "heavy", "vampire"] as const;
 
@@ -1508,6 +1509,7 @@ const App: React.FC = () => {
       if (typeof parsed.uiScale !== 'number' || isNaN(parsed.uiScale)) parsed.uiScale = 1;
       if (typeof parsed.playerName !== 'string') parsed.playerName = "";
       if (typeof parsed.opponentOpacity !== 'number' || isNaN(parsed.opponentOpacity)) parsed.opponentOpacity = 0.5;
+      if (typeof parsed.resolutionScale !== 'number' || isNaN(parsed.resolutionScale)) parsed.resolutionScale = window.devicePixelRatio || 2;
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
       else if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
       
@@ -1522,6 +1524,7 @@ const App: React.FC = () => {
       fpsCap: 60,
       uiScale: 1,
       showGhost: true,
+      resolutionScale: window.devicePixelRatio || 2,
       editorEdgeScroll: true,
       editorScrollSpeed: 350,
       playerName: "",
@@ -3190,21 +3193,40 @@ const App: React.FC = () => {
           });
         }
         if (sel === 4) {
+          setSettings((p) => {
+            const currentScale = p.resolutionScale || window.devicePixelRatio || 2;
+            const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
+            let nextIndex =
+              e.code === "ArrowRight" || e.code === "KeyD"
+                ? currentIndex + 1
+                : currentIndex - 1;
+            if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = RESOLUTION_OPTIONS.length - 1;
+            if (nextIndex < 0) nextIndex = 0;
+            return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
+          });
+        }
+        if (sel === 5) {
           setSettings((p) => ({
             ...p,
             screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)),
           }));
         }
+        if (sel === 6) {
+          setSettings((p) => ({
+            ...p,
+            opponentOpacity: Math.min(1, Math.max(0, (p.opponentOpacity ?? 0.5) + diff)),
+          }));
+        }
       }
       if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 5) {
+        if (sel === 7) {
           setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }));
         }
-        if (sel === 6) {
+        if (sel === 8) {
           setGameState((p) => ({ ...p, status: "keybindings" }));
           setMenuSelection(0);
         }
-        if (sel === 7) {
+        if (sel === 9) {
           setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
         }
       }
@@ -8076,49 +8098,72 @@ const App: React.FC = () => {
                       {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
                     </div>
                   </div>
+                   <div
+                    className={`p-4 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                    onMouseEnter={() => setMenuSelection(5)}
+                    onClick={() => {
+                      setSettings((p) => {
+                        const currentScale = p.resolutionScale || window.devicePixelRatio || 2;
+                        const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
+                        let nextIndex = currentIndex + 1;
+                        if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = 0;
+                        return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
+                      });
+                    }}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span>RESOLUTION / AUFLÖSUNG</span>
+                      <span className="text-blue-400 font-bold">
+                        {settings.resolutionScale === 1 ? "1x (Low)" : settings.resolutionScale === 2 ? "2x (Normal)" : settings.resolutionScale === 3 ? "3x (High)" : "4x (4K)"}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-neutral-500 mt-1">
+                      {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
+                    </div>
+                  </div>
                   <SettingsSlider
                     label="SCREEN SHAKE"
                     value={settings.screenShake ?? 1}
-                    index={5}
+                    index={6}
                     colorClass="bg-yellow-500"
                     onChange={(v: number) =>
                       setSettings((p) => ({ ...p, screenShake: v }))
                     }
-                    isSelected={menuSelection === 5}
+                    isSelected={menuSelection === 6}
                     onHover={setMenuSelection}
                   />
                   <SettingsSlider
                     label={t.opponentOpacity || "OPPONENT OPACITY"}
                     value={settings.opponentOpacity ?? 0.5}
-                    index={6}
+                    index={7}
                     colorClass="bg-cyan-500"
                     onChange={(v: number) =>
                       setSettings((p) => ({ ...p, opponentOpacity: v }))
-                    }
-                    isSelected={menuSelection === 6}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={7}
-                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
-                    onClick={() =>
-                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
                     }
                     isSelected={menuSelection === 7}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={8}
-                    label={t.keybindings}
-                    onClick={() => {
-                      setGameState((p) => ({ ...p, status: "keybindings" }));
-                      setMenuSelection(0);
-                    }}
+                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
+                    onClick={() =>
+                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
+                    }
                     isSelected={menuSelection === 8}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={9}
+                    label={t.keybindings}
+                    onClick={() => {
+                      setGameState((p) => ({ ...p, status: "keybindings" }));
+                      setMenuSelection(0);
+                    }}
+                    isSelected={menuSelection === 9}
+                    onHover={setMenuSelection}
+                  />
+                  <MenuButton
+                    index={10}
                     label={t.back}
                     onClick={() => {
                       const nextStatus = gameState.previousStatus || "menu";
