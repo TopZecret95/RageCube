@@ -2589,7 +2589,13 @@ const App: React.FC = () => {
       else noCount++;
     });
 
-    if (yesCount > noCount) {
+    const totalPlayers = Array.from(onlineService.players.values()).length;
+    const success = yesCount > noCount && yesCount > 0;
+
+    if (success) {
+      // System message about success
+      onlineService.sendChatMessage(`VOTE PASSED: ${st.currentVote.type.toUpperCase()} (${yesCount} vs ${noCount})`);
+
       if (st.currentVote.type === "next" || st.currentVote.type === "skip") {
         handleNextLevel();
       } else if (st.currentVote.type === "repeat" || st.currentVote.type === "restart") {
@@ -2613,6 +2619,9 @@ const App: React.FC = () => {
       } else if (st.currentVote.type === "kick" && st.currentVote.targetId) {
         onlineService.kickPlayer(st.currentVote.targetId);
       }
+    } else {
+      // System message about failure
+      onlineService.sendChatMessage(`VOTE FAILED: ${st.currentVote.type.toUpperCase()} (${yesCount} vs ${noCount})`);
     }
 
     if (onlineService.isHost) {
@@ -2647,11 +2656,11 @@ const App: React.FC = () => {
     }
 
     if (onlineService.lobbyCode && currentVote) {
-      if (e.key === "+") {
+      if (e.key === "+" || e.key === "1") {
         e.preventDefault();
         onlineService.castVote("yes");
       }
-      if (e.key === "-") {
+      if (e.key === "-" || e.key === "2") {
         e.preventDefault();
         onlineService.castVote("no");
       }
@@ -4624,24 +4633,29 @@ const App: React.FC = () => {
                   gameState.status !== "brawler_testing" &&
                   gameState.status !== "vs_playing" &&
                   gameState.status !== "brawler_playing" && (
-                    <div className="text-yellow-500 text-xs md:text-sm hidden sm:block">
+                    <div className="text-yellow-500 text-[8px] md:text-xs hidden sm:block">
                       {t.score}: {gameState.score}
                     </div>
                   )}
-                {gameState.status !== "vs_playing" &&
+                 {gameState.status !== "vs_playing" &&
                   gameState.status !== "brawler_playing" &&
                   gameState.status !== "brawler_testing" && (
+                  <div className="flex flex-col items-end">
                     <div
-                      className={`${isGoalUnlocked ? "text-green-400 animate-pulse" : "text-neutral-400"} text-xs md:text-sm font-bold`}
+                      className={`${isGoalUnlocked ? "text-green-400 animate-pulse" : "text-neutral-400"} text-[8px] md:text-xs font-bold`}
                     >
                       {t.coins}: {collectedInLevelCount}/
                       {currentLevelCoins.length}{" "}
                       {!isGoalUnlocked && (
-                        <span className="text-[10px] opacity-70">
+                        <span className="text-[6px] opacity-70">
                           ({t.locked})
                         </span>
                       )}
                     </div>
+                    <div className="text-red-500 text-[8px] md:text-xs font-bold uppercase tracking-wider">
+                      {t.deaths}: {gameState.levelDeaths || 0}
+                    </div>
+                  </div>
                   )}
               </div>
               <div className="flex gap-2">
@@ -4941,44 +4955,56 @@ const App: React.FC = () => {
 
             {/* Voting UI Overlay */}
             {onlineService.lobbyCode && currentVote && (
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[70]">
-                <div className="bg-black/95 border border-cyan-500 p-3 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] min-w-[200px] flex flex-col items-center animate-in fade-in zoom-in duration-300">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1.5 h-1.5 bg-cyan-500 animate-ping rounded-full"></div>
-                    <span className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.2em]">{t.voteRunning || "Vote"}</span>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[70] w-full max-w-md pt-2">
+                <div className="bg-black/90 border-b-2 border-x-2 border-cyan-500 p-4 rounded-b-2xl shadow-[0_10px_30px_rgba(6,182,212,0.5)] flex flex-col items-center animate-in slide-in-from-top duration-500 ease-out backdrop-blur-md">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+                    <span className="text-cyan-400 text-xs font-black uppercase tracking-[0.3em] drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
+                      {t.voteRunning || "VOTING IN PROGRESS"}
+                    </span>
+                    <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
                   </div>
                   
-                  <div className="text-white text-sm font-bold mb-3 uppercase tracking-tight text-center">
-                    {currentVote.type === 'restart' || currentVote.type === 'repeat' ? 'Restart level?' : 
-                     currentVote.type === 'skip' || currentVote.type === 'next' ? 'Skip level?' : 
-                     currentVote.type === 'kick' ? `Kick ${onlineService.players.get(currentVote.targetId || '')?.name || 'Player'}?` : 'Call a vote?'}
+                  <div className="text-white text-lg font-arcade mb-4 uppercase tracking-tight text-center px-4 leading-tight">
+                    {currentVote.type === 'restart' || currentVote.type === 'repeat' ? 'RESTART LEVEL?' : 
+                     currentVote.type === 'skip' || currentVote.type === 'next' ? 'SKIP LEVEL?' : 
+                     currentVote.type === 'kick' ? `KICK ${onlineService.players.get(currentVote.targetId || '')?.name.toUpperCase() || 'PLAYER'}?` : 'CALL A VOTE?'}
                   </div>
                   
-                  <div className="flex gap-2 w-full mb-3">
+                  <div className="flex gap-4 w-full px-6 mb-4">
                     <button 
                       onClick={() => onlineService.castVote('yes')}
-                      className="flex-1 bg-green-600 hover:bg-green-500 py-1.5 px-2 text-white font-bold border-b-2 border-green-900 active:translate-y-px active:border-b-0 rounded transition-colors group text-xs text-center"
+                      className="flex-1 bg-green-600 hover:bg-green-500 py-3 px-4 text-white font-arcade text-sm border-b-4 border-green-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-lg flex flex-col items-center"
                     >
-                      <span className="block group-hover:scale-110 transition-transform">YES [+]</span>
-                      <span className="text-[9px] opacity-70">({Object.values(currentVote.votes).filter(v => v === 'yes').length})</span>
+                      <span className="block mb-1">JA [1]</span>
+                      <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                        {Object.values(currentVote.votes).filter(v => v === 'yes').length}
+                      </span>
                     </button>
                     <button 
                       onClick={() => onlineService.castVote('no')}
-                      className="flex-1 bg-red-600 hover:bg-red-500 py-1.5 px-2 text-white font-bold border-b-2 border-red-900 active:translate-y-px active:border-b-0 rounded transition-colors group text-xs text-center"
+                      className="flex-1 bg-red-600 hover:bg-red-500 py-3 px-4 text-white font-arcade text-sm border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-lg flex flex-col items-center"
                     >
-                      <span className="block group-hover:scale-110 transition-transform">NO [-]</span>
-                      <span className="text-[9px] opacity-70">({Object.values(currentVote.votes).filter(v => v === 'no').length})</span>
+                      <span className="block mb-1">NEIN [2]</span>
+                      <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                        {Object.values(currentVote.votes).filter(v => v === 'no').length}
+                      </span>
                     </button>
                   </div>
                   
-                  <div className="relative h-1 mb-1 bg-neutral-800 rounded-full w-full overflow-hidden">
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-cyan-500 transition-all duration-100 linear"
-                      style={{ width: `${Math.max(0, (currentVote.endTime - Date.now()) / 20000 * 100)}%` }}
-                    />
+                  <div className="w-full px-6">
+                    <div className="relative h-2 bg-neutral-800/80 rounded-full w-full overflow-hidden border border-white/5">
+                      <div 
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-100 linear"
+                        style={{ width: `${Math.max(0, (currentVote.endTime - Date.now()) / 15000 * 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="text-[9px] text-neutral-500 text-center uppercase font-bold tracking-widest w-full">
-                    <span className="text-[8px]">{Object.keys(currentVote.votes).length} / {Array.from(onlineService.players.values()).length} voted</span>
+
+                  <div className="mt-3 text-[10px] text-neutral-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                     <span>{Object.keys(currentVote.votes).length}</span>
+                     <span className="opacity-30">/</span>
+                     <span>{Array.from(onlineService.players.values()).length} {t.players?.toUpperCase() || 'PLAYERS'}</span>
                   </div>
                 </div>
               </div>

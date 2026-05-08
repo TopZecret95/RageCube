@@ -567,7 +567,7 @@ class OnlineService {
       const vote: VoteData = {
         type,
         votes: { [this.localPlayer!.id]: 'yes' }, // Host automatically votes yes
-        endTime: Date.now() + 20000, // 20 second vote
+        endTime: Date.now() + 15000, // 15 second vote
         targetId
       };
       this.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, vote);

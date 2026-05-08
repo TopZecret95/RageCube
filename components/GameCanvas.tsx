@@ -5932,7 +5932,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore camera translation to screen space
 
       if (gameMode === "brawler" || gameMode === "vs" || gameMode === "story") {
-        ctx.font = '20px "Press Start 2P", monospace';
+        ctx.font = '10px "Press Start 2P", monospace';
         ctx.textBaseline = "top";
 
         const isGhostDisabled =
@@ -5946,7 +5946,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ) {
           ctx.save();
           ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.font = '5px "Press Start 2P", monospace';
           ctx.textAlign = "right";
           ctx.fillText(
             `Ghost: ${ghostRun.time.toFixed(2)}s`,
@@ -5957,6 +5957,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         players.current.forEach((p, i) => {
+          const t = TRANSLATIONS[lang];
           if (gameMode === "brawler") {
             ctx.fillStyle = getTeamColor(p.team || 0) || "white";
           } else {
@@ -5966,32 +5967,43 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.textAlign = "left";
             if (gameMode === "brawler") {
               ctx.fillText(`${p.name} ♥ ${p.lives}`, 20, 20);
-            } else if (gameMode === "vs") {
+            } else {
               ctx.fillText(`${p.name}`, 20, 20);
-
-              // Coin status in VS mode
-              const totalCoins = level.entities.filter(
-                (e) => e.type === "coin",
-              ).length;
-              if (totalCoins > 0) {
-                ctx.save();
-                ctx.font = '10px "Press Start 2P"';
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                ctx.fillStyle =
-                  p.collectedCoinIds.length === totalCoins
-                    ? "#4ade80"
-                    : "#fbbf24";
-                ctx.fillText(
-                  `Coins: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                  20,
-                  45,
-                );
-                ctx.restore();
-              }
             }
+
+            // Coin status in VS mode
+            const totalCoins = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
+              (e) => e.type === "coin",
+            ).length : 0;
+            
+            ctx.save();
+            ctx.font = '5px "Press Start 2P"';
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            let nextY = 35;
+
+            if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
+              ctx.fillStyle =
+                p.collectedCoinIds.length === totalCoins
+                  ? "#4ade80"
+                  : "#fbbf24";
+              ctx.fillText(
+                `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
+                20,
+                nextY,
+              );
+              nextY += 10;
+            }
+
+            // Death counter below coins
+            ctx.fillStyle = "#ef4444"; // red-500
+            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, 20, nextY);
+            nextY += 10;
+
+            ctx.restore();
 
             // Powerup HUD for Local Player (or P1)
             const hasOneTime =
@@ -6033,7 +6045,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
 
               if (puName !== "") {
-                ctx.font = '12px "Press Start 2P", monospace';
+                ctx.font = '6px "Press Start 2P", monospace';
                 ctx.fillStyle = "#fbbf24";
                 ctx.shadowColor = "rgba(0,0,0,0.5)";
                 ctx.shadowBlur = 4;
@@ -6044,41 +6056,52 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   gameMode === "story" ? 20 : 60,
                 );
-                ctx.font = '20px "Press Start 2P", monospace'; // Reset
+                ctx.font = '10px "Press Start 2P", monospace'; // Reset
                 ctx.shadowBlur = 0; // Reset shadow
               }
             }
           } else {
+            const t = TRANSLATIONS[lang];
             ctx.textAlign = "right";
             if (gameMode === "brawler") {
               ctx.fillText(`${p.name} ♥ ${p.lives}`, GAME_WIDTH - 20, 20);
-            } else if (gameMode === "vs") {
+            } else {
               ctx.fillText(`${p.name}`, GAME_WIDTH - 20, 20);
-
-              // Coin status in VS mode
-              const totalCoins = level.entities.filter(
-                (e) => e.type === "coin",
-              ).length;
-              if (totalCoins > 0) {
-                ctx.save();
-                ctx.font = '10px "Press Start 2P"';
-                ctx.textAlign = "right";
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                ctx.fillStyle =
-                  p.collectedCoinIds.length === totalCoins
-                    ? "#4ade80"
-                    : "#fbbf24";
-                ctx.fillText(
-                  `Coins: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                  GAME_WIDTH - 20,
-                  45,
-                );
-                ctx.restore();
-              }
             }
+
+            // Coin status in VS mode
+            const totalCoins = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
+              (e) => e.type === "coin",
+            ).length : 0;
+            
+            ctx.save();
+            ctx.font = '5px "Press Start 2P"';
+            ctx.textAlign = "right";
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            let nextYSide = 35;
+
+            if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
+              ctx.fillStyle =
+                p.collectedCoinIds.length === totalCoins
+                  ? "#4ade80"
+                  : "#fbbf24";
+              ctx.fillText(
+                `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
+                GAME_WIDTH - 20,
+                nextYSide,
+              );
+              nextYSide += 10;
+            }
+
+            // Death counter below coins
+            ctx.fillStyle = "#ef4444"; // red-500
+            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, GAME_WIDTH - 20, nextYSide);
+
+            ctx.restore();
 
             // Powerup HUD for Opponent (or P2)
             const hasOneTime =
@@ -6120,14 +6143,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
 
               if (puName !== "") {
-                ctx.font = '12px "Press Start 2P", monospace';
+                ctx.font = '6px "Press Start 2P", monospace';
                 ctx.fillStyle = "#fbbf24";
                 ctx.shadowColor = "rgba(0,0,0,0.5)";
                 ctx.shadowBlur = 4;
                 ctx.shadowOffsetX = 2;
                 ctx.shadowOffsetY = 2;
                 ctx.fillText(`${t.powerup}: ${puName}`, canvas.width - 20, 60);
-                ctx.font = '20px "Press Start 2P", monospace'; // Reset
+                ctx.font = '10px "Press Start 2P", monospace'; // Reset
                 ctx.shadowBlur = 0; // Reset shadow
                 ctx.shadowOffsetX = 0;
                 ctx.shadowOffsetY = 0;
