@@ -2553,9 +2553,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       players.current.forEach((p, idx) => {
-        if (!p || p.finished) return;
+        if (!p) return;
 
         // --- Powerup Timer Decrements (Always run for all players to sync visuals) ---
+        if (p.finished) {
+           // For finished players, we still want to interpolate their positions if they are remote
+           const isLocal = !isOnline || p.onlineId === onlineService.localPlayer?.id;
+           if (!isLocal && p.targetPos) {
+              const dist = Math.sqrt(
+                Math.pow(p.targetPos.x - p.pos.x, 2) +
+                Math.pow(p.targetPos.y - p.pos.y, 2)
+              );
+              if (dist > 100) {
+                p.pos.x = p.targetPos.x;
+                p.pos.y = p.targetPos.y;
+              } else {
+                const dtInSeconds = (16.66 / 1000) * dt;
+                const lerpFactor = 1.0 - Math.exp(-20 * dtInSeconds);
+                p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
+                p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
+              }
+           }
+           return;
+        }
+
         if (p.shieldTimer > 0) p.shieldTimer--;
         if (p.slowTimer > 0) p.slowTimer--;
         if (p.iceTimer > 0) p.iceTimer--;
@@ -5546,7 +5567,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         if (gameMode === "vs" || gameMode === "brawler") {
           ctx.fillStyle = "white";
-          ctx.font = '12px "Press Start 2P", monospace';
+          ctx.font = '8px "Press Start 2P", monospace';
           const nameOffset =
             gameMode !== "brawler" && (p.inventory || hasOneTime) ? 22 : 8;
           const displayName = p.color === "#130009" ? "ADMIN" : (p.color && p.color.toLowerCase() === "#ff0080" ? "MAGIC" : (p.color && p.color.toLowerCase() === "#ffffff" ? "GHOST" : p.name));
