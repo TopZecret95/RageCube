@@ -264,8 +264,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const cameraRef = useRef({ x: 0, y: 0 });
   const [spectateTargetIdx, setSpectateTargetIdx] = useState(0);
 
+  const isSpectatingNow = isSpectating || players.current.find(p => p.isLocal)?.finished;
+
   useEffect(() => {
-    if (!isSpectating) {
+    if (!isSpectatingNow) {
       setSpectateTargetIdx(0);
       return;
     }
@@ -300,7 +302,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     window.addEventListener("keydown", handleSpectatorKeys);
     return () => window.removeEventListener("keydown", handleSpectatorKeys);
-  }, [isSpectating]);
+  }, [isSpectatingNow]);
   const collectedPowerups = useRef<string[]>([]); // Track collected powerup IDs to hide them
   const getBrawlerStats = (bClass?: string) => {
     // Wenn nicht im Brawler Modus, verwende immer die "standard" Werte
@@ -4294,7 +4296,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       
       // Normal Camera Logic for both modes
-      if (isSpectating) {
+      const isSpectatingNowLocal = isSpectating || players.current.find(p => p.isLocal)?.finished;
+      if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
           const target = activePlayers[spectateTargetIdx % activePlayers.length];
@@ -5354,7 +5357,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Spectator Highlight
         const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
-        if (isSpectating && isLocalFinished) {
+        const isSpectatingHighlight = isSpectating || isLocalFinished;
+        if (isSpectatingHighlight && isLocalFinished) {
           const activePlayers = players.current.filter((pl) => !pl.finished);
           if (activePlayers.length > 0) {
             const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
@@ -6399,7 +6403,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Spectator Overlay
       const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
-      if (isSpectating && isLocalFinished) {
+      const isSpectatingOverlay = isSpectating || isLocalFinished;
+      if (isSpectatingOverlay && isLocalFinished) {
         const t = TRANSLATIONS[lang];
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";

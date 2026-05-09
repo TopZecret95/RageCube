@@ -563,14 +563,20 @@ class OnlineService {
   }
 
   public initiateVote(type: VoteType, targetId?: string) {
-    if (this.isHost && this.lobbyCode) {
-      const vote: VoteData = {
-        type,
-        votes: { [this.localPlayer!.id]: 'yes' }, // Host automatically votes yes
-        endTime: Date.now() + 15000, // 15 second vote
-        targetId
-      };
-      this.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, vote);
+    if (this.lobbyCode) {
+      if (this.isHost) {
+        const vote: VoteData = {
+          type,
+          votes: { [this.localPlayer!.id]: 'yes' }, // Initiator automatically votes yes
+          endTime: Date.now() + 15000, // 15 second vote
+          targetId
+        };
+        this.currentVote = vote;
+        if (this.onVoteUpdate) this.onVoteUpdate(vote);
+        this.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, vote);
+      } else {
+        this.sendEvent('request_vote', { type, targetId });
+      }
     }
   }
 
@@ -601,7 +607,11 @@ class OnlineService {
 
   public castVote(choice: 'yes' | 'no') {
     if (this.lobbyCode && this.localPlayer) {
-      this.sendEvent('cast_vote', { choice });
+      if (this.isHost) {
+        this.handleCastVote(this.localPlayer.id, choice);
+      } else {
+        this.sendEvent('cast_vote', { choice });
+      }
     }
   }
 
@@ -610,6 +620,9 @@ class OnlineService {
       const updatedVotes = { ...this.currentVote.votes, [senderId]: choice };
       const updatedVote = { ...this.currentVote, votes: updatedVotes };
       this.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, updatedVote);
+      
+      this.currentVote = updatedVote; // apply locally immediately
+      if (this.onVoteUpdate) this.onVoteUpdate(this.currentVote);
     }
   }
 
