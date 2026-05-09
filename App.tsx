@@ -1797,6 +1797,9 @@ const App: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
     null,
   );
+  const [kickMenuOpen, setKickMenuOpen] = useState(false);
+  const [kickConfirmTarget, setKickConfirmTarget] = useState<OnlinePlayer | null>(null);
+  const [voteConfirmType, setVoteConfirmType] = useState<VoteType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
   const [onlineSuggestions, setOnlineSuggestions] = useState<any[]>([]);
@@ -4735,8 +4738,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => {
                         if (currentVote) return;
-                        const type = window.confirm("Restart level?") ? "restart" : null;
-                        if (type) onlineService.initiateVote(type);
+                        setVoteConfirmType("restart");
                       }}
                       disabled={!!currentVote}
                       className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
@@ -4751,8 +4753,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => {
                         if (currentVote) return;
-                        const type = window.confirm("Skip level?") ? "skip" : null;
-                        if (type) onlineService.initiateVote(type);
+                        setVoteConfirmType("skip");
                       }}
                       disabled={!!currentVote}
                       className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
@@ -4767,12 +4768,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => {
                         if (currentVote) return;
-                        const players = Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id);
-                        if (players.length === 0) return;
-                        const target = players[0]; // Simple kick first other player for now or I'll add a better list if possible
-                        if (window.confirm(`Kick ${target.name}?`)) {
-                          onlineService.initiateVote("kick", target.id);
-                        }
+                        setKickMenuOpen(true);
                       }}
                       disabled={!!currentVote}
                       className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
@@ -4972,6 +4968,112 @@ const App: React.FC = () => {
                       RESUME GAME
                     </button>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Votekick Menu */}
+            {kickMenuOpen && (
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-md animate-fade-in">
+                <div className="bg-neutral-900 border-4 border-red-600 p-6 rounded-2xl flex flex-col items-center gap-4 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-md w-full">
+                  <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter mb-2">{t.kickPlayer || "VOTE KICK"}</div>
+                  <div className="w-full max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                    {Array.from(onlineService.players.values())
+                      .filter(p => p.id !== onlineService.localPlayer?.id)
+                      .map(p => (
+                        <button 
+                          key={p.id}
+                          onClick={() => {
+                            setKickConfirmTarget(p);
+                            setKickMenuOpen(false);
+                          }}
+                          className="w-full p-4 bg-neutral-800 hover:bg-red-900/40 border border-neutral-700 hover:border-red-500 text-left flex items-center gap-4 transition-all rounded-xl"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center border border-neutral-700 p-2">
+                            <CharacterPreview customization={p.customization} scale={1.5} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-white text-lg leading-none">{p.name}</span>
+                            <span className="text-[8px] text-neutral-500 uppercase tracking-widest mt-1">Player ID: {p.id.slice(0, 8)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    {Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id).length === 0 && (
+                      <div className="text-neutral-500 text-center py-10 font-bold uppercase tracking-widest border-2 border-dashed border-neutral-800 rounded-xl">
+                        {t.noPlayersToKick || "NO PLAYERS TO KICK"}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => setKickMenuOpen(false)}
+                    className="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                  >
+                    {t.back || "BACK"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Votekick Confirmation */}
+            {kickConfirmTarget && (
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                <div className="bg-neutral-900 border-4 border-red-600 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-sm w-full">
+                  <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter leading-tight">
+                    {t.voteKickFor?.replace('{name}', kickConfirmTarget.name.toUpperCase()) || `KICK ${kickConfirmTarget.name.toUpperCase()}?`}
+                  </div>
+                  <div className="text-neutral-400 text-center text-xs font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                    {t.reallyStartVote || "THIS WILL START A VOTE"}
+                  </div>
+                  <div className="flex gap-4 w-full">
+                    <button 
+                      onClick={() => {
+                        onlineService.initiateVote("kick", kickConfirmTarget.id);
+                        setKickConfirmTarget(null);
+                      }}
+                      className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 font-arcade border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(220,38,38,0.4)]"
+                    >
+                      {t.yes || "YES"}
+                    </button>
+                    <button 
+                      onClick={() => setKickConfirmTarget(null)}
+                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                    >
+                      {t.no || "NO"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Generic Vote Confirmation (Restart, Skip) */}
+            {voteConfirmType && (
+              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                <div className="bg-neutral-900 border-4 border-cyan-500 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-sm w-full">
+                  <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
+                    {voteConfirmType === 'restart' ? 'RESTART VOTE?' : 
+                     voteConfirmType === 'skip' ? 'SKIP VOTE?' : 
+                     'START VOTE?'}
+                  </div>
+                  <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                    {t.reallyStartVote || "THIS WILL START A VOTE"}
+                  </div>
+                  <div className="flex gap-4 w-full">
+                    <button 
+                      onClick={() => {
+                        onlineService.initiateVote(voteConfirmType);
+                        setVoteConfirmType(null);
+                      }}
+                      className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 font-arcade border-b-4 border-cyan-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.4)]"
+                    >
+                      {t.yes || "YES"}
+                    </button>
+                    <button 
+                      onClick={() => setVoteConfirmType(null)}
+                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                    >
+                      {t.no || "NO"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

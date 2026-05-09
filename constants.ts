@@ -561,7 +561,11 @@ export const TRANSLATIONS = {
       gravity_zero: "GRAV ZERO",
       rectangle: "RECT",
       eraser: "ERASER"
-    }
+    },
+    kickPlayer: "KICK PLAYER",
+    reallyStartVote: "DO YOU REALLY WANT TO START THIS VOTE?",
+    voteKickFor: "KICK {name}?",
+    noPlayersToKick: "NO OTHER PLAYERS IN LOBBY"
   },
   [Language.DE]: {
     start: "STORY-MODUS",
@@ -1065,7 +1069,11 @@ export const TRANSLATIONS = {
       gravity_zero: "GRAV NULL",
       rectangle: "RECHTECK",
       eraser: "RADIERER"
-    }
+    },
+    kickPlayer: "SPIELER KICKEN",
+    reallyStartVote: "MÖCHTEST DU DIESE ABSTIMMUNG STARTEN?",
+    voteKickFor: "{name} KICKEN?",
+    noPlayersToKick: "KEINE ANDEREN SPIELER IN DER LOBBY"
   },
   [Language.ES]: {
     start: "MODO HISTORIA",

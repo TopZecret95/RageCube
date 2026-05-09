@@ -587,8 +587,12 @@ class OnlineService {
   }
 
   public kickPlayer(targetId: string) {
-    if (this.isHost && this.lobbyCode) {
-      this.socket?.emit("kick-player", { code: this.lobbyCode, targetId });
+    if (this.isHost && this.lobbyCode && this.localPlayer) {
+      this.socket?.emit("kick-player", { 
+        code: this.lobbyCode, 
+        targetId, 
+        hostId: this.localPlayer.id 
+      });
       // Also broadcast a system message
       const targetName = this.players.get(targetId)?.name || "Unknown Player";
       this.socket?.emit("send-chat", {

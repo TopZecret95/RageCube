@@ -121,11 +121,18 @@ async function startServer() {
       if (room) {
         if (room.hostId === data.playerId) {
           // Host can update anything
-          const { players, ...rest } = data.updates;
+          const { players: playersUpdate, ...rest } = data.updates;
           Object.assign(room, rest);
           
-          if (players && Array.isArray(players)) {
-            players.forEach((p: any) => {
+          // Reset finished state for all players when starting game
+          if (rest.status === 'playing' || rest.status === 'brawler_playing' || rest.status === 'vs_playing') {
+            room.players.forEach(p => {
+              p.finished = false;
+            });
+          }
+          
+          if (playersUpdate && Array.isArray(playersUpdate)) {
+            playersUpdate.forEach((p: any) => {
               room.players.set(p.id, { ...p });
             });
           }
@@ -208,8 +215,11 @@ async function startServer() {
     });
 
     socket.on("kick-player", (data) => {
-      const room = rooms.get(data.code);
-      if (room && room.hostId === data.hostId) {
+      const { lobbyCode, playerId } = socket.data;
+      const room = rooms.get(data.code || lobbyCode);
+      
+      // Ensure sender is the actual host of the room
+      if (room && room.hostId === (data.hostId || playerId)) {
         // Find the target socket using a more robust way
         const targetSocket = Array.from(io.sockets.sockets.values()).find(s => 
           s.data.playerId === data.targetId && s.data.lobbyCode === data.code

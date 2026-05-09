@@ -5178,6 +5178,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.save();
         if (shouldBeTransparent) {
           ctx.globalAlpha = opponentOpacity;
+        } else {
+          ctx.globalAlpha = 1.0;
         }
 
         // Hook Rope
@@ -5592,7 +5594,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         if (gameMode === "vs" || gameMode === "brawler") {
-          ctx.fillStyle = "white";
+          ctx.fillStyle = p.color || "white";
           ctx.font = '8px "Press Start 2P", monospace';
           const nameOffset =
             gameMode !== "brawler" && (p.inventory || hasOneTime) ? 22 : 8;
