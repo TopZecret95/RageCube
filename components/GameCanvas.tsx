@@ -2552,6 +2552,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // --- Powerup Timer Decrements (Always run for all players to sync visuals) ---
         if (p.finished) {
+           p.vel = { x: 0, y: 0 }; // Zero velocity to stop visual rendering jitter
            // For finished players, we still want to interpolate their positions if they are remote
            const isLocal = !isOnline || p.onlineId === onlineService.localPlayer?.id;
            if (!isLocal && p.targetPos) {
