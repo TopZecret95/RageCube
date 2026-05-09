@@ -3910,6 +3910,10 @@ const App: React.FC = () => {
     ) => {
       lastStartTimeRef.current = Date.now();
       const gameMode = mode || "brawler";
+      
+      // Clear results from previous round
+      setOnlineResults([]);
+      setOnlineFinishTimer(null);
 
       if (updatedVsCollision !== undefined) {
         setGameState(p => ({ ...p, collisionEnabled: updatedVsCollision }));
@@ -4018,7 +4022,7 @@ const App: React.FC = () => {
         }
       }
       if (event === "finish_stats") {
-        const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
+        const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing" || stateRef.current.gameState.status === "playing";
         if (onlineService.isHost && isPlaying) {
           setOnlineResults((prev) => {
             const existing = prev.findIndex((r) => r.id === data.id);
@@ -4369,7 +4373,7 @@ const App: React.FC = () => {
           }
 
           const isActuallyLocal = isLocal !== false;
-          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: isActuallyLocal }));
+          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: p.isSpectating || isActuallyLocal }));
 
           // Locally we don't transition yet, we wait for the timer or host to end it
           // But we should probably show a "Finished" message

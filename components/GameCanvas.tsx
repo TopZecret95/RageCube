@@ -6047,12 +6047,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const playerSlotWidth = availableWidth / Math.max(1, players.current.length);
 
         players.current.forEach((p, i) => {
-          const startX = hudPadding + i * playerSlotWidth;
+          const isLocal2P = !isOnline && players.current.length === 2;
+          const isP2 = isLocal2P && i === 1;
+
+          let startX = hudPadding + i * playerSlotWidth;
+          if (isP2) {
+            startX = GAME_WIDTH - hudPadding;
+            ctx.textAlign = "right";
+          } else {
+            ctx.textAlign = "left";
+          }
           
           // Use player color for name (Character color)
           ctx.fillStyle = p.color;
           
-          ctx.textAlign = "left";
           ctx.font = '10px "Press Start 2P", monospace';
 
           if (gameMode === "brawler") {
