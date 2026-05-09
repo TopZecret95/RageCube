@@ -1837,6 +1837,8 @@ const App: React.FC = () => {
     showDeleteConfirm,
     sortedCustomLevels: [] as LevelData[],
     unlockEverything,
+    onlinePlayersCount: 0,
+    onlineResults: [] as any[],
   });
 
   const t = TRANSLATIONS[lang];
@@ -2001,6 +2003,9 @@ const App: React.FC = () => {
     null,
   );
   const [onlineResults, setOnlineResults] = useState<any[]>([]);
+  useEffect(() => {
+    stateRef.current.onlineResults = onlineResults;
+  }, [onlineResults]);
 
   // Memoized Sorted Custom Levels
   const sortedCustomLevels = React.useMemo(() => {
@@ -3858,6 +3863,7 @@ const App: React.FC = () => {
       }
 
       setOnlinePlayers([...players]);
+      stateRef.current.onlinePlayersCount = players.length;
       if (suggestions) setOnlineSuggestions([...suggestions]);
 
       // Check if host is still present
@@ -4053,8 +4059,8 @@ const App: React.FC = () => {
             if (existing !== -1) return prev;
             const newResults = [...prev, data];
             
-            // Get total players including host
-            const totalPlayers = onlineService.players.size;
+            // Get total players from ref for accuracy
+            const totalPlayers = stateRef.current.onlinePlayersCount || onlineService.players.size;
             
             // Check for early finish if everyone is done
             if (totalPlayers > 0 && newResults.length >= totalPlayers) {
@@ -4371,7 +4377,7 @@ const App: React.FC = () => {
                 if (existing !== -1) return prev;
                 const newResults = [...prev, myStats];
                 
-                const totalPlayers = onlineService.players.size;
+                const totalPlayers = stateRef.current.onlinePlayersCount || onlineService.players.size;
                 if (totalPlayers > 0 && newResults.length >= totalPlayers) {
                   setOnlineFinishTimer(0);
                 } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && (stateRef.current.gameState.finishTimerEnabled !== false)) {
