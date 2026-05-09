@@ -3692,9 +3692,22 @@ const App: React.FC = () => {
   }, []); // Empty dependency array = attached once, never removed!
 
   useEffect(() => {
+    // Prevent gaming mouse thumb buttons (Back/Forward) from leaving the game
+    const blockExtraMouseButtons = (e: MouseEvent) => {
+      // button 3 & 4 are typically "Back" and "Forward" thumb buttons
+      if (e.button === 3 || e.button === 4) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("mousedown", blockExtraMouseButtons);
+    window.addEventListener("mouseup", blockExtraMouseButtons);
+
     window.addEventListener("keydown", handleKeyboardNavigation);
-    return () =>
+    return () => {
       window.removeEventListener("keydown", handleKeyboardNavigation);
+      window.removeEventListener("mousedown", blockExtraMouseButtons);
+      window.removeEventListener("mouseup", blockExtraMouseButtons);
+    };
   }, [handleKeyboardNavigation]);
 
   // --- ONLINE LOBBY LOGIC ---
