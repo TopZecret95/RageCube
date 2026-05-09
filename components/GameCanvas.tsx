@@ -264,17 +264,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const cameraRef = useRef({ x: 0, y: 0 });
   const [spectateTargetIdx, setSpectateTargetIdx] = useState(0);
 
-  const isSpectatingNow = isSpectating || players.current.find(p => p.isLocal)?.finished;
-
   useEffect(() => {
-    if (!isSpectatingNow) {
-      setSpectateTargetIdx(0);
-      return;
-    }
-
     const handleSpectatorKeys = (e: KeyboardEvent) => {
-      const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
-      if (!isLocalFinished) return;
+      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || players.current.find(p => p.isLocal)?.finished;
+      if (!isSpectatingNowLocal) return;
 
       const activePlayers = players.current.filter((p) => !p.finished);
       if (activePlayers.length === 0) return;
@@ -302,7 +295,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     window.addEventListener("keydown", handleSpectatorKeys);
     return () => window.removeEventListener("keydown", handleSpectatorKeys);
-  }, [isSpectatingNow]);
+  }, [isSpectating, isOnline]);
   const collectedPowerups = useRef<string[]>([]); // Track collected powerup IDs to hide them
   const getBrawlerStats = (bClass?: string) => {
     // Wenn nicht im Brawler Modus, verwende immer die "standard" Werte
@@ -4296,7 +4289,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       
       // Normal Camera Logic for both modes
-      const isSpectatingNowLocal = isSpectating || players.current.find(p => p.isLocal)?.finished;
+      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || players.current.find(p => p.isLocal)?.finished;
       if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
@@ -5357,7 +5350,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Spectator Highlight
         const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
-        const isSpectatingHighlight = isSpectating || isLocalFinished;
+        const isSpectatingHighlight = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || isLocalFinished;
         if (isSpectatingHighlight) {
           const activePlayers = players.current.filter((pl) => !pl.finished);
           if (activePlayers.length > 0) {
@@ -5989,7 +5982,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore camera translation to screen space
 
       if (gameMode === "brawler" || gameMode === "vs" || gameMode === "story") {
-        ctx.font = '16px "Press Start 2P", monospace';
+        ctx.font = '10px "Press Start 2P", monospace';
         ctx.textBaseline = "top";
 
         const isGhostDisabled =
@@ -6023,9 +6016,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (i === 0) {
             ctx.textAlign = "left";
             if (gameMode === "brawler") {
-              ctx.fillText(`${p.name} ♥ ${p.lives}`, 20, 20);
+              ctx.fillText(`${p.name} ♥ ${p.lives}`, 10, 10);
             } else {
-              ctx.fillText(`${p.name}`, 20, 20);
+              ctx.fillText(`${p.name}`, 10, 10);
             }
 
             // Coin status in VS mode
@@ -6034,13 +6027,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ).length : 0;
             
             ctx.save();
-            ctx.font = '8px "Press Start 2P", monospace';
+            ctx.font = '6px "Press Start 2P", monospace';
             ctx.shadowColor = "rgba(0,0,0,0.5)";
             ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
 
-            let nextY = 40;
+            let nextY = 24;
 
             if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
               ctx.fillStyle =
@@ -6049,16 +6042,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   : "#fbbf24";
               ctx.fillText(
                 `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                20,
+                10,
                 nextY,
               );
-              nextY += 15;
+              nextY += 10;
             }
 
             // Death counter below coins
             ctx.fillStyle = "#ef4444"; // red-500
-            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, 20, nextY);
-            nextY += 15;
+            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, 10, nextY);
+            nextY += 10;
 
             ctx.restore();
 
@@ -6121,9 +6114,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             const t = TRANSLATIONS[lang];
             ctx.textAlign = "right";
             if (gameMode === "brawler") {
-              ctx.fillText(`${p.name} ♥ ${p.lives}`, GAME_WIDTH - 20, 20);
+              ctx.fillText(`${p.name} ♥ ${p.lives}`, GAME_WIDTH - 10, 10);
             } else {
-              ctx.fillText(`${p.name}`, GAME_WIDTH - 20, 20);
+              ctx.fillText(`${p.name}`, GAME_WIDTH - 10, 10);
             }
 
             // Coin status in VS mode
@@ -6132,14 +6125,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ).length : 0;
             
             ctx.save();
-            ctx.font = '8px "Press Start 2P", monospace';
+            ctx.font = '6px "Press Start 2P", monospace';
             ctx.textAlign = "right";
             ctx.shadowColor = "rgba(0,0,0,0.5)";
             ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
 
-            let nextYSide = 40;
+            let nextYSide = 24;
 
             if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
               ctx.fillStyle =
@@ -6148,15 +6141,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   : "#fbbf24";
               ctx.fillText(
                 `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                GAME_WIDTH - 20,
+                GAME_WIDTH - 10,
                 nextYSide,
               );
-              nextYSide += 15;
+              nextYSide += 10;
             }
 
             // Death counter below coins
             ctx.fillStyle = "#ef4444"; // red-500
-            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, GAME_WIDTH - 20, nextYSide);
+            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, GAME_WIDTH - 10, nextYSide);
 
             ctx.restore();
 
@@ -6403,8 +6396,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Spectator Overlay
       const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
-      const isSpectatingOverlay = isSpectating || isLocalFinished;
-      if (isSpectatingOverlay && isLocalFinished) {
+      const isSpectatingOverlay = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || isLocalFinished;
+      if (isSpectatingOverlay) {
         const t = TRANSLATIONS[lang];
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";

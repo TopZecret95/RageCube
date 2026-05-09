@@ -2667,7 +2667,7 @@ const App: React.FC = () => {
       });
     }
 
-    if (onlineService.lobbyCode && currentVote) {
+    if (onlineService.lobbyCode && onlineService.currentVote) {
       if (e.key === "+" || e.key === "1") {
         e.preventDefault();
         onlineService.castVote("yes");
