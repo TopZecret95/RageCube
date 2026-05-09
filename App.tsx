@@ -4249,6 +4249,7 @@ const App: React.FC = () => {
       if (gameState.collectedCoins.includes(id)) return;
 
       processedCoins.current.add(id);
+      audio.playCoin();
 
       // Add to persistent bank
       setCustomization((prev) => ({

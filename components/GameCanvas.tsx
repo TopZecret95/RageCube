@@ -212,6 +212,7 @@ interface PlayerState {
   respawnTimer?: number;
   coyoteTimer: number;
   jumpBufferTimer: number;
+  isLocal?: boolean;
 }
 
 const SLOW_MO_FACTOR = 0.4; // 40% speed
@@ -266,7 +267,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     const handleSpectatorKeys = (e: KeyboardEvent) => {
-      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || players.current.find(p => p.isLocal)?.finished;
+      const liveLocalPlayer = players.current.find(p => p.isLocal);
+      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
       if (!isSpectatingNowLocal) return;
 
       const activePlayers = players.current.filter((p) => !p.finished);
@@ -945,6 +947,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           inventory: null,
           oneTimeDoubleJump: gameMode === "brawler" ? true : false,
           onlineId: op.id,
+          isLocal,
         };
       });
     } else if (gameMode === "vs" || gameMode === "brawler") {
@@ -980,6 +983,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               : undefined,
           deaths: 0,
           inventory: null,
+          isLocal: true,
           oneTimeDoubleJump: gameMode === "brawler" ? true : false,
         },
         {
@@ -1003,6 +1007,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               : undefined,
           deaths: 0,
           inventory: null,
+          isLocal: false,
           oneTimeDoubleJump: gameMode === "brawler" ? true : false,
         },
       ];
@@ -1022,6 +1027,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           name: "P1",
           playerIndex: 0,
           inventory: null,
+          isLocal: true,
         },
       ];
     }
@@ -1384,9 +1390,24 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // Add new players
     onlinePlayers.forEach((op, idx) => {
-      if (!currentIds.includes(op.id)) {
-        const isLocal = op.id === onlineService.localPlayer?.id;
-        const defaultSingleControls = {
+      const p = players.current.find((pl) => pl.onlineId === op.id);
+      const isLocal = op.id === onlineService.localPlayer?.id;
+      
+      if (p) {
+        // Update isLocal status for existing players to handle race conditions
+        p.isLocal = isLocal;
+        p.name = op.name;
+        p.customization = op.customization;
+        if (isLocal) p.controls = settings.keybindingsP1 || {
+          up: ["ArrowUp", "KeyW", "Space"],
+          left: ["ArrowLeft", "KeyA"],
+          right: ["ArrowRight", "KeyD"],
+          down: ["ArrowDown", "KeyS"],
+          action: ["KeyQ", "KeyE", "ControlRight", "ControlLeft", "Numpad0", "Digit0"],
+          dash: ["KeyF", "ShiftRight"],
+        };
+      } else {
+        const defaultSingleControls: Keybindings = {
           up: ["ArrowUp", "KeyW", "Space"],
           left: ["ArrowLeft", "KeyA"],
           right: ["ArrowRight", "KeyD"],
@@ -1399,6 +1420,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             "Numpad0",
             "Digit0",
           ],
+          dash: ["KeyF", "ShiftRight"],
         };
         const singleControls = settings.keybindingsP1 || defaultSingleControls;
 
@@ -4293,8 +4315,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         scrollWallX.current += (scrollSpeed * dt) / 60;
       }
       
-      // Normal Camera Logic for both modes
-      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || players.current.find(p => p.isLocal)?.finished;
+      const liveLocalPlayer = players.current.find(p => p.isLocal);
+      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
       if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
@@ -5141,12 +5163,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Players
-      players.current.forEach((p) => {
+      const liveLocalPlayer = players.current.find(pl => pl.isLocal);
+      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
+      const activePlayers = players.current.filter(pl => !pl.finished);
+
+      players.current.forEach((p, i) => {
         if (!p) return;
 
         const isLocalPlayer =
-          !isOnline || p.onlineId === onlineService.localPlayer?.id;
-        const shouldBeTransparent = (gameMode === "vs" || isOnline) && !isLocalPlayer;
+          !isOnline || p.onlineId === onlineService.localPlayer?.id || p.isLocal;
+        const isBeingSpectated = isSpectatingNowLocal && spectateTargetIdx < activePlayers.length && activePlayers[spectateTargetIdx] === p;
+        const shouldBeTransparent = (gameMode === "vs" || isOnline) && !isLocalPlayer && !isBeingSpectated;
 
         ctx.save();
         if (shouldBeTransparent) {
@@ -5354,10 +5381,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const py = p.pos.y + offY + (p.vel.y * visualAlpha);
 
         // Spectator Highlight
-        const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
-        const isSpectatingHighlight = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || isLocalFinished;
-        if (isSpectatingHighlight) {
-          const activePlayers = players.current.filter((pl) => !pl.finished);
+        if (isSpectatingNowLocal) {
           if (activePlayers.length > 0) {
             const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
             if (currentTarget && currentTarget.onlineId === p.onlineId) {
@@ -6400,9 +6424,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore(); // Restore back to screen space for countdown
 
       // Spectator Overlay
-      const isLocalFinished = players.current.find(p => p.isLocal)?.finished;
-      const isSpectatingOverlay = isSpectating || (isOnline && players.current.length > 0 && !players.current.find(p => p.isLocal)) || isLocalFinished;
-      if (isSpectatingOverlay) {
+      if (isSpectatingNowLocal) {
         const t = TRANSLATIONS[lang];
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
