@@ -268,7 +268,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   useEffect(() => {
     const handleSpectatorKeys = (e: KeyboardEvent) => {
       const liveLocalPlayer = players.current.find(p => p.isLocal);
-      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
+      const isSpectatingNowLocal = isOnline && (isSpectating || liveLocalPlayer?.finished || (!liveLocalPlayer && players.current.length > 0 && status.includes("playing")));
       if (!isSpectatingNowLocal) return;
 
       const activePlayers = players.current.filter((p) => !p.finished);
@@ -4316,7 +4316,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       
       const liveLocalPlayer = players.current.find(p => p.isLocal);
-      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
+      const isSpectatingNowLocal = isOnline && (isSpectating || liveLocalPlayer?.finished || (!liveLocalPlayer && players.current.length > 0 && status.includes("playing")));
       if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
@@ -5164,7 +5164,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Draw Players
       const liveLocalPlayer = players.current.find(pl => pl.isLocal);
-      const isSpectatingNowLocal = isSpectating || (isOnline && players.current.length > 0 && !liveLocalPlayer && status.includes("playing")) || liveLocalPlayer?.finished;
+      const isSpectatingNowLocal = isOnline && (isSpectating || liveLocalPlayer?.finished || (!liveLocalPlayer && players.current.length > 0 && status.includes("playing")));
       const activePlayers = players.current.filter(pl => !pl.finished);
 
       players.current.forEach((p, i) => {
