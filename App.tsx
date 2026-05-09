@@ -407,6 +407,8 @@ const TRAIL_PRESETS = [
 ];
 
 // Helper to handle colors
+const GLOBAL_LEVEL_TIME_LIMIT = 300; // 5 minutes per level before forced end
+
 const hexToRgb = (hex: string) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
@@ -2233,11 +2235,21 @@ const App: React.FC = () => {
     if (playingStates.includes(gameState.status)) {
       interval = window.setInterval(() => {
         if (onlineService.isPaused) return;
-        setGameState((prev) => ({
-          ...prev,
-          time: prev.time + 1,
-          levelTime: prev.levelTime + 1,
-        }));
+        setGameState((prev) => {
+          const newLevelTime = prev.levelTime + 1;
+          
+          // Forced timeout logic for online matches
+          if (onlineService.lobbyCode && onlineService.isHost && newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT && onlineFinishTimerRef.current === null) {
+            // Force start the end-of-round sequence
+            setOnlineFinishTimer(0);
+          }
+
+          return {
+            ...prev,
+            time: prev.time + 1,
+            levelTime: newLevelTime,
+          };
+        });
       }, 1000);
 
       // Check Marathon Achievement (10 mins = 600s)
@@ -2434,9 +2446,15 @@ const App: React.FC = () => {
   const handleNextLevel = () => {
     const currentState = stateRef.current.gameState;
     const nextIdx = currentState.currentLevelIndex + 1;
-    const collection = currentState.customLevelsQueue || stateRef.current.selectedDifficultySet;
+    let collection = currentState.customLevelsQueue || stateRef.current.selectedDifficultySet;
 
-    if (nextIdx < collection.length) {
+    // Fallback if collection is empty but we are in a known mode
+    if ((!collection || collection.length === 0) && onlineService.lobbyCode) {
+        if (currentState.onlineMode === "brawler") collection = BRAWLER_LEVELS;
+        else collection = filterVSLevels(INITIAL_LEVELS);
+    }
+
+    if (collection && nextIdx < collection.length) {
       const nextLevel = collection[nextIdx];
       setLevel(nextLevel);
       processedCoins.current.clear(); // Reset coins for new level
@@ -2462,7 +2480,7 @@ const App: React.FC = () => {
 
       setGameState((prev) => {
         let nextStatus: GameState["status"] = "playing";
-        if (prev.customLevelsQueue) {
+        if (prev.customLevelsQueue || onlineService.lobbyCode) {
           if (prev.onlineMode === "vs") nextStatus = "vs_playing";
           else if (prev.onlineMode === "brawler")
             nextStatus = "brawler_playing";
@@ -2483,6 +2501,7 @@ const App: React.FC = () => {
           ...prev,
           status: nextStatus,
           currentLevelIndex: nextIdx,
+          customLevelsQueue: prev.customLevelsQueue || (onlineService.lobbyCode ? collection : null),
           levelTime: 0,
           levelDeaths: 0,
           blocksPlaced: 0,
@@ -2494,7 +2513,12 @@ const App: React.FC = () => {
       });
       setRespawnTrigger((p) => p + 1);
     } else {
-      setGameState((prev) => ({ ...prev, status: "menu" }));
+      if (onlineService.lobbyCode || currentState.status === "vs_playing" || currentState.status === "brawler_playing" || currentState.status === "online_summary") {
+        setGameState((p) => ({ ...p, status: "online_lobby" }));
+        onlineService.returnToLobby();
+      } else {
+        setGameState((prev) => ({ ...prev, status: "menu" }));
+      }
     }
   };
 
@@ -3731,7 +3755,7 @@ const App: React.FC = () => {
       };
       const list = mode === "brawler" ? BRAWLER_LEVELS : INITIAL_LEVELS;
       const initialLevel = list[0];
-      const initialQueue = mode === "brawler" ? BRAWLER_LEVELS : [];
+      const initialQueue = mode === "brawler" ? BRAWLER_LEVELS : filterVSLevels(INITIAL_LEVELS);
       
       const code = await onlineService.createLobby(localPlayer, mode, {
         level: initialLevel,
@@ -4029,11 +4053,14 @@ const App: React.FC = () => {
             if (existing !== -1) return prev;
             const newResults = [...prev, data];
             
+            // Get total players including host
+            const totalPlayers = onlineService.players.size;
+            
             // Check for early finish if everyone is done
-            if (onlineService.players.size > 0 && newResults.length >= onlineService.players.size) {
+            if (totalPlayers > 0 && newResults.length >= totalPlayers) {
               setOnlineFinishTimer(0);
             } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && (stateRef.current.gameState.finishTimerEnabled !== false)) {
-              // First person finished, start 20s timer
+              // First person finished, start 20s grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
             }
@@ -4318,37 +4345,23 @@ const App: React.FC = () => {
           ? Number(exactTime.toFixed(2))
           : gameState.levelTime;
 
-      if (
-        gameState.status === "vs_playing" ||
-        gameState.status === "brawler_playing"
-      ) {
+      // Online Multiplayer OR Tournament Match
+      if (onlineService.lobbyCode || gameState.status === "vs_playing" || gameState.status === "brawler_playing") {
         if (onlineService.lobbyCode) {
-          // Online Multiplayer Win Logic
-          // Send stats to host only if the local player is the one who finished
+          // Send stats to host 
           const isLocalName = onlineService.localPlayer?.name;
-          const isLocalFinish =
-            winnerName === isLocalName ||
-            (gameState.status === "brawler_playing" &&
-              livesStats &&
-              isLocalName &&
-              livesStats[isLocalName] === 0);
-          const isWinner =
-            winnerName !== undefined &&
-            winnerName !== "DRAW" &&
-            winnerName !== "GAVE UP" &&
-            (winnerName === isLocalName ||
-              (onlineService.localPlayer?.team !== undefined &&
-                winnerName === `TEAM ${onlineService.localPlayer.team + 1}`));
-
-          if (isLocalFinish || isWinner) {
+          // Check if local player is actually the one winning/finishing
+          // winnerName can be a team or a specific player name
+          const isLocalFinish = (isLocal === true) || winnerName === isLocalName;
+          
+          if (isLocalFinish) {
             const playerName = isLocalName || "Unknown";
             const myStats = {
               id: onlineService.localPlayer?.id,
               name: playerName,
-              score: isWinner ? 1 : 0,
+              score: (winnerName && winnerName !== "DRAW" && winnerName !== "GAVE UP") ? 1 : 0,
               time: finalTime,
-              deaths:
-                livesStats && isLocalName ? livesStats[isLocalName] : 0,
+              deaths: livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths,
             };
             onlineService.sendEvent("finish_stats", myStats);
 
@@ -4358,11 +4371,10 @@ const App: React.FC = () => {
                 if (existing !== -1) return prev;
                 const newResults = [...prev, myStats];
                 
-                // Check for early finish if everyone is done
-                if (onlineService.players.size > 0 && newResults.length >= onlineService.players.size) {
+                const totalPlayers = onlineService.players.size;
+                if (totalPlayers > 0 && newResults.length >= totalPlayers) {
                   setOnlineFinishTimer(0);
                 } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && (stateRef.current.gameState.finishTimerEnabled !== false)) {
-                  // First person finished, start 20s timer
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
@@ -4372,15 +4384,15 @@ const App: React.FC = () => {
             }
           }
 
-          const isActuallyLocal = isLocal !== false;
-          setGameState((p) => ({ ...p, winner: p.winner || winnerName, isSpectating: p.isSpectating || isActuallyLocal }));
+          // Transition to spectating
+          setGameState((p) => ({ 
+            ...p, 
+            winner: p.winner || winnerName, 
+            isSpectating: true 
+          }));
 
-          // Locally we don't transition yet, we wait for the timer or host to end it
-          // But we should probably show a "Finished" message
           if (winnerName === "GAVE UP") {
-            setGameState((p) => ({ ...p, status: "online_summary" })); // Wait, if they give up, they should just wait for the summary?
-            // Actually, if they give up, they should just wait and watch, or maybe we just show a message.
-            // Let's just set a flag or something. For now, just return.
+             // Just wait for summary
           }
           return;
         }
@@ -4398,10 +4410,9 @@ const App: React.FC = () => {
                 name: winnerName,
                 score: 0,
                 time: finalTime,
-                deaths: livesStats ? livesStats[winnerName] || 0 : 0,
+                deaths: livesStats && winnerName ? livesStats[winnerName] || 0 : 0,
               },
             ];
-            // End immediately if everyone finished
             if (newResults.length >= 2) {
               setOnlineFinishTimer(0);
             } else if (onlineFinishTimerRef.current === null && (gameState.finishTimerEnabled !== false)) {
@@ -4726,8 +4737,16 @@ const App: React.FC = () => {
                     </span>
                   </div>
                 )}
-                <div className="bg-neutral-800 text-white px-2 py-0.5 text-[10px] md:text-xs border border-neutral-700">
-                  {t.time}: {gameState.time}s
+                <div className="bg-neutral-800 text-white px-2 py-0.5 text-[10px] md:text-xs border border-neutral-700 flex flex-col items-center">
+                  <div className="flex gap-1">
+                    <span className="opacity-50">LEVEL:</span>
+                    <span>{gameState.levelTime}s</span>
+                  </div>
+                  {onlineService.lobbyCode && (
+                    <div className={`text-[8px] font-black ${GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime < 30 ? 'text-red-500 animate-pulse' : 'text-neutral-500'}`}>
+                      LIMIT: {GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime}s
+                    </div>
+                  )}
                 </div>
                 {onlineService.lobbyCode && (
                   <div className="flex gap-1 ml-2">
