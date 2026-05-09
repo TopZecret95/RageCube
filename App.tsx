@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import GameCanvas from "./components/GameCanvas";
 import LevelEditor from "./components/LevelEditor";
 import CustomLevelSelect from "./components/CustomLevelSelect";
@@ -4249,7 +4249,6 @@ const App: React.FC = () => {
       if (gameState.collectedCoins.includes(id)) return;
 
       processedCoins.current.add(id);
-      audio.playCoin();
 
       // Add to persistent bank
       setCustomization((prev) => ({
@@ -4631,6 +4630,31 @@ const App: React.FC = () => {
     return null;
   };
 
+  const gamescreenLevel = useMemo(() => {
+    if (
+      !gameState.status.includes("vs") &&
+      !gameState.status.includes("brawler") &&
+      level.isBrawler &&
+      !level.entities.some((e) => e.type === "goal")
+    ) {
+      return {
+        ...level,
+        entities: [
+          ...level.entities,
+          {
+            id: "auto_goal",
+            type: "goal",
+            x: level.startP2?.x || level.start.x + 100,
+            y: level.startP2?.y || level.start.y,
+            w: 20,
+            h: 20,
+          },
+        ],
+      };
+    }
+    return level;
+  }, [level, gameState.status]);
+
   return (
     <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
@@ -4874,27 +4898,7 @@ const App: React.FC = () => {
               "online_summary",
             ].includes(gameState.status) && (
               <GameCanvas
-                level={
-                  !gameState.status.includes("vs") &&
-                  !gameState.status.includes("brawler") &&
-                  level.isBrawler &&
-                  !level.entities.some((e) => e.type === "goal")
-                    ? {
-                        ...level,
-                        entities: [
-                          ...level.entities,
-                          {
-                            id: "auto_goal",
-                            type: "goal",
-                            x: level.startP2?.x || level.start.x + 100,
-                            y: level.startP2?.y || level.start.y,
-                            w: 20,
-                            h: 20,
-                          },
-                        ],
-                      }
-                    : level
-                }
+                level={gamescreenLevel}
                 customization={customization}
                 customizationP2={customizationP2}
                 settings={settings}

@@ -2225,12 +2225,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // Enable high-resolution rendering - only set width/height if they actually changed
+    // to avoid clearing the canvas unnecessarily
+    if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
+    if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    // Enable high-resolution rendering
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+    
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
 
@@ -6486,10 +6490,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     animationFrameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animationFrameId);
   }, [
-    level,
+    level.id, // Only restart if the level ID itself changes, not the whole level object
     paused,
-    customization,
-    customizationP2,
     respawnTrigger,
     gameMode,
     fpsCap,
@@ -6502,6 +6504,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     isSpectating,
     spectateTargetIdx,
     status,
+    isOnline,
+    lang
   ]);
 
   return (
