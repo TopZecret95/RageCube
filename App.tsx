@@ -4726,28 +4726,26 @@ const App: React.FC = () => {
                     >
                       SKIP
                     </button>
-                    {onlineService.isHost && (
-                      <button
-                        onClick={() => {
-                          if (currentVote) return;
-                          const players = Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id);
-                          if (players.length === 0) return;
-                          const target = players[0]; // Simple kick first other player for now or I'll add a better list if possible
-                          if (window.confirm(`Kick ${target.name}?`)) {
-                            onlineService.initiateVote("kick", target.id);
-                          }
-                        }}
-                        disabled={!!currentVote}
-                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
-                          currentVote
-                            ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed"
-                            : "bg-red-600 text-white border-red-900 active:translate-y-px"
-                        }`}
-                        title="Initiate Kick Vote"
-                      >
-                        KICK
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (currentVote) return;
+                        const players = Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id);
+                        if (players.length === 0) return;
+                        const target = players[0]; // Simple kick first other player for now or I'll add a better list if possible
+                        if (window.confirm(`Kick ${target.name}?`)) {
+                          onlineService.initiateVote("kick", target.id);
+                        }
+                      }}
+                      disabled={!!currentVote}
+                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                        currentVote 
+                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
+                          : "bg-red-600 text-white border-red-900 active:translate-y-px"
+                      }`}
+                      title="Initiate Kick Vote"
+                    >
+                      KICK
+                    </button>
                   </div>
                 )}
               </div>
@@ -4940,23 +4938,6 @@ const App: React.FC = () => {
                 spectateTargetId={gameState.spectateTargetId}
                 opponentOpacity={settings.opponentOpacity}
               />
-            )}
-
-            {/* Settings Quick Access during Gameplay */}
-            {[
-              "playing",
-              "vs_playing",
-              "brawler_playing",
-            ].includes(gameState.status) && (
-              <div className="absolute top-4 right-4 z-[45]">
-                <button
-                  onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: p.status }))}
-                  className="w-10 h-10 bg-black/40 hover:bg-black/70 text-white rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 transition-all hover:scale-110 active:scale-95"
-                  title={t.settings}
-                >
-                  <span className="text-xl">⚙️</span>
-                </button>
-              </div>
             )}
 
             {/* Online Pause Overlay */}

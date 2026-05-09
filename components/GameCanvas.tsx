@@ -5358,7 +5358,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         // Spectator Highlight
         const isLocalFinished = players.current.find(pl => pl.isLocal)?.finished;
         const isSpectatingHighlight = isSpectating || isLocalFinished;
-        if (isSpectatingHighlight && isLocalFinished) {
+        if (isSpectatingHighlight) {
           const activePlayers = players.current.filter((pl) => !pl.finished);
           if (activePlayers.length > 0) {
             const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
