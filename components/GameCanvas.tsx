@@ -6035,95 +6035,97 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.restore();
         }
 
+        const hudT = TRANSLATIONS[lang];
+        const totalCoinsAtLevel = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
+          (e) => e.type === "coin",
+        ).length : 0;
+
+        const hudPadding = 10;
+        const availableWidth = GAME_WIDTH - hudPadding * 2;
+        const playerSlotWidth = availableWidth / Math.max(1, players.current.length);
+
         players.current.forEach((p, i) => {
-          const t = TRANSLATIONS[lang];
+          const startX = hudPadding + i * playerSlotWidth;
+          
+          // Use player color for name (Character color)
+          ctx.fillStyle = p.color;
+          
+          ctx.textAlign = "left";
+          ctx.font = '10px "Press Start 2P", monospace';
+
           if (gameMode === "brawler") {
-            ctx.fillStyle = getTeamColor(p.team || 0) || "white";
+            ctx.fillText(`${p.name} ♥ ${p.lives}`, startX, 10);
           } else {
-            ctx.fillStyle = p.color;
+            ctx.fillText(`${p.name}`, startX, 10);
           }
-          if (i === 0) {
-            ctx.textAlign = "left";
-            if (gameMode === "brawler") {
-              ctx.fillText(`${p.name} ♥ ${p.lives}`, 10, 10);
-            } else {
-              ctx.fillText(`${p.name}`, 10, 10);
-            }
 
-            // Coin status in VS mode
-            const totalCoins = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
-              (e) => e.type === "coin",
-            ).length : 0;
-            
-            ctx.save();
-            ctx.font = '6px "Press Start 2P", monospace';
-            ctx.shadowColor = "rgba(0,0,0,0.5)";
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 1;
-            ctx.shadowOffsetY = 1;
+          ctx.save();
+          ctx.font = '6px "Press Start 2P", monospace';
+          ctx.shadowColor = "rgba(0,0,0,0.5)";
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 1;
+          ctx.shadowOffsetY = 1;
 
-            let nextY = 24;
+          let nextY = 24;
 
-            if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
-              ctx.fillStyle =
-                p.collectedCoinIds.length === totalCoins
-                  ? "#4ade80"
-                  : "#fbbf24";
-              ctx.fillText(
-                `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                10,
-                nextY,
-              );
-              nextY += 10;
-            }
-
-            // Death counter below coins
-            ctx.fillStyle = "#ef4444"; // red-500
-            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, 10, nextY);
+          if (totalCoinsAtLevel > 0 && (gameMode === "vs" || gameMode === "story")) {
+            ctx.fillStyle =
+              p.collectedCoinIds.length === totalCoinsAtLevel
+                ? "#4ade80"
+                : "#fbbf24";
+            ctx.fillText(
+              `${hudT.coins}: ${p.collectedCoinIds.length}/${totalCoinsAtLevel}${p.collectedCoinIds.length === totalCoinsAtLevel ? " ✔" : ""}`,
+              startX,
+              nextY,
+            );
             nextY += 10;
+          }
 
-            ctx.restore();
+          // Death counter
+          ctx.fillStyle = "#ef4444"; // red-500
+          ctx.fillText(`${hudT.deaths}: ${p.deaths || 0}`, startX, nextY);
+          ctx.restore();
 
-            // Powerup HUD for Local Player (or P1)
+          // Powerup HUD for Local Player only to save space in horizontal layout
+          if (p.isLocal) {
             const hasOneTime =
               p.oneTimeBuild ||
               p.oneTimeHook ||
               (p.oneTimeDoubleJump && gameMode !== "brawler") ||
               p.oneTimeTripleJump ||
               p.tripleJumpActive;
-            if (p.inventory || hasOneTime) {
-              const t = TRANSLATIONS[lang];
-              let puName = "";
 
+            if (p.inventory || hasOneTime) {
+              let puName = "";
               if (p.inventory) {
-                if (p.inventory === "powerup_build") puName = t.puBuild;
-                if (p.inventory === "powerup_hook") puName = t.puHook;
-                if (p.inventory === "powerup_slow_mo") puName = t.puSlowMo;
-                if (p.inventory === "powerup_xray") puName = t.puXray;
-                if (p.inventory === "powerup_ice_block") puName = t.puIce;
-                if (p.inventory === "powerup_slime_block") puName = t.puSlime;
-                if (p.inventory === "powerup_fireball") puName = t.puFireball;
-                if (p.inventory === "powerup_bomb") puName = t.puBomb;
-                if (p.inventory === "powerup_shield") puName = t.puShield;
-                if (p.inventory === "powerup_steal") puName = t.puSteal;
-                if (p.inventory === "powerup_slow") puName = t.puSlow;
-                if (p.inventory === "powerup_melee") puName = t.puMelee;
-                if (p.inventory === "powerup_shrink") puName = t.puShrink;
-                if (p.inventory === "powerup_grow") puName = t.puGrow;
-                if (p.inventory === "powerup_dash") puName = t.puDash;
-                if (p.inventory === "powerup_teleport") puName = t.puTeleport;
-                if (p.inventory === "powerup_triple_jump")
-                  puName = t.puTripleJump;
+                if (p.inventory === "powerup_build") puName = hudT.puBuild;
+                if (p.inventory === "powerup_hook") puName = hudT.puHook;
+                if (p.inventory === "powerup_slow_mo") puName = hudT.puSlowMo;
+                if (p.inventory === "powerup_xray") puName = hudT.puXray;
+                if (p.inventory === "powerup_ice_block") puName = hudT.puIce;
+                if (p.inventory === "powerup_slime_block") puName = hudT.puSlime;
+                if (p.inventory === "powerup_fireball") puName = hudT.puFireball;
+                if (p.inventory === "powerup_bomb") puName = hudT.puBomb;
+                if (p.inventory === "powerup_shield") puName = hudT.puShield;
+                if (p.inventory === "powerup_steal") puName = hudT.puSteal;
+                if (p.inventory === "powerup_slow") puName = hudT.puSlow;
+                if (p.inventory === "powerup_melee") puName = hudT.puMelee;
+                if (p.inventory === "powerup_shrink") puName = hudT.puShrink;
+                if (p.inventory === "powerup_grow") puName = hudT.puGrow;
+                if (p.inventory === "powerup_dash") puName = hudT.puDash;
+                if (p.inventory === "powerup_teleport") puName = hudT.puTeleport;
+                if (p.inventory === "powerup_triple_jump") puName = hudT.puTripleJump;
               } else {
-                if (p.oneTimeBuild) puName = t.puBuild;
-                else if (p.oneTimeHook) puName = t.puHook;
+                if (p.oneTimeBuild) puName = hudT.puBuild;
+                else if (p.oneTimeHook) puName = hudT.puHook;
                 else if (p.oneTimeDoubleJump && gameMode !== "brawler")
-                  puName = t.puDoubleJump;
+                  puName = hudT.puDoubleJump;
                 else if (p.oneTimeTripleJump || p.tripleJumpActive)
-                  puName = t.puTripleJump;
+                  puName = hudT.puTripleJump;
               }
 
               if (puName !== "") {
+                ctx.save();
                 ctx.font = '8px "Press Start 2P", monospace';
                 ctx.fillStyle = "#fbbf24";
                 ctx.shadowColor = "rgba(0,0,0,0.5)";
@@ -6131,108 +6133,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 ctx.shadowOffsetX = 2;
                 ctx.shadowOffsetY = 2;
                 ctx.fillText(
-                  `${t.powerup}: ${puName}`,
-                  20,
-                  gameMode === "story" ? 20 : 75,
+                  `${hudT.powerup}: ${puName}`,
+                  startX,
+                  gameMode === "story" ? 44 : 75,
                 );
-                ctx.font = '16px "Press Start 2P", monospace'; // Reset
-                ctx.shadowBlur = 0; // Reset shadow
-              }
-            }
-          } else {
-            const t = TRANSLATIONS[lang];
-            ctx.textAlign = "right";
-            if (gameMode === "brawler") {
-              ctx.fillText(`${p.name} ♥ ${p.lives}`, GAME_WIDTH - 10, 10);
-            } else {
-              ctx.fillText(`${p.name}`, GAME_WIDTH - 10, 10);
-            }
-
-            // Coin status in VS mode
-            const totalCoins = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
-              (e) => e.type === "coin",
-            ).length : 0;
-            
-            ctx.save();
-            ctx.font = '6px "Press Start 2P", monospace';
-            ctx.textAlign = "right";
-            ctx.shadowColor = "rgba(0,0,0,0.5)";
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 1;
-            ctx.shadowOffsetY = 1;
-
-            let nextYSide = 24;
-
-            if (totalCoins > 0 && (gameMode === "vs" || gameMode === "story")) {
-              ctx.fillStyle =
-                p.collectedCoinIds.length === totalCoins
-                  ? "#4ade80"
-                  : "#fbbf24";
-              ctx.fillText(
-                `${t.coins}: ${p.collectedCoinIds.length}/${totalCoins}${p.collectedCoinIds.length === totalCoins ? " ✔" : ""}`,
-                GAME_WIDTH - 10,
-                nextYSide,
-              );
-              nextYSide += 10;
-            }
-
-            // Death counter below coins
-            ctx.fillStyle = "#ef4444"; // red-500
-            ctx.fillText(`${t.deaths}: ${p.deaths || 0}`, GAME_WIDTH - 10, nextYSide);
-
-            ctx.restore();
-
-            // Powerup HUD for Opponent (or P2)
-            const hasOneTime =
-              p.oneTimeBuild ||
-              p.oneTimeHook ||
-              (p.oneTimeDoubleJump && gameMode !== "brawler") ||
-              p.oneTimeTripleJump ||
-              p.tripleJumpActive;
-            if (p.inventory || hasOneTime) {
-              const t = TRANSLATIONS[lang];
-              let puName = "";
-
-              if (p.inventory) {
-                if (p.inventory === "powerup_build") puName = t.puBuild;
-                if (p.inventory === "powerup_hook") puName = t.puHook;
-                if (p.inventory === "powerup_slow_mo") puName = t.puSlowMo;
-                if (p.inventory === "powerup_xray") puName = t.puXray;
-                if (p.inventory === "powerup_ice_block") puName = t.puIce;
-                if (p.inventory === "powerup_slime_block") puName = t.puSlime;
-                if (p.inventory === "powerup_fireball") puName = t.puFireball;
-                if (p.inventory === "powerup_bomb") puName = t.puBomb;
-                if (p.inventory === "powerup_shield") puName = t.puShield;
-                if (p.inventory === "powerup_steal") puName = t.puSteal;
-                if (p.inventory === "powerup_slow") puName = t.puSlow;
-                if (p.inventory === "powerup_melee") puName = t.puMelee;
-                if (p.inventory === "powerup_shrink") puName = t.puShrink;
-                if (p.inventory === "powerup_grow") puName = t.puGrow;
-                if (p.inventory === "powerup_dash") puName = t.puDash;
-                if (p.inventory === "powerup_teleport") puName = t.puTeleport;
-                if (p.inventory === "powerup_triple_jump")
-                  puName = t.puTripleJump;
-              } else {
-                if (p.oneTimeBuild) puName = t.puBuild;
-                else if (p.oneTimeHook) puName = t.puHook;
-                else if (p.oneTimeDoubleJump && gameMode !== "brawler")
-                  puName = t.puDoubleJump;
-                else if (p.oneTimeTripleJump || p.tripleJumpActive)
-                  puName = t.puTripleJump;
-              }
-
-              if (puName !== "") {
-                ctx.font = '8px "Press Start 2P", monospace';
-                ctx.fillStyle = "#fbbf24";
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.shadowBlur = 4;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                ctx.fillText(`${t.powerup}: ${puName}`, canvas.width - 20, 75);
-                ctx.font = '16px "Press Start 2P", monospace'; // Reset
-                ctx.shadowBlur = 0; // Reset shadow
-                ctx.shadowOffsetX = 0;
-                ctx.shadowOffsetY = 0;
+                ctx.restore();
               }
             }
           }
