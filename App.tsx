@@ -4076,12 +4076,10 @@ const App: React.FC = () => {
         }
       }
       if (event === "online_results") {
-        const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
         if (
           stateRef.current.gameState.status === "online_lobby" ||
           stateRef.current.gameState.status === "menu" ||
-          stateRef.current.gameState.status === "online_menu" ||
-          (isPlaying && (stateRef.current.gameState.levelTime < 2 || Date.now() - lastStartTimeRef.current < 2000))
+          stateRef.current.gameState.status === "online_menu"
         ) {
           return;
         }
@@ -4121,12 +4119,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (onlineFinishTimer === null) return;
     if (onlineFinishTimer <= 0) {
-      const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
       if (
         stateRef.current.gameState.status === "online_lobby" ||
         stateRef.current.gameState.status === "menu" ||
-        stateRef.current.gameState.status === "online_menu" ||
-        (isPlaying && stateRef.current.gameState.levelTime < 2)
+        stateRef.current.gameState.status === "online_menu"
       ) {
         setOnlineFinishTimer(null);
         return;
@@ -4390,12 +4386,19 @@ const App: React.FC = () => {
             }
           }
 
-          // Transition to spectating
-          setGameState((p) => ({ 
-            ...p, 
-            winner: p.winner || winnerName, 
-            isSpectating: true 
-          }));
+          // Transition to spectating ONLY if the local player is the one who finished
+          if (isLocalFinish) {
+             setGameState((p) => ({ 
+               ...p, 
+               winner: p.winner || winnerName, 
+               isSpectating: true 
+             }));
+          } else {
+             setGameState((p) => ({ 
+               ...p, 
+               winner: p.winner || winnerName
+             }));
+          }
 
           if (winnerName === "GAVE UP") {
              // Just wait for summary
