@@ -181,7 +181,7 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                                           <span className="text-[9px] px-1 rounded font-bold bg-cyan-900 text-cyan-200">
                                               {level.allowedAbility === 'double_jump' ? t.abDoubleJump : 
                                                level.allowedAbility === 'hook' ? t.abHook : 
-                                               level.allowedAbility === 'build' ? t.abBuild : level.allowedAbility.toUpperCase()}
+                                               level.allowedAbility === 'build' ? t.abBuild : String(level.allowedAbility).toUpperCase()}
                                           </span>
                                       )}
                                       <span className={`font-bold font-arcade truncate text-xs md:text-sm ${isSelected ? 'text-yellow-400' : ''}`}>{level.name}</span>
@@ -209,8 +209,12 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                                   {t.edit}
                               </button>
                               
-                              <button onClick={(e) => { e.stopPropagation(); handleExport(level); }} className="text-neutral-500 hover:text-yellow-500 px-1" title="Export">
-                                  ⬇
+                              <button 
+                                  onClick={(e) => { e.stopPropagation(); handleExport(level); }} 
+                                  className="px-2.5 py-1 bg-yellow-900/20 border border-yellow-800/50 text-yellow-500 hover:bg-yellow-700 hover:text-white transition-colors flex items-center justify-center" 
+                                  title="Export"
+                              >
+                                  <span className="text-xs">⬇</span>
                               </button>
 
                               <button 
@@ -271,7 +275,7 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                         <div className="text-[9px] text-cyan-400 font-mono uppercase">
                             {t.ability}: {levels[selectedIndex].allowedAbility === 'double_jump' ? t.abDoubleJump : 
                                          levels[selectedIndex].allowedAbility === 'hook' ? t.abHook : 
-                                         levels[selectedIndex].allowedAbility === 'build' ? t.abBuild : levels[selectedIndex].allowedAbility.toUpperCase()}
+                                         levels[selectedIndex].allowedAbility === 'build' ? t.abBuild : String(levels[selectedIndex].allowedAbility).toUpperCase()}
                         </div>
                     )}
                 </div>

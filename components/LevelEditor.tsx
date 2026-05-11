@@ -1827,6 +1827,12 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
   // Renamed to RELEASE: Requires Verification (unless Brawler)
   const handleRelease = () => {
+    const t = (TRANSLATIONS[lang as keyof typeof TRANSLATIONS] || TRANSLATIONS["EN"]) as any;
+    if (levelName.length < 3) {
+      if (showToast) showToast(t.nameTooShort || "Name too short (min 3)!");
+      else alert(t.nameTooShort || "Name too short (min 3)!");
+      return;
+    }
     if (!isBrawler && !isVerified && hasChanged) {
       if (showToast)
         showToast(
@@ -1845,6 +1851,12 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
   // New: SAVE DRAFT: No Verification Required
   const handleSaveDraft = () => {
+    const t = (TRANSLATIONS[lang as keyof typeof TRANSLATIONS] || TRANSLATIONS["EN"]) as any;
+    if (levelName.length < 3) {
+      if (showToast) showToast(t.nameTooShort || "Name too short (min 3)!");
+      else alert(t.nameTooShort || "Name too short (min 3)!");
+      return;
+    }
     onSave({ ...getCurrentLevelData(), isVerified: false });
   };
 
@@ -2157,7 +2169,22 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           <input
             type="text"
             value={levelName}
-            onChange={(e) => setLevelName(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              let filtered = val.replace(/[^a-zA-Z0-9_.:\-!?|~*# ]/g, '');
+              
+              let spaceCounter = 0;
+              filtered = filtered.split('').filter(char => {
+                if (char === ' ') {
+                  spaceCounter++;
+                  return spaceCounter <= 2;
+                }
+                return true;
+              }).join('');
+
+              filtered = filtered.slice(0, 15);
+              setLevelName(filtered);
+            }}
             placeholder={t.levelName}
             className="h-9 w-48 bg-black text-white border border-neutral-700 px-3 outline-none font-arcade text-[10px] focus:border-blue-500 transition-colors"
           />
