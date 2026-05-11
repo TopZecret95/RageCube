@@ -177,6 +177,13 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                                           {t.scrollMode} ({level.autoScrollSpeed || 150})
                                           </span>
                                       )}
+                                      {level.allowedAbility && level.allowedAbility !== 'none' && (
+                                          <span className="text-[9px] px-1 rounded font-bold bg-cyan-900 text-cyan-200">
+                                              {level.allowedAbility === 'double_jump' ? t.abDoubleJump : 
+                                               level.allowedAbility === 'hook' ? t.abHook : 
+                                               level.allowedAbility === 'build' ? t.abBuild : level.allowedAbility.toUpperCase()}
+                                          </span>
+                                      )}
                                       <span className={`font-bold font-arcade truncate text-xs md:text-sm ${isSelected ? 'text-yellow-400' : ''}`}>{level.name}</span>
                                   </div>
                                   <div className="flex gap-2 text-[9px] font-mono opacity-60">
@@ -258,6 +265,13 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                     {levels[selectedIndex].autoScroll && (
                         <div className="text-[9px] text-purple-400 font-mono uppercase">
                             {t.scrollSpeed}: {levels[selectedIndex].autoScrollSpeed || 150}
+                        </div>
+                    )}
+                    {levels[selectedIndex].allowedAbility && levels[selectedIndex].allowedAbility !== 'none' && (
+                        <div className="text-[9px] text-cyan-400 font-mono uppercase">
+                            {t.ability}: {levels[selectedIndex].allowedAbility === 'double_jump' ? t.abDoubleJump : 
+                                         levels[selectedIndex].allowedAbility === 'hook' ? t.abHook : 
+                                         levels[selectedIndex].allowedAbility === 'build' ? t.abBuild : levels[selectedIndex].allowedAbility.toUpperCase()}
                         </div>
                     )}
                 </div>
