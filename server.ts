@@ -105,6 +105,16 @@ async function startServer() {
     socket.on("join-lobby", (data, callback) => {
       const room = rooms.get(data.code);
       if (room) {
+        // Check for duplicate names
+        const nameTaken = Array.from(room.players.values()).some(
+          (p: any) => p.name.trim().toLowerCase() === data.player.name.trim().toLowerCase() && p.id !== data.player.id
+        );
+
+        if (nameTaken) {
+          callback({ success: false, message: "Dieser Name ist in der Lobby bereits vergeben!" });
+          return;
+        }
+
         room.players.set(data.player.id, { ...data.player, isHost: false });
         socket.join(data.code);
         socket.data.lobbyCode = data.code;
