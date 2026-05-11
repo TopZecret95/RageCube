@@ -156,6 +156,7 @@ export interface GameState {
   finishTimerEnabled?: boolean;
   isSpectating?: boolean;
   spectateTargetId?: string;
+  storyCategoryName?: string;
 }
 
 export type KeyState = {

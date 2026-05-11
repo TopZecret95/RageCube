@@ -10,6 +10,7 @@ interface CustomLevelSelectProps {
   onEdit: (level: LevelData) => void;
   onDelete: (id: string) => void;
   onImport: (levels: LevelData[]) => void;
+  onPlayRun?: (levels: LevelData[], categoryName: string) => void;
   onBack: () => void;
   lang: string;
   selectedIndex: number;
@@ -28,6 +29,7 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
   onEdit, 
   onDelete, 
   onImport, 
+  onPlayRun,
   onBack, 
   lang, 
   selectedIndex, 
@@ -164,28 +166,38 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                   onClick={() => { setActiveTab('story'); setSelectedIndex(0); }}
                   className={`px-4 py-1.5 text-[10px] font-arcade transition-all border-b-2 ${activeTab === 'story' ? 'bg-pink-600/20 border-pink-500 text-white' : 'bg-neutral-800 border-transparent text-neutral-500 hover:text-neutral-300'}`}
                 >
-                  STORY LEVEL
+                  {t.storyLevels || "STORY LEVEL"}
                 </button>
               )}
             </div>
            </div>
            
            <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-               {activeTab === 'story' && storyCategories && (
-                 <div className="flex gap-1 items-center bg-neutral-900 p-1 rounded border border-neutral-700 mr-2">
-                    <button 
-                      onClick={() => { setStoryCategoryIndex(prev => Math.max(0, prev - 1)); setSelectedIndex(0); }}
-                      disabled={storyCategoryIndex === 0}
-                      className="w-6 h-6 flex items-center justify-center bg-black/40 hover:bg-white/10 disabled:opacity-30 rounded text-white"
-                    >◀</button>
-                    <span className="text-[9px] font-arcade text-white px-2 whitespace-nowrap min-w-[80px] text-center">{storyCategories[storyCategoryIndex]?.name}</span>
-                    <button 
-                      onClick={() => { setStoryCategoryIndex(prev => Math.min(storyCategories.length - 1, prev + 1)); setSelectedIndex(0); }}
-                      disabled={storyCategoryIndex === storyCategories.length - 1}
-                      className="w-6 h-6 flex items-center justify-center bg-black/40 hover:bg-white/10 disabled:opacity-30 rounded text-white"
-                    >▶</button>
-                 </div>
-               )}
+                {activeTab === 'story' && storyCategories && (
+                  <div className="flex gap-1 items-center">
+                    {onPlayRun && (
+                      <button 
+                        onClick={() => onPlayRun(currentStoryLevels, storyCategories[storyCategoryIndex]?.name || 'STORY')}
+                        className="px-3 py-1 bg-pink-600 hover:bg-pink-500 text-white text-[10px] md:text-sm font-arcade font-bold mr-2 shadow-[0_2px_0_#9d174d] active:translate-y-0.5 active:shadow-none transition-all flex items-center gap-2"
+                      >
+                        <span className="text-xs">▶▶</span> {t.playAll || "ALLE SPIELEN"}
+                      </button>
+                    )}
+                    <div className="flex gap-1 items-center bg-neutral-900 p-1 rounded border border-neutral-700 mr-2">
+                       <button 
+                         onClick={() => { setStoryCategoryIndex(prev => Math.max(0, prev - 1)); setSelectedIndex(0); }}
+                         disabled={storyCategoryIndex === 0}
+                         className="w-6 h-6 flex items-center justify-center bg-black/40 hover:bg-white/10 disabled:opacity-30 rounded text-white"
+                       >◀</button>
+                       <span className="text-[9px] font-arcade text-white px-2 whitespace-nowrap min-w-[80px] text-center">{storyCategories[storyCategoryIndex]?.name}</span>
+                       <button 
+                         onClick={() => { setStoryCategoryIndex(prev => Math.min(storyCategories.length - 1, prev + 1)); setSelectedIndex(0); }}
+                         disabled={storyCategoryIndex === storyCategories.length - 1}
+                         className="w-6 h-6 flex items-center justify-center bg-black/40 hover:bg-white/10 disabled:opacity-30 rounded text-white"
+                       >▶</button>
+                    </div>
+                  </div>
+                )}
                {activeTab === 'custom' && (
                  <>
                   <button onClick={toggleSort} className="px-3 py-1 bg-neutral-800 border border-neutral-600 hover:bg-neutral-700 text-yellow-400 text-[10px] md:text-xs font-arcade font-bold whitespace-nowrap">{t.sort}: {getSortLabel()}</button>

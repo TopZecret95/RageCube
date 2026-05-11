@@ -2209,6 +2209,7 @@ const App: React.FC = () => {
       lastRoast: "",
       collectedCoins: [],
       customLevelsQueue: [updatedLevel],
+      storyCategoryName: undefined,
       blocksPlaced: 0,
       totalJumps: prev.totalJumps,
       hooksUsed: prev.hooksUsed,
@@ -4601,7 +4602,10 @@ const App: React.FC = () => {
     let saveId: string;
     let isStory = false;
 
-    if (gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0) {
+    if (gameState.storyCategoryName) {
+      saveId = gameState.storyCategoryName;
+      isStory = true;
+    } else if (gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0) {
       saveId = gameState.customLevelsQueue[0].id;
     } else if (gameState.customLevelsQueue) {
       // Should not happen, but fallback
@@ -4627,7 +4631,12 @@ const App: React.FC = () => {
     // Redirect to the correct highscore view
     if (isStory) {
       setLevelSource("builtin");
-      setHighscoreLevelIndex(0); // Story mode uses index 0 logic in highscore view
+      if (gameState.storyCategoryName) {
+        const catIdx = storyCategories.findIndex((c) => c.name === gameState.storyCategoryName);
+        setHighscoreLevelIndex(catIdx >= 0 ? catIdx + 1 : 0);
+      } else {
+        setHighscoreLevelIndex(0); // Full story run
+      }
     } else if (
       gameState.customLevelsQueue &&
       gameState.customLevelsQueue.length > 0
@@ -4639,6 +4648,33 @@ const App: React.FC = () => {
     }
 
     setGameState((p) => ({ ...p, status: "highscores" }));
+  };
+
+  const startStoryRun = (levels: LevelData[], categoryName: string) => {
+    if (levels.length === 0) return;
+
+    setLevel(levels[0]);
+    processedCoins.current.clear();
+    setGameState((prev) => ({
+      ...prev,
+      status: "random_run",
+      currentLevelIndex: 0,
+      deaths: 0,
+      levelDeaths: 0,
+      time: 0,
+      levelTime: 0,
+      score: 0,
+      levelStartScore: 0,
+      lastRoast: "",
+      collectedCoins: [],
+      customLevelsQueue: levels,
+      storyCategoryName: categoryName,
+      blocksPlaced: 0,
+      totalJumps: prev.totalJumps,
+      hooksUsed: prev.hooksUsed,
+      unlockedAchievements: prev.unlockedAchievements,
+    }));
+    setRespawnTrigger(0);
   };
 
   const startRandomRun = () => {
@@ -4667,6 +4703,7 @@ const App: React.FC = () => {
       lastRoast: "",
       collectedCoins: [],
       customLevelsQueue: shuffled,
+      storyCategoryName: undefined,
       blocksPlaced: 0,
       totalJumps: prev.totalJumps,
       hooksUsed: prev.hooksUsed,
@@ -4691,8 +4728,11 @@ const App: React.FC = () => {
   const isLastStoryLevel =
     isStoryMode &&
     gameState.currentLevelIndex >= selectedDifficultySet.length - 1;
-  const isCustomGame = !!gameState.customLevelsQueue;
-  const showHighscoreInput = isLastStoryLevel || isCustomGame;
+  const isLastCustomLevel = 
+    !!gameState.customLevelsQueue && 
+    gameState.currentLevelIndex >= gameState.customLevelsQueue.length - 1;
+    
+  const showHighscoreInput = isLastStoryLevel || isLastCustomLevel;
 
   // Render Helpers
   const renderLock = (type: "eyes" | "accessory" | "trail", id: string) => {
@@ -4913,6 +4953,7 @@ const App: React.FC = () => {
                 levels={sortedCustomLevels}
                 storyCategories={storyCategories}
                 onPlay={playSingleCustomLevelHook}
+                onPlayRun={startStoryRun}
                 onEdit={handleEditLevel}
                 onDelete={handleDeleteLevel}
                 onImport={handleImportLevel}
@@ -5237,28 +5278,28 @@ const App: React.FC = () => {
                   <MenuButton
                     index={0}
                     label={`${t.beginner || "BEGINNER"} (${INITIAL_LEVELS.length})`}
-                    onClick={() => startStoryGame(INITIAL_LEVELS)}
+                    onClick={() => startStoryRun(INITIAL_LEVELS, t.beginner || "BEGINNER")}
                     isSelected={menuSelection === 0}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={1}
                     label={`${t.advanced || "ADVANCED"} (${ADVANCED_LEVELS.length})`}
-                    onClick={() => startStoryGame(ADVANCED_LEVELS)}
+                    onClick={() => startStoryRun(ADVANCED_LEVELS, t.advanced || "ADVANCED")}
                     isSelected={menuSelection === 1}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={2}
                     label={`${t.expert || "EXPERT"} (${EXPERT_LEVELS.length})`}
-                    onClick={() => startStoryGame(EXPERT_LEVELS)}
+                    onClick={() => startStoryRun(EXPERT_LEVELS, t.expert || "EXPERT")}
                     isSelected={menuSelection === 2}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
                     index={3}
                     label={`${t.god || "JUMP GOD"} (${GOD_LEVELS.length})`}
-                    onClick={() => startStoryGame(GOD_LEVELS)}
+                    onClick={() => startStoryRun(GOD_LEVELS, t.god || "GOD")}
                     danger
                     isSelected={menuSelection === 3}
                     onHover={setMenuSelection}
@@ -8672,11 +8713,31 @@ const App: React.FC = () => {
 
                 {levelSource === "builtin" && (
                   <div className="flex items-center gap-4 mb-6">
+                    <button
+                      className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
+                      onClick={() => {
+                        setHighscoreLevelIndex((p) => Math.max(0, p - 1));
+                      }}
+                    >
+                      ◀
+                    </button>
                     <div className="text-center w-64">
-                      <div className="text-white font-bold text-xl text-yellow-500 animate-pulse uppercase tracking-widest">
-                        {t.fullRun || "FULL RUN (1-10)"}
+                      <div className="text-white font-bold text-xl text-yellow-500 animate-pulse uppercase tracking-widest truncate">
+                        {(() => {
+                           if (highscoreLevelIndex === 0) return t.fullRun || "FULL STORY RUN";
+                           const cat = storyCategories[highscoreLevelIndex - 1];
+                           return cat ? `${cat.name} RUN` : "STORY RUN";
+                        })()}
                       </div>
                     </div>
+                    <button
+                      className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
+                      onClick={() => {
+                        setHighscoreLevelIndex((p) => Math.min(storyCategories.length, p + 1));
+                      }}
+                    >
+                      ▶
+                    </button>
                   </div>
                 )}
 
@@ -8704,7 +8765,7 @@ const App: React.FC = () => {
                     );
                     const currentId =
                       levelSource === "builtin"
-                        ? "STORY_MODE"
+                        ? (highscoreLevelIndex === 0 ? "STORY_MODE" : (storyCategories[highscoreLevelIndex - 1]?.name || "STORY_MODE"))
                         : activeList[idx]?.id;
 
                     if (!currentId) return <p className="text-center text-neutral-500 mt-10">ERROR</p>;
