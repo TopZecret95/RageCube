@@ -4072,9 +4072,9 @@ const App: React.FC = () => {
             const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
             
             // Calculate total players expected to finish
-            let totalPlayersCount = 2; // Force at least 2 for multiplayer
+            let totalPlayersCount = 1; // Default to 1
             if (isOnlineRoom) {
-              totalPlayersCount = Math.max(2, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+              totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
             } else if (status === "vs_playing" || status === "brawler_playing") {
               totalPlayersCount = 2; // Local VS/Brawler
             }
@@ -4083,7 +4083,7 @@ const App: React.FC = () => {
             if (newResults.length >= totalPlayersCount) {
               setOnlineFinishTimer(null);
               setTimeout(() => finalizeMatch(newResults), 0);
-            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
+            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled === true && isMultiSession) {
               // First person finished, start grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
@@ -4403,9 +4403,9 @@ const App: React.FC = () => {
                 const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
                 
                 // Calculate total players expected to finish
-                let totalPlayersCount = 2; // Force at least 2 for multiplayer 
+                let totalPlayersCount = 1; // Default to 1 
                 if (isOnlineRoom) {
-                  totalPlayersCount = Math.max(2, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+                  totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
                 } else if (status === "vs_playing" || status === "brawler_playing") {
                   totalPlayersCount = 2; // Local VS/Brawler
                 }
@@ -4413,7 +4413,7 @@ const App: React.FC = () => {
                 if (newResults.length >= totalPlayersCount) {
                   setOnlineFinishTimer(null);
                   setTimeout(() => finalizeMatch(newResults), 0);
-                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
+                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled === true && isMultiSession) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
@@ -4468,7 +4468,7 @@ const App: React.FC = () => {
                 status: "online_summary",
                 previousStatus: p.status,
               }));
-            } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled !== false) {
+              } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled === true) {
               setOnlineFinishTimer(20);
             }
             return newResults;
@@ -5616,8 +5616,8 @@ const App: React.FC = () => {
                     {(gameState.status === "vs_setup" || gameState.status === "brawler_setup") && (
                       <MenuButton
                         index={14}
-                        label={`${t.finishTimerLabel || "LEVEL-TIMER"}: ${gameState.finishTimerEnabled !== false ? (t.onLabel || "ON") : (t.offLabel || "OFF")}`}
-                        onClick={() => setGameState(p => ({ ...p, finishTimerEnabled: p.finishTimerEnabled === false ? true : false }))}
+                        label={`${t.finishTimerLabel || "LEVEL-TIMER"}: ${gameState.finishTimerEnabled === true ? (t.onLabel || "ON") : (t.offLabel || "OFF")}`}
+                        onClick={() => setGameState(p => ({ ...p, finishTimerEnabled: p.finishTimerEnabled === true ? false : true }))}
                         isSelected={menuSelection === 14}
                         onHover={setMenuSelection}
                       />
@@ -6456,12 +6456,12 @@ const App: React.FC = () => {
                           <button
                             onClick={() => onlineService.toggleFinishTimer()}
                             className={`px-4 py-2 rounded-lg font-arcade text-[10px] transition-all border-b-4 ${
-                              gameState.finishTimerEnabled !== false 
+                              gameState.finishTimerEnabled === true 
                                 ? "bg-green-600 border-green-900 text-white" 
                                 : "bg-neutral-700 border-neutral-900 text-neutral-400"
                             }`}
                           >
-                            {(t.finishTimerLabel || "LEVEL-TIMER")}: {gameState.finishTimerEnabled !== false ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
+                            {(t.finishTimerLabel || "LEVEL-TIMER")}: {gameState.finishTimerEnabled === true ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
                           </button>
                         )}
                         <button
