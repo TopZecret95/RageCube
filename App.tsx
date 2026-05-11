@@ -2024,6 +2024,14 @@ const App: React.FC = () => {
     });
   }, [customLevels, levelSortMode]);
 
+  const storyCategories = React.useMemo(() => [
+    { name: t.beginner || "BEGINNER", levels: INITIAL_LEVELS },
+    { name: t.advanced || "ADVANCED", levels: ADVANCED_LEVELS },
+    { name: t.expert || "EXPERT", levels: EXPERT_LEVELS },
+    { name: t.god || "GOD", levels: GOD_LEVELS },
+    { name: t.brawlerLevels || "BRAWLER", levels: BRAWLER_LEVELS },
+  ], [t]);
+
   // Sync Ref with State
   useEffect(() => {
     stateRef.current = {
@@ -4903,6 +4911,7 @@ const App: React.FC = () => {
             {gameState.status === "custom_level_select" && (
               <CustomLevelSelect
                 levels={sortedCustomLevels}
+                storyCategories={storyCategories}
                 onPlay={playSingleCustomLevelHook}
                 onEdit={handleEditLevel}
                 onDelete={handleDeleteLevel}
