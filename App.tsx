@@ -2243,8 +2243,10 @@ const App: React.FC = () => {
         setGameState((prev) => {
           const newLevelTime = prev.levelTime + 1;
           
-          // Forced timeout logic for online matches
-          if (onlineService.lobbyCode && onlineService.isHost && newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT && onlineFinishTimerRef.current === null) {
+          // Forced timeout logic for multiplayer matches (Online & Local)
+          const isMulti = prev.status === "vs_playing" || prev.status === "brawler_playing";
+          const isHost = onlineService.lobbyCode ? onlineService.isHost : true;
+          if (isMulti && isHost && newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT && onlineFinishTimerRef.current === null) {
             // Force start the end-of-round sequence
             setOnlineFinishTimer(0);
           }
@@ -4060,12 +4062,12 @@ const App: React.FC = () => {
             const newResults = [...prev, data];
             
             // Get total players from accurate count
-            const totalPlayersCount = onlineService.players.size || stateRef.current.onlinePlayersCount || 1;
+            const isMulti = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
+            const minExpected = isMulti ? 2 : 1;
+            const totalPlayersCount = Math.max(minExpected, onlineService.players.size || stateRef.current.onlinePlayersCount || 0);
             
             // Check for early finish if everyone is done
-            if (totalPlayersCount > 1 && newResults.length >= totalPlayersCount) {
-              setOnlineFinishTimer(0);
-            } else if (totalPlayersCount === 1 && newResults.length >= 1) {
+            if (newResults.length >= totalPlayersCount) {
               setOnlineFinishTimer(0);
             } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
               // First person finished, start 20s grace period timer
@@ -4375,11 +4377,12 @@ const App: React.FC = () => {
                 if (existing !== -1) return prev;
                 const newResults = [...prev, myStats];
                 
-                const totalPlayersCount = onlineService.players.size || stateRef.current.onlinePlayersCount || 1;
+                // Get total players from accurate count
+                const isMulti = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
+                const minExpected = isMulti ? 2 : 1;
+                const totalPlayersCount = Math.max(minExpected, onlineService.players.size || stateRef.current.onlinePlayersCount || 0);
                 
-                if (totalPlayersCount > 1 && newResults.length >= totalPlayersCount) {
-                  setOnlineFinishTimer(0);
-                } else if (totalPlayersCount === 1 && newResults.length >= 1) {
+                if (newResults.length >= totalPlayersCount) {
                   setOnlineFinishTimer(0);
                 } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
