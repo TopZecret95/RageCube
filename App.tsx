@@ -3984,8 +3984,7 @@ const App: React.FC = () => {
           currentLevelIndex: 0,
         }));
       } else if (status === "summary") {
-        // Only clear timer if we are actually entering summary (results should already be populated or ready)
-        setGameState((p) => ({ ...p, status: "online_summary" }));
+        // Result Screen transition disabled as per user request
         setOnlineFinishTimer(null);
       } else if (status === "closed") {
         setGameState((p) => ({ ...p, status: "online_menu" }));
@@ -4097,11 +4096,7 @@ const App: React.FC = () => {
           return;
         }
         setOnlineResults(data.results);
-        setGameState((p) => ({
-          ...p,
-          status: "online_summary",
-          previousStatus: p.status,
-        }));
+        // Result Screen transition disabled as per user request
         setOnlineFinishTimer(null);
       }
     };
@@ -4188,11 +4183,7 @@ const App: React.FC = () => {
           onlineService.sendEvent("online_results", { results });
           onlineService.finishGame(); // Set room status to summary
           setOnlineResults(results);
-          setGameState((p) => ({
-            ...p,
-            status: "online_summary",
-            previousStatus: p.status,
-          }));
+          // Result Screen transition disabled as per user request
           setOnlineFinishTimer(null);
         }
       } else {
@@ -4220,11 +4211,8 @@ const App: React.FC = () => {
           results.sort((a, b) => a.time - b.time);
           return results;
         });
-        setGameState((p) => ({
-          ...p,
-          status: "online_summary",
-          previousStatus: p.status,
-        }));
+        
+        // Result Screen transition disabled as per user request
         setOnlineFinishTimer(null);
       }
       return;
@@ -4449,11 +4437,8 @@ const App: React.FC = () => {
             ];
             if (newResults.length >= 2) {
               setOnlineFinishTimer(null);
-              setGameState((p) => ({
-                ...p,
-                status: "online_summary",
-                previousStatus: p.status,
-              }));
+              // Result Screen transition disabled as per user request
+              // We go back to local menu or just stay in-game
             } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled !== false) {
               setOnlineFinishTimer(20);
             }
@@ -4494,13 +4479,8 @@ const App: React.FC = () => {
         results.sort((a, b) => b.score - a.score || a.time - b.time);
         setOnlineResults(results);
 
-        setGameState((p) => ({
-          ...p,
-          status: "online_summary",
-          previousStatus: p.status,
-          winner: winnerName,
-          onlineWins: newWins,
-        }));
+        // Result Screen transition disabled as per user request
+        setGameState((p) => ({ ...p, status: "online_lobby" }));
         if (isWinner) {
           checkAchievements({ onlineWins: newWins });
         }
