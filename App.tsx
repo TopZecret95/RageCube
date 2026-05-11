@@ -4059,13 +4059,15 @@ const App: React.FC = () => {
             if (existing !== -1) return prev;
             const newResults = [...prev, data];
             
-            // Get total players from ref for accuracy
-            const totalPlayers = stateRef.current.onlinePlayersCount || onlineService.players.size;
+            // Get total players from accurate count
+            const totalPlayersCount = onlineService.players.size || stateRef.current.onlinePlayersCount || 1;
             
             // Check for early finish if everyone is done
-            if (totalPlayers > 0 && newResults.length >= totalPlayers) {
+            if (totalPlayersCount > 1 && newResults.length >= totalPlayersCount) {
               setOnlineFinishTimer(0);
-            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && (stateRef.current.gameState.finishTimerEnabled !== false)) {
+            } else if (totalPlayersCount === 1 && newResults.length >= 1) {
+              setOnlineFinishTimer(0);
+            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
               // First person finished, start 20s grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
@@ -4373,10 +4375,13 @@ const App: React.FC = () => {
                 if (existing !== -1) return prev;
                 const newResults = [...prev, myStats];
                 
-                const totalPlayers = stateRef.current.onlinePlayersCount || onlineService.players.size;
-                if (totalPlayers > 0 && newResults.length >= totalPlayers) {
+                const totalPlayersCount = onlineService.players.size || stateRef.current.onlinePlayersCount || 1;
+                
+                if (totalPlayersCount > 1 && newResults.length >= totalPlayersCount) {
                   setOnlineFinishTimer(0);
-                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && (stateRef.current.gameState.finishTimerEnabled !== false)) {
+                } else if (totalPlayersCount === 1 && newResults.length >= 1) {
+                  setOnlineFinishTimer(0);
+                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
@@ -4423,8 +4428,13 @@ const App: React.FC = () => {
               },
             ];
             if (newResults.length >= 2) {
-              setOnlineFinishTimer(0);
-            } else if (onlineFinishTimerRef.current === null && (gameState.finishTimerEnabled !== false)) {
+              setOnlineFinishTimer(null);
+              setGameState((p) => ({
+                ...p,
+                status: "online_summary",
+                previousStatus: p.status,
+              }));
+            } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled !== false) {
               setOnlineFinishTimer(20);
             }
             return newResults;
