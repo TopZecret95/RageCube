@@ -30,6 +30,7 @@ interface LevelEditorProps {
   initialHistoryIndex?: number;
   showToast?: (msg: string) => void;
   settings?: GameSettings;
+  onSettingsChange?: (settings: GameSettings) => void;
 }
 
 const allTools = [
@@ -468,6 +469,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
   initialHistoryIndex,
   showToast,
   settings,
+  onSettingsChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -2186,6 +2188,21 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             title="Toggle Grid (G)"
           >
             {t.gridLabel}: {showGrid ? t.onLabel : t.offLabel}
+          </button>
+
+          <button
+            onClick={() => {
+              if (onSettingsChange && settings) {
+                onSettingsChange({
+                  ...settings,
+                  editorEdgeScroll: !settings.editorEdgeScroll,
+                });
+              }
+            }}
+            className={`px-3 py-2 text-[10px] font-arcade border transition-all ${settings?.editorEdgeScroll ? "bg-red-900 border-red-500 text-red-200" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+            title="Editor Edge Scroll"
+          >
+            {t.editorEdgeScroll}: {settings?.editorEdgeScroll ? t.onLabel : t.offLabel}
           </button>
           
           <div className="flex flex-col gap-0.5 bg-black border border-neutral-700 px-2 py-0.5 min-w-[120px]">

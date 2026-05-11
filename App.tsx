@@ -4894,6 +4894,8 @@ const App: React.FC = () => {
                 initialHistory={editorHistory?.history}
                 initialHistoryIndex={editorHistory?.index}
                 showToast={showToast}
+                settings={settings}
+                onSettingsChange={setSettings}
               />
             )}
 
@@ -8336,25 +8338,16 @@ const App: React.FC = () => {
                   />
                   <MenuButton
                     index={8}
-                    label={`${t.editorEdgeScroll}: ${settings.editorEdgeScroll ? t.onLabel : t.offLabel}`}
-                    onClick={() =>
-                      setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }))
-                    }
-                    isSelected={menuSelection === 8}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={9}
                     label={t.keybindings}
                     onClick={() => {
                       setGameState((p) => ({ ...p, status: "keybindings" }));
                       setMenuSelection(0);
                     }}
-                    isSelected={menuSelection === 9}
+                    isSelected={menuSelection === 8}
                     onHover={setMenuSelection}
                   />
                   <MenuButton
-                    index={10}
+                    index={9}
                     label={t.back}
                     onClick={() => {
                       const nextStatus = gameState.previousStatus || "menu";
@@ -8367,7 +8360,7 @@ const App: React.FC = () => {
                         setMenuSelection(0);
                       }
                     }}
-                    isSelected={menuSelection === 10}
+                    isSelected={menuSelection === 9}
                     onHover={setMenuSelection}
                   />
                 </div>
