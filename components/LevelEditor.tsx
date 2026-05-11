@@ -120,6 +120,44 @@ const RADIAL_CATEGORIES = [
   },
 ];
 
+const HoldButton = ({ onClick, className, children }: any) => {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startHold = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    onClick();
+    timeoutRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        onClick();
+      }, 50);
+    }, 400);
+  };
+
+  const endHold = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  };
+
+  useEffect(() => {
+    return () => {
+      endHold();
+    };
+  }, []);
+
+  return (
+    <button
+      onMouseDown={startHold}
+      onMouseUp={endHold}
+      onMouseLeave={endHold}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
+
 const SmoothSlider = ({
   label,
   value,
@@ -197,21 +235,43 @@ const SmoothSlider = ({
         >
           {label}
         </span>
-        <input
-          type="number"
-          value={localValue}
-          onChange={(e) => {
-            const val = parseInt(e.target.value) || min;
-            setLocalValue(val);
-            onChange(val, true);
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-          className={`bg-transparent text-right w-12 outline-none border-b border-transparent focus:border-white ${active ? "text-yellow-400" : ""}`}
-        />
+        <div className="flex items-center gap-1">
+          <HoldButton
+            onClick={() => {
+              const newValue = Math.max(min, localValue - 1);
+              setLocalValue(newValue);
+              onChange(newValue, true);
+            }}
+            className="w-4 h-4 flex items-center justify-center bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-sm text-[10px] leading-none active:scale-95"
+          >
+            -
+          </HoldButton>
+          <input
+            type="number"
+            value={localValue}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || min;
+              setLocalValue(val);
+              onChange(val, true);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className={`bg-transparent text-center w-10 outline-none border-b border-transparent focus:border-white ${active ? "text-yellow-400" : ""}`}
+          />
+          <HoldButton
+            onClick={() => {
+              const newValue = Math.min(max, localValue + 1);
+              setLocalValue(newValue);
+              onChange(newValue, true);
+            }}
+            className="w-4 h-4 flex items-center justify-center bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-sm text-[10px] leading-none active:scale-95"
+          >
+            +
+          </HoldButton>
+        </div>
       </div>
       <div
         ref={sliderRef}
-        className="h-3 bg-black border border-neutral-700 rounded relative overflow-hidden pointer-events-none"
+        className="h-3 mt-1 bg-black border border-neutral-700 rounded relative overflow-hidden pointer-events-none"
       >
         <div
           className={`absolute top-0 left-0 h-full transition-all duration-75 ${active ? "bg-yellow-500" : "bg-neutral-500 group-hover/slider:bg-neutral-400"}`}
@@ -244,6 +304,9 @@ const PropertyEditor = ({
   levelHeight,
   setLevelWidth,
   setLevelHeight,
+  handleTooltipEnter,
+  handleTooltipMove,
+  handleTooltipLeave,
 }: any) => {
   if (selectedEntityIndices.length === 0 || !popupPos) return null;
   const lastIdx = selectedEntityIndices[selectedEntityIndices.length - 1];
@@ -330,16 +393,22 @@ const PropertyEditor = ({
             onClick={() =>
               handleUpdateSelected({ movingH: !ent.movingH, movingV: false })
             }
+            onMouseEnter={(e) => handleTooltipEnter(e, tools_trans?.ttHMove || "Horizontal Move")}
+            onMouseMove={handleTooltipMove}
+            onMouseLeave={handleTooltipLeave}
           >
-            ↔ MOVE
+            X-MOVE
           </button>
           <button
             className={`flex-1 py-1 px-1 rounded-[2px] text-[9px] font-bold transition-colors ${ent.movingV ? "bg-cyan-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}
             onClick={() =>
               handleUpdateSelected({ movingV: !ent.movingV, movingH: false })
             }
+            onMouseEnter={(e) => handleTooltipEnter(e, tools_trans?.ttVMove || "Vertical Move")}
+            onMouseMove={handleTooltipMove}
+            onMouseLeave={handleTooltipLeave}
           >
-            ↕ MOVE
+            Y-MOVE
           </button>
           <button
             className={`flex-1 py-1 px-1 rounded-[2px] text-[9px] font-bold transition-colors ${ent.fragile ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}
@@ -348,8 +417,11 @@ const PropertyEditor = ({
               if (!ent.fragile && !ent.id) updates.id = generateStableId();
               handleUpdateSelected(updates);
             }}
+            onMouseEnter={(e) => handleTooltipEnter(e, tools_trans?.ttFragile || "Fragile Block (breaks on touch)")}
+            onMouseMove={handleTooltipMove}
+            onMouseLeave={handleTooltipLeave}
           >
-            ☠ FRAG
+            FRAGILE
           </button>
         </div>
 
@@ -604,7 +676,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     [],
   );
 
-  const [radialScale, setRadialScale] = useState<number>(0.5);
+  const [radialScale, setRadialScale] = useState<number>(0.75);
 
   const entitiesRef = useRef(entities);
   const selectedIndicesRef = useRef(selectedEntityIndices);
@@ -624,6 +696,33 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
   const [isDraggingPopup, setIsDraggingPopup] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  const [globalTooltip, setGlobalTooltip] = useState<{
+    text: string;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
+  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const editorRootRef = useRef<HTMLDivElement>(null);
+
+  const handleTooltipEnter = (e: React.MouseEvent, text: string) => {
+    e.persist?.();
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    tooltipTimerRef.current = setTimeout(() => {
+      setGlobalTooltip({ text, clientX, clientY });
+    }, 2000);
+  };
+  const handleTooltipMove = (e: React.MouseEvent) => {
+    if (globalTooltip) {
+      setGlobalTooltip((prev) => prev ? { ...prev, clientX: e.clientX, clientY: e.clientY } : null);
+    }
+  };
+  const handleTooltipLeave = () => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setGlobalTooltip(null);
+  };
+
   useEffect(() => {
     if (selectedEntityIndices.length > 0 && !isDraggingPopup) {
       const lastIdx = selectedEntityIndices[selectedEntityIndices.length - 1];
@@ -642,6 +741,31 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
   const t =
     TRANSLATIONS[lang as keyof typeof TRANSLATIONS] || TRANSLATIONS["EN"];
+
+  useEffect(() => {
+    if (hoveredRadialTool) {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = setTimeout(() => {
+        const text = t.blockNames?.[hoveredRadialTool] || tools.find((tool) => tool.id === hoveredRadialTool)?.label.split(" (")[0];
+        if (text && mousePosRef.current) {
+          setGlobalTooltip({ text, clientX: mousePosRef.current.x, clientY: mousePosRef.current.y });
+        }
+      }, 2000);
+    } else {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      setGlobalTooltip(null);
+    }
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    };
+  }, [hoveredRadialTool, t.blockNames]);
+
+  useEffect(() => {
+    if (!radialMenuPos) {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      setGlobalTooltip(null);
+    }
+  }, [radialMenuPos]);
 
   // Helper to push new state to history
   const pushHistory = useCallback(
@@ -1774,11 +1898,24 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
   return (
     <div
+      ref={editorRootRef}
       className="absolute inset-0 bg-neutral-900 flex flex-col z-50 overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeaveRoot}
     >
+      {globalTooltip && editorRootRef.current && (
+        <div
+          className="absolute z-[9999] px-2 py-1 bg-black/90 text-white font-arcade text-[10px] sm:text-[12px] border border-neutral-600 rounded pointer-events-none whitespace-nowrap shadow-xl"
+          style={{
+            left: globalTooltip.clientX - editorRootRef.current.getBoundingClientRect().left,
+            top: globalTooltip.clientY - editorRootRef.current.getBoundingClientRect().top - 30,
+            transform: 'translateX(-50%)' // Center horizontally, above cursor
+          }}
+        >
+          {globalTooltip.text}
+        </div>
+      )}
       {radialMenuPos && (
         <div
           className="fixed inset-0 z-[100]"
@@ -1871,15 +2008,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               const isHovered = activeRadialCategory === idx;
               const baseSize = 112 * radialScale;
 
-              let catName = cat.name;
-              if (lang === "EN") {
-                if (cat.name === "Schein") catName = "Fake";
-                if (cat.name === "Powerup") catName = "Power";
-              } else if (lang === "ES") {
-                if (cat.name === "Schein") catName = "Falso";
-                if (cat.name === "Powerup") catName = "Poder";
-                if (cat.name === "Extras") catName = "Extra";
-              }
+              let catName = t.radialCategories?.[cat.name as keyof typeof t.radialCategories] || cat.name;
 
               return (
                 <div
@@ -1900,7 +2029,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                     style={{
                       color: cat.color,
                       fontFamily: "'Press Start 2P', cursive",
-                      fontSize: `${12 * radialScale}px`,
+                      fontSize: `${16 * radialScale}px`,
                       textShadow: "0 0 10px rgba(0,0,0,1)",
                     }}
                   >
@@ -1928,35 +2057,15 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                   const isHovered = hoveredRadialTool === tId;
                   const toolSize = 96 * radialScale;
 
-                  let displayValue = tool?.label.split(" (")[0] || "";
-                  if (tId === "eraser") displayValue = "LÖSCHEN";
-                  else if (tId === "wall") displayValue = "WAND";
-                  else if (tId === "ice") displayValue = "EIS";
-                  else if (tId === "slime") displayValue = "SCHL.";
-                  else if (tId === "trampoline") displayValue = "TRAM.";
-                  else if (tId === "hazard") displayValue = "GEFA.";
-                  else if (tId === "goal") displayValue = "ZIEL";
-                  else if (tId === "checkpoint") displayValue = "CHEC.";
-                  else if (tId === "teleport") displayValue = "TELE.";
-                  else if (tId === "gravity_reverse") displayValue = "GRAV.";
-                  else if (tId === "gravity_zero") displayValue = "GRAV.";
-                  else if (
-                    tId.includes("fake") ||
-                    tId.includes("ghost") ||
-                    tId === "walkthrough_wall"
-                  )
-                    displayValue = "SCHE.";
-                  else if (tId === "block_dash") displayValue = "B-DA.";
-                  else if (tId === "block_shrink") displayValue = "B-SC.";
-                  else if (tId === "block_grow") displayValue = "B-MA.";
-                  else if (tId === "powerup_spawner") displayValue = "P-SP.";
-                  else if (tId === "powerup_remover") displayValue = "P-RE.";
-                  else if (displayValue.length > 5)
-                    displayValue = displayValue.substring(0, 4) + ".";
+                  let displayValue = t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || "";
+                  if (displayValue.length > 6) {
+                    displayValue = displayValue.substring(0, 5) + ".";
+                  }
 
                   return (
                     <div
                       key={tId}
+                      title={t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0]}
                       className={`absolute z-10 flex items-center justify-center rounded-full font-bold transition-all
                           ${isHovered ? "z-30 border-2 border-white bg-neutral-700 text-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" : "z-10 border border-neutral-600 bg-neutral-900 opacity-90 text-neutral-400"}`}
                       style={{
@@ -1966,7 +2075,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                         marginTop: `-${toolSize / 2}px`,
                         transform: `translate(${tx}px, ${ty}px) scale(${isHovered ? 1.25 : 1})`,
                         fontFamily: "'Press Start 2P', cursive",
-                        fontSize: `${8 * radialScale}px`,
+                        fontSize: `${14 * radialScale}px`,
                         backgroundColor:
                           isHovered && tool && tool.color
                             ? tool.color
@@ -1994,35 +2103,19 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
               if (hoveredRadialTool) {
                 const tool = allTools.find((t) => t.id === hoveredRadialTool);
-                const t = TRANSLATIONS[lang as keyof typeof TRANSLATIONS] || TRANSLATIONS["EN"];
                 displayLabel = t.blockNames?.[hoveredRadialTool as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || hoveredRadialTool;
                 displayColor = tool?.color || "#fff";
-
-                // Overrides to match video's "complete name" requirement (German)
-                if (lang === "DE") {
-                  if (hoveredRadialTool === "block_dash") displayLabel = "BLOCK DASH";
-                  else if (hoveredRadialTool === "block_shrink") displayLabel = "BLOCK SCHRUMPF";
-                  else if (hoveredRadialTool === "block_grow") displayLabel = "BLOCK WACHSTUM";
-                  else if (hoveredRadialTool === "powerup_spawner") displayLabel = "POWER SPAWN";
-                  else if (hoveredRadialTool === "checkpoint") displayLabel = "CHECKPOINT";
-                  else if (hoveredRadialTool === "trampoline") displayLabel = "TRAMPOLIN";
-                  else if (hoveredRadialTool === "walkthrough_wall") displayLabel = "SCHEINWAND";
-                  else if (hoveredRadialTool === "ghost_hazard") displayLabel = "GEIST GEFAHR";
-                }
               } else if (activeRadialCategory !== null) {
                 const cat = RADIAL_CATEGORIES[activeRadialCategory];
-                displayLabel = cat.name;
+                displayLabel = t.radialCategories?.[cat.name as keyof typeof t.radialCategories] || cat.name;
                 displayColor = cat.color;
-                
-                // If it's a single tool category, we might want to show the tool name instead?
-                // The video shows "AUSWAHL" and "RADIERER" which are the category names.
               }
 
               const centerSize = 128 * radialScale;
  
               return (
                 <div 
-                  className="absolute z-0 flex items-center justify-center rounded-full border-2 border-neutral-600 bg-[#0a0a0a] pointer-events-none shadow-[0_0_20px_rgba(0,0,0,1)]"
+                  className="absolute z-50 flex items-center justify-center rounded-full border-2 border-neutral-600 bg-[#0a0a0a] pointer-events-none shadow-[0_0_20px_rgba(0,0,0,1)]"
                   style={{
                     width: `${centerSize}px`,
                     height: `${centerSize}px`,
@@ -2036,7 +2129,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                       style={{ 
                         color: displayColor, 
                         fontFamily: "'Press Start 2P', cursive",
-                        fontSize: `${10 * radialScale}px`,
+                        fontSize: `${16 * radialScale}px`,
                         textShadow: "0 0 5px rgba(0,0,0,0.5)"
                       }}
                     >
@@ -2116,16 +2209,18 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 {lang === "DE" ? "LÄNGE:" : "LENGTH:"}
               </span>
               <div className="flex items-center gap-1.5">
-                <button
+                <HoldButton
                   onClick={() => {
-                    const next = Math.max(GAME_WIDTH, levelWidth - 30);
-                    setLevelWidth(next);
-                    setHasChanged(true);
+                    setLevelWidth((prev: number) => {
+                      const next = Math.max(GAME_WIDTH, prev - 30);
+                      if (next !== prev) setHasChanged(true);
+                      return next;
+                    });
                   }}
                   className="w-5 h-5 flex items-center justify-center bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-yellow-500 hover:border-yellow-900/50 rounded-sm text-[14px] leading-none transition-all active:scale-95"
                 >
                   -
-                </button>
+                </HoldButton>
                 <input
                   type="number"
                   min={GAME_WIDTH}
@@ -2151,16 +2246,18 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                   }}
                   className="w-20 bg-transparent text-yellow-500 font-arcade text-center outline-none text-[10px] font-bold"
                 />
-                <button
+                <HoldButton
                   onClick={() => {
-                    const next = Math.min(GAME_WIDTH * 5, levelWidth + 30);
-                    setLevelWidth(next);
-                    setHasChanged(true);
+                    setLevelWidth((prev: number) => {
+                      const next = Math.min(GAME_WIDTH * 5, prev + 30);
+                      if (next !== prev) setHasChanged(true);
+                      return next;
+                    });
                   }}
                   className="w-5 h-5 flex items-center justify-center bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-yellow-500 hover:border-yellow-900/50 rounded-sm text-[14px] leading-none transition-all active:scale-95"
                 >
                   +
-                </button>
+                </HoldButton>
               </div>
             </div>
           )}
@@ -2174,7 +2271,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                   setHasChanged(true);
                 }}
                 className={`h-6 min-w-[90px] px-2 text-[8px] font-arcade border transition-all rounded-sm ${autoScroll ? "bg-purple-900/60 border-purple-400 text-purple-100 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-                title="Auto-Scroll Mode"
+                onMouseEnter={(e) => handleTooltipEnter(e, t.ttAutoScroll || "Auto-Scroll Mode")}
+                onMouseMove={handleTooltipMove}
+                onMouseLeave={handleTooltipLeave}
               >
                 {t.scrollMode}: {autoScroll ? t.onLabel : t.offLabel}
               </button>
@@ -2347,7 +2446,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm flex items-center gap-2 ${showAdvanced ? "bg-blue-900 border-blue-400 text-blue-100" : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-white"}`}
-            title="Advanced Editor Settings"
+            onMouseEnter={(e) => handleTooltipEnter(e, t.ttAdvanced || "Advanced Editor Settings")}
+            onMouseMove={handleTooltipMove}
+            onMouseLeave={handleTooltipLeave}
           >
             <span>{showAdvanced ? "▼" : "▲"}</span>
             {lang === "DE" ? "OPTIONEN" : "OPTIONS"}
@@ -2363,7 +2464,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               <button
                 onClick={() => setShowGrid(!showGrid)}
                 className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${showGrid ? "bg-neutral-700 border-neutral-400 text-white shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-                title="Toggle Grid (G)"
+                onMouseEnter={(e) => handleTooltipEnter(e, t.ttGrid || "Toggle Grid (G)")}
+                onMouseMove={handleTooltipMove}
+                onMouseLeave={handleTooltipLeave}
               >
                 {t.gridLabel}: {showGrid ? t.onLabel : t.offLabel}
               </button>
@@ -2378,7 +2481,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                   }
                 }}
                 className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${settings?.editorEdgeScroll ? "bg-red-900/50 border-red-500 text-red-100" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-                title="Editor Edge Scroll"
+                onMouseEnter={(e) => handleTooltipEnter(e, t.ttEdgeScroll || "Editor Edge Scroll")}
+                onMouseMove={handleTooltipMove}
+                onMouseLeave={handleTooltipLeave}
               >
                 {t.editorEdgeScroll}: {settings?.editorEdgeScroll ? t.onLabel : t.offLabel}
               </button>
@@ -2405,7 +2510,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             <button
               onClick={() => setSymmetryEnabled(!symmetryEnabled)}
               className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${symmetryEnabled ? "bg-cyan-900 border-cyan-400 text-cyan-200 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-              title="Auto-Symmetry (S)"
+              onMouseEnter={(e) => handleTooltipEnter(e, t.ttSymmetry || "Auto-Symmetry (S)")}
+              onMouseMove={handleTooltipMove}
+              onMouseLeave={handleTooltipLeave}
             >
               {t.symmetry}: {symmetryEnabled ? t.onLabel : t.offLabel}
             </button>
@@ -2440,6 +2547,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               type="button"
               onClick={handleTest}
               className="h-9 px-5 bg-blue-700 hover:bg-blue-600 text-white text-[10px] font-arcade border border-blue-400 shadow-[0_2px_0_#1e3a8a] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+              onMouseEnter={(e) => handleTooltipEnter(e, t.ttTest || "Test your level")}
+              onMouseMove={handleTooltipMove}
+              onMouseLeave={handleTooltipLeave}
             >
               {t.editorTest}
             </button>
@@ -2448,6 +2558,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               type="button"
               onClick={handleSaveDraft}
               className="h-9 px-5 bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-arcade border border-amber-500 shadow-[0_2px_0_#92400e] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+              onMouseEnter={(e) => handleTooltipEnter(e, t.ttSaveDraft || "Save draft without verifying")}
+              onMouseMove={handleTooltipMove}
+              onMouseLeave={handleTooltipLeave}
             >
               {t.editorSaveDraft}
             </button>
@@ -2458,20 +2571,21 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 onClick={handleRelease}
                 disabled={!canRelease}
                 className={`h-9 px-5 text-[10px] font-arcade border transition-all rounded-sm uppercase tracking-wider ${canRelease ? "bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-400 shadow-[0_2px_0_#064e3b] active:translate-y-[1px] active:shadow-none" : "bg-neutral-800 border-neutral-700 text-neutral-600 cursor-not-allowed opacity-50 shadow-inner"}`}
+                onMouseEnter={(e) => handleTooltipEnter(e, canRelease ? (t.ttPublish || "Publish online!") : (t.ttReachGoal || "Reach Goal to verify & publish"))}
+                onMouseMove={handleTooltipMove}
+                onMouseLeave={handleTooltipLeave}
               >
                 {t.editorRelease}
               </button>
-              {!canRelease && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-black border border-neutral-700 text-[8px] text-neutral-400 font-arcade text-center uppercase leading-tight shadow-2xl z-50">
-                  {lang === "DE" ? "Ziel erreichen zum Veröffentlichen" : "Reach Goal to verify & publish"}
-                </div>
-              )}
             </div>
 
             <button
               type="button"
               onClick={handleExitRequest}
               className="h-9 px-5 bg-rose-900 hover:bg-rose-800 text-rose-100 text-[10px] font-arcade border border-rose-700 shadow-[0_2px_0_#4c0519] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+              onMouseEnter={(e) => handleTooltipEnter(e, t.ttExit || "Exit Editor")}
+              onMouseMove={handleTooltipMove}
+              onMouseLeave={handleTooltipLeave}
             >
               {t.editorExit}
             </button>
@@ -2525,6 +2639,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               tools_trans={t}
               levelWidth={levelWidth}
               levelHeight={levelHeight}
+              handleTooltipEnter={handleTooltipEnter}
+              handleTooltipMove={handleTooltipMove}
+              handleTooltipLeave={handleTooltipLeave}
             />
           </div>
         </div>

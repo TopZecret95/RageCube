@@ -563,10 +563,32 @@ export const TRANSLATIONS = {
       rectangle: "RECT",
       eraser: "ERASER"
     },
+    radialCategories: {
+      Normal: "NORMAL",
+      Schein: "FAKE",
+      Radierer: "ERASER",
+      Powerup: "POWER",
+      Extras: "EXTRA",
+      Auswahl: "SELECT"
+    },
     kickPlayer: "KICK PLAYER",
+
     reallyStartVote: "DO YOU REALLY WANT TO START THIS VOTE?",
     voteKickFor: "KICK {name}?",
-    noPlayersToKick: "NO OTHER PLAYERS IN LOBBY"
+    noPlayersToKick: "NO OTHER PLAYERS IN LOBBY",
+    ttHMove: "Horizontal Move",
+    ttVMove: "Vertical Move",
+    ttFragile: "Fragile Block (breaks on touch)",
+    ttAutoScroll: "Auto-Scroll Mode",
+    ttAdvanced: "Advanced Editor Settings",
+    ttGrid: "Toggle Grid (G)",
+    ttEdgeScroll: "Editor Edge Scroll",
+    ttSymmetry: "Auto-Symmetry (S)",
+    ttTest: "Test your level",
+    ttSaveDraft: "Save draft without verifying",
+    ttPublish: "Publish online!",
+    ttReachGoal: "Reach Goal to verify & publish",
+    ttExit: "Exit Editor"
   },
   [Language.DE]: {
     start: "STORY-MODUS",
@@ -1072,10 +1094,31 @@ export const TRANSLATIONS = {
       rectangle: "RECHTECK",
       eraser: "RADIERER"
     },
+    radialCategories: {
+      Normal: "NORMAL",
+      Schein: "SCHEIN",
+      Radierer: "RADIERER",
+      Powerup: "POWERUP",
+      Extras: "EXTRAS",
+      Auswahl: "AUSWAHL"
+    },
     kickPlayer: "SPIELER KICKEN",
     reallyStartVote: "MÖCHTEST DU DIESE ABSTIMMUNG STARTEN?",
     voteKickFor: "{name} KICKEN?",
-    noPlayersToKick: "KEINE ANDEREN SPIELER IN DER LOBBY"
+    noPlayersToKick: "KEINE ANDEREN SPIELER IN DER LOBBY",
+    ttHMove: "Horizontale Bewegung",
+    ttVMove: "Vertikale Bewegung",
+    ttFragile: "Brüchiger Block (zerbricht bei Berührung)",
+    ttAutoScroll: "Auto-Scroll-Modus",
+    ttAdvanced: "Erweiterte Editor-Optionen",
+    ttGrid: "Raster umschalten (G)",
+    ttEdgeScroll: "Editor-Rand-Scrollen",
+    ttSymmetry: "Auto-Symmetrie (S)",
+    ttTest: "Level testen",
+    ttSaveDraft: "Entwurf speichern (ohne Test)",
+    ttPublish: "Online veröffentlichen!",
+    ttReachGoal: "Ziel erreichen zum Veröffentlichen",
+    ttExit: "Editor beenden"
   },
   [Language.ES]: {
     start: "MODO HISTORIA",
@@ -1537,8 +1580,25 @@ export const TRANSLATIONS = {
       tank: { pos: "+ Más Vida y Resistencia", neg: "- Muy Lento" },
       ninja: { pos: "+ Muy Rápido y Alto", neg: "- Vida Muy Baja" },
       heavy: { pos: "+ Retroceso Masivo", neg: "- Lento y Masivo" },
-      vampire: { pos: "+ Cura al Matar", neg: "- Vida Extremadamente Baja" }
+    vampire: { pos: "+ Cura al Matar", neg: "- Vida Extremadamente Baja" }
     },
+    kickPlayer: "EXPULSAR JUGADOR",
+    reallyStartVote: "¿RECIENTEMENTE QUIERES INICIAR ESTA VOTACIÓN?",
+    voteKickFor: "¿EXPULSAR A {name}?",
+    noPlayersToKick: "NO HAY OTROS JUGADORES EN LA SALA",
+    ttHMove: "Movimiento Horizontal",
+    ttVMove: "Movimiento Vertical",
+    ttFragile: "Bloque Frágil (se rompe al tocar)",
+    ttAutoScroll: "Modo Auto-Scroll",
+    ttAdvanced: "Opciones Avanzadas del Editor",
+    ttGrid: "Alternar Cuadrícula (G)",
+    ttEdgeScroll: "Desplazamiento de Borde del Editor",
+    ttSymmetry: "Auto-Simetría (S)",
+    ttTest: "Prueba tu nivel",
+    ttSaveDraft: "Guardar borrador sin verificar",
+    ttPublish: "¡Publicar en línea!",
+    ttReachGoal: "Llega a la meta para publicar",
+    ttExit: "Salir del Editor",
     blockNames: {
       select: "SELECCIONAR",
       wall: "PARED",
@@ -1572,6 +1632,14 @@ export const TRANSLATIONS = {
       gravity_zero: "GRAV CERO",
       rectangle: "RECTÁNGULO",
       eraser: "BORRADOR"
+    },
+    radialCategories: {
+      Normal: "NORMAL",
+      Schein: "FALSO",
+      Radierer: "BORRADOR",
+      Powerup: "PODER",
+      Extras: "EXTRA",
+      Auswahl: "SELECC."
     }
   }
 };
