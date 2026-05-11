@@ -4074,7 +4074,7 @@ const App: React.FC = () => {
             // Calculate total players expected to finish
             let totalPlayersCount = 1; // Default to 1
             if (isOnlineRoom) {
-              totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+              totalPlayersCount = Math.max(2, roomPlayers); // Expect all connected players. At least 2 for online multi to prevent instantly ending if roomPlayers is somehow 1.
             } else if (status === "vs_playing" || status === "brawler_playing") {
               totalPlayersCount = 2; // Local VS/Brawler
             }
@@ -4405,7 +4405,7 @@ const App: React.FC = () => {
                 // Calculate total players expected to finish
                 let totalPlayersCount = 1; // Default to 1 
                 if (isOnlineRoom) {
-                  totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+                  totalPlayersCount = Math.max(2, roomPlayers); // Expect all connected players.
                 } else if (status === "vs_playing" || status === "brawler_playing") {
                   totalPlayersCount = 2; // Local VS/Brawler
                 }
