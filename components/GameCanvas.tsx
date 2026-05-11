@@ -1918,7 +1918,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ];
           if (controlKeys.includes(e.code)) {
             p.hasStartedMove = true;
-            p.moveStartTime = Date.now();
+            const scrollSpeed = level.autoScrollSpeed || 150;
+            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
           }
         }
 
@@ -2018,7 +2020,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     );
     if (pLocal && !pLocal.hasStartedMove) {
       pLocal.hasStartedMove = true;
-      pLocal.moveStartTime = Date.now();
+      const scrollSpeed = level.autoScrollSpeed || 150;
+      const startWallX = level.autoScroll ? Math.max(0, pLocal.pos.x - GAME_WIDTH / 2 + 15) : 0;
+      pLocal.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
     }
 
     if (gameMode === "brawler") return;
@@ -2685,7 +2689,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             gamepadDash
           ) {
             p.hasStartedMove = true;
-            p.moveStartTime = Date.now();
+            const scrollSpeed = level.autoScrollSpeed || 150;
+            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
           }
         }
 
@@ -4063,13 +4069,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         // Keep players from running off the right edge in auto-scroll
-        if (level.autoScroll) {
-          const maxRight = scrollWallX.current + GAME_WIDTH - p.w;
+        if (level.autoScroll && p.hasStartedMove) {
+          const scrollSpeed = level.autoScrollSpeed || 150;
+          const pWallX = ((Date.now() - p.moveStartTime) / 1000) * scrollSpeed;
+          const maxRight = pWallX + GAME_WIDTH - p.w;
           if (p.pos.x > maxRight) {
             p.pos.x = maxRight;
             if (p.vel.x > 0) p.vel.x = 0;
           }
         }
+
+        const pWallX = (level.autoScroll && p.hasStartedMove) 
+          ? ((Date.now() - p.moveStartTime) / 1000) * (level.autoScrollSpeed || 150)
+          : 0;
 
         const dieTop =
           (p.gravityFlipped && p.pos.y + p.h < 0) ||
@@ -4084,17 +4096,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.pos.y + p.h > lavaY) ||
           (level.autoScroll && p.pos.y > cameraRef.current.y + GAME_HEIGHT + 50);
             
-        const dieLeftRight = level.autoScroll && 
-          (p.pos.x < scrollWallX.current + 10);
+        const dieLeftRight = level.autoScroll && p.hasStartedMove &&
+          (p.pos.x < pWallX + 10);
 
         if (dieTop || dieBottom || dieLeftRight) {
           if (isOnline && p.onlineId !== onlineService.localPlayer?.id) return;
           
           if (level.autoScroll) {
              if (level.start) currentRespawnPos.current = { ...level.start };
-             cameraRef.current.x = Math.max(0, currentRespawnPos.current.x - GAME_WIDTH / 2 + 15); // Reset camera on death
-             scrollWallX.current = cameraRef.current.x;
-             hasStartedMoving.current = false;
+             // On death, reset this player's wall
+             p.hasStartedMove = false;
+             p.moveStartTime = Date.now();
           }
           
           if (
@@ -4310,19 +4322,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const maxCamY = Math.max(0, (level.height || GAME_HEIGHT) - GAME_HEIGHT);
 
       const allFinished = players.current.every(p => p.finished);
-      if (level.autoScroll && hasStartedMoving.current && !allFinished) {
-        const scrollSpeed = level.autoScrollSpeed || 150;
-        scrollWallX.current += (scrollSpeed * dt) / 60;
-      }
       
       const liveLocalPlayer = players.current.find(p => p.isLocal);
       const isSpectatingNowLocal = isOnline && (liveLocalPlayer ? liveLocalPlayer.finished : (isSpectating || (players.current.length > 0 && status.includes("playing"))));
+      
+      // Calculate scrollWallX for the followed player so it can be used for drawing
+      let followedPlayer: PlayerState | undefined = liveLocalPlayer;
       if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
-          const target = activePlayers[spectateTargetIdx % activePlayers.length];
-          targetCameraX = target.pos.x - GAME_WIDTH / 2 + 15;
-          targetCameraY = target.pos.y - GAME_HEIGHT / 2 + 15;
+          followedPlayer = activePlayers[spectateTargetIdx % activePlayers.length];
+        }
+      }
+      
+      if (level.autoScroll && followedPlayer && followedPlayer.hasStartedMove && !followedPlayer.finished) {
+        const scrollSpeed = level.autoScrollSpeed || 150;
+        scrollWallX.current = ((Date.now() - followedPlayer.moveStartTime) / 1000) * scrollSpeed;
+      } else if (level.autoScroll && (!followedPlayer || !followedPlayer.hasStartedMove)) {
+        scrollWallX.current = 0;
+      }
+      
+      if (isSpectatingNowLocal) {
+        if (followedPlayer) {
+          targetCameraX = followedPlayer.pos.x - GAME_WIDTH / 2 + 15;
+          targetCameraY = followedPlayer.pos.y - GAME_HEIGHT / 2 + 15;
         } else {
           const localP = players.current.find(
             (p) => p.onlineId === onlineService.localPlayer?.id,
@@ -4376,6 +4399,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             isWallSliding: localP.isWallSliding,
             wallDir: localP.wallDir,
             finished: localP.finished,
+            hasStartedMove: localP.hasStartedMove,
+            moveStartTime: localP.moveStartTime,
             hookActive: localP.hookActive,
             hookPos: localP.hookPos,
             oneTimeBuild: localP.oneTimeBuild,
