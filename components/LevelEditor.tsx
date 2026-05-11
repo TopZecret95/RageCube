@@ -42,7 +42,7 @@ const allTools = [
   { id: "coin", label: "COIN (3)", color: COLORS.COIN },
   { id: "goal", label: "GOAL (4)", color: COLORS.GOAL },
   { id: "fake_goal", label: "FAKE GOAL", color: COLORS.GOAL },
-  { id: "start", label: "START (5)", color: "#00ffff" },
+  { id: "start", label: "SPAWN P1", color: "#00ffff" },
   { id: "startP2", label: "SPAWN P2", color: "#00ff88" },
   { id: "ice", label: "ICE (6)", color: COLORS.ICE },
   { id: "fake_ice", label: "FAKE ICE", color: COLORS.ICE },
@@ -55,68 +55,68 @@ const allTools = [
   { id: "powerup_double_jump", label: "P-JUMP", color: COLORS.POWERUP_DJ },
   { id: "powerup_slow_mo", label: "P-TIME", color: COLORS.POWERUP_SLOW_MO },
   { id: "powerup_xray", label: "P-XRAY", color: COLORS.POWERUP_XRAY },
-  { id: "block_dash", label: "B-DASH", color: "#f59e0b" },
-  { id: "block_shrink", label: "B-SHRINK", color: "#10b981" },
-  { id: "block_grow", label: "B-GROW", color: "#ef4444" },
-  { id: "block_gravity", label: "B-GRAV", color: "#8b5cf6" },
+  { id: "block_dash", label: "DASH", color: "#f59e0b" },
+  { id: "block_shrink", label: "SHRINK", color: "#10b981" },
+  { id: "block_grow", label: "GROW", color: "#ef4444" },
+  { id: "block_gravity", label: "GRAV REV", color: "#8b5cf6" },
   { id: "powerup_remover", label: "NO-PWR", color: COLORS.REMOVE_ABILITY },
   { id: "powerup_spawner", label: "P-SPAWN", color: "#ff00ff" },
   { id: "checkpoint", label: "CHECKPT (C)", color: COLORS.CHECKPOINT },
-  { id: "gravity_reverse", label: "GRAV REV", color: "#c084fc" },
-  { id: "gravity_zero", label: "GRAV ZERO", color: "#38bdf8" },
+  { id: "gravity_reverse", label: "GRAV AREA STRONG", color: "#c084fc" },
+  { id: "gravity_zero", label: "GRAV AREA LOW", color: "#38bdf8" },
   { id: "eraser", label: "ERASER (E)", color: "#ffffff" },
 ];
 
 const RADIAL_CATEGORIES = [
   {
-    name: "Normal", // 0
-    tools: ["wall", "ice", "slime", "trampoline"],
+    name: "Auswahl", // 0
+    tools: ["select"],
+    color: "#ffffff",
+  },
+  {
+    name: "Normal", // 1
+    tools: ["wall", "ice", "slime", "trampoline", "hazard", "teleport"],
     color: "#00ffff",
   },
   {
-    name: "Schein", // 1 (Pi/3)
+    name: "Schein", // 2
     tools: ["walkthrough_wall", "fake_ice", "fake_slime", "ghost_hazard"],
     color: "#ff00ff",
   },
   {
-    name: "Radierer", // 2 (2Pi/3)
-    tools: ["eraser"],
-    color: "#ffffff",
+    name: "Extras", // 3
+    tools: [
+      "coin",
+      "goal",
+      "checkpoint",
+      "start",
+      "startP2",
+      "gravity_reverse",
+      "gravity_zero",
+    ],
+    color: "#ff0055",
   },
   {
-    name: "Powerup", // 3 (Pi)
+    name: "Powerup", // 4
     tools: [
-      "powerup_build",
-      "powerup_hook",
       "powerup_double_jump",
+      "powerup_hook",
+      "powerup_build",
       "powerup_slow_mo",
       "powerup_xray",
-      "block_dash",
-      "block_shrink",
-      "powerup_spawner",
       "powerup_remover",
     ],
     color: "#ffff00",
   },
   {
-    name: "Auswahl", // 4 (4Pi/3)
-    tools: ["select"],
-    color: "#ffffff",
+    name: "Spezial", // 5
+    tools: ["block_grow", "block_shrink", "block_gravity", "block_dash"],
+    color: "#c084fc",
   },
   {
-    name: "Extras", // 5 (5Pi/3)
-    tools: [
-      "hazard",
-      "coin",
-      "goal",
-      "checkpoint",
-      "teleport",
-      "gravity_reverse",
-      "gravity_zero",
-      "start",
-      "startP2",
-    ],
-    color: "#ff0055",
+    name: "Radierer", // 6
+    tools: ["eraser"],
+    color: "#ffffff",
   },
 ];
 
@@ -1954,8 +1954,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             let angle = Math.atan2(dy, dx);
-            if (angle < 0) angle += Math.PI * 2;            const centerThreshold = 50 * radialScale;
-            const ringThreshold = 170 * radialScale;
+            if (angle < 0) angle += Math.PI * 2;
+            const centerThreshold = 70 * radialScale;
+            const ringThreshold = 230 * radialScale;
 
             if (distance <= centerThreshold) {
               setActiveRadialCategory(null);
@@ -1963,18 +1964,18 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             } else {
               let catIndex = activeRadialCategory;
               if (distance < ringThreshold && !hoveredRadialTool) {
-                const normalizedAngle = (angle + Math.PI / 6) % (Math.PI * 2);
-                catIndex = Math.floor(normalizedAngle / (Math.PI / 3));
+                const normalizedAngle = (angle + Math.PI / RADIAL_CATEGORIES.length) % (Math.PI * 2);
+                catIndex = Math.floor(normalizedAngle / ((Math.PI * 2) / RADIAL_CATEGORIES.length));
                 setActiveRadialCategory(catIndex);
                 setHoveredRadialTool(null);
               } else {
                 if (catIndex === null) {
-                  const normalizedAngle = (angle + Math.PI / 6) % (Math.PI * 2);
-                  catIndex = Math.floor(normalizedAngle / (Math.PI / 3));
+                  const normalizedAngle = (angle + Math.PI / RADIAL_CATEGORIES.length) % (Math.PI * 2);
+                  catIndex = Math.floor(normalizedAngle / ((Math.PI * 2) / RADIAL_CATEGORIES.length));
                   setActiveRadialCategory(catIndex);
                 }
                 const toolsList = RADIAL_CATEGORIES[catIndex].tools;
-                const catCenterAngle = catIndex * (Math.PI / 3);
+                const catCenterAngle = catIndex * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
                 let relAngle = angle - catCenterAngle;
                 if (relAngle > Math.PI) relAngle -= Math.PI * 2;
                 if (relAngle < -Math.PI) relAngle += Math.PI * 2;
@@ -2013,12 +2014,12 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           >
             {/* Render Categories (Inner Ring) */}
             {RADIAL_CATEGORIES.map((cat, idx) => {
-              const angle = idx * (Math.PI / 3);
-              const radius = 100 * radialScale;
+              const angle = idx * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
+              const radius = 150 * radialScale;
               const tx = Math.cos(angle) * radius;
               const ty = Math.sin(angle) * radius;
               const isHovered = activeRadialCategory === idx;
-              const baseSize = 112 * radialScale;
+              const baseSize = 140 * radialScale;
 
               let catName = t.radialCategories?.[cat.name as keyof typeof t.radialCategories] || cat.name;
 
@@ -2041,7 +2042,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                     style={{
                       color: cat.color,
                       fontFamily: "'Press Start 2P', cursive",
-                      fontSize: `${16 * radialScale}px`,
+                      fontSize: `${10 * radialScale}px`,
                       textShadow: "0 0 10px rgba(0,0,0,1)",
                     }}
                   >
@@ -2056,29 +2057,26 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               RADIAL_CATEGORIES[activeRadialCategory].tools.length > 1 &&
               RADIAL_CATEGORIES[activeRadialCategory].tools.map(
                 (tId, idx, toolsList) => {
-                  const catCenterAngle = activeRadialCategory * (Math.PI / 3);
+                  const catCenterAngle = activeRadialCategory * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
                   const spread = Math.PI * 0.8;
                   const startAngle = catCenterAngle - spread / 2;
                   const angleOffset = spread / toolsList.length;
                   const angle = startAngle + (idx + 0.5) * angleOffset;
 
-                  const radius = 240 * radialScale;
+                  const radius = 350 * radialScale;
                   const tx = Math.cos(angle) * radius;
                   const ty = Math.sin(angle) * radius;
                   const tool = allTools.find((t) => t.id === tId);
                   const isHovered = hoveredRadialTool === tId;
-                  const toolSize = 96 * radialScale;
+                  const toolSize = 110 * radialScale;
 
-                  let displayValue = t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || "";
-                  if (displayValue.length > 6) {
-                    displayValue = displayValue.substring(0, 5) + ".";
-                  }
+                  const displayValue = t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || "";
 
                   return (
                     <div
                       key={tId}
                       title={t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0]}
-                      className={`absolute z-10 flex items-center justify-center rounded-full font-bold transition-all
+                      className={`absolute z-10 flex items-center justify-center rounded-full font-bold transition-all p-2 text-center
                           ${isHovered ? "z-30 border-2 border-white bg-neutral-700 text-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" : "z-10 border border-neutral-600 bg-neutral-900 opacity-90 text-neutral-400"}`}
                       style={{
                         width: `${toolSize}px`,
@@ -2087,7 +2085,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                         marginTop: `-${toolSize / 2}px`,
                         transform: `translate(${tx}px, ${ty}px) scale(${isHovered ? 1.25 : 1})`,
                         fontFamily: "'Press Start 2P', cursive",
-                        fontSize: `${14 * radialScale}px`,
+                        fontSize: `${9 * radialScale}px`,
+                        lineHeight: "1.2",
                         backgroundColor:
                           isHovered && tool && tool.color
                             ? tool.color
