@@ -1293,13 +1293,35 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       else x = dragStartPos.x;
     }
 
-    const gridX = Math.floor(x / TILE_SIZE) * TILE_SIZE;
-    const gridY = Math.floor(y / TILE_SIZE) * TILE_SIZE;
+    // Determine tool dimensions first for centering in free mode
+    let w = TILE_SIZE,
+      h = TILE_SIZE;
+    if (selectedTool === "goal" || selectedTool === "fake_goal") {
+      w = 30;
+      h = 30;
+    } else if (selectedTool === "coin") {
+      w = 20;
+      h = 20;
+    } else if (selectedTool === "teleport") {
+      w = 29;
+      h = 29;
+    } else if (
+      selectedTool.startsWith("powerup") ||
+      selectedTool.startsWith("block_") ||
+      selectedTool === "checkpoint" ||
+      selectedTool === "powerup_remover"
+    ) {
+      w = 30;
+      h = 30;
+    }
+
+    const gridX = showGrid ? Math.floor(x / TILE_SIZE) * TILE_SIZE : x - w / 2;
+    const gridY = showGrid ? Math.floor(y / TILE_SIZE) * TILE_SIZE : y - h / 2;
 
     if (
       lastPlacedGridPos &&
-      lastPlacedGridPos.x === gridX &&
-      lastPlacedGridPos.y === gridY &&
+      Math.abs(lastPlacedGridPos.x - gridX) < (showGrid ? 1 : 2) &&
+      Math.abs(lastPlacedGridPos.y - gridY) < (showGrid ? 1 : 2) &&
       e.type === "mousemove" &&
       selectedTool !== "eraser" &&
       !isRightClick
@@ -1312,14 +1334,14 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
     if (selectedTool === "start") {
       setStartPos({
-        x: gridX + (TILE_SIZE - 20) / 2,
-        y: gridY + (TILE_SIZE - 20) / 2,
+        x: showGrid ? gridX + (TILE_SIZE - 20) / 2 : x - 10,
+        y: showGrid ? gridY + (TILE_SIZE - 20) / 2 : y - 10,
       });
       setHasChanged(true);
     } else if (selectedTool === "startP2") {
       setStartPosP2({
-        x: gridX + (TILE_SIZE - 20) / 2,
-        y: gridY + (TILE_SIZE - 20) / 2,
+        x: showGrid ? gridX + (TILE_SIZE - 20) / 2 : x - 10,
+        y: showGrid ? gridY + (TILE_SIZE - 20) / 2 : y - 10,
       });
       setHasChanged(true);
     } else if (selectedTool === "eraser" || isRightClick) {
@@ -1352,19 +1374,34 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       // For other tools, we only replace if there's a non-gravity block at this spot.
       const existingIndex = entities.findIndex((ent) => {
         if (isGravityTool) {
-          return (
-            ent.x === gridX && ent.y === gridY && ent.type === selectedTool
-          );
+          if (showGrid) {
+            return ent.x === gridX && ent.y === gridY && ent.type === selectedTool;
+          } else {
+            // Distance check for free mode
+            const dist = Math.hypot(ent.x - gridX, ent.y - gridY);
+            return dist < 5 && ent.type === selectedTool;
+          }
         } else {
           const entIsGravity =
             ent.type === "gravity_reverse" || ent.type === "gravity_zero";
-          return (
-            ent.x >= gridX &&
-            ent.x < gridX + TILE_SIZE &&
-            ent.y >= gridY &&
-            ent.y < gridY + TILE_SIZE &&
-            !entIsGravity
-          );
+          if (showGrid) {
+            return (
+              ent.x >= gridX &&
+              ent.x < gridX + TILE_SIZE &&
+              ent.y >= gridY &&
+              ent.y < gridY + TILE_SIZE &&
+              !entIsGravity
+            );
+          } else {
+            // Overlap check for free mode
+            return (
+              gridX + (w || TILE_SIZE) > ent.x &&
+              gridX < ent.x + ent.w &&
+              gridY + (h || TILE_SIZE) > ent.y &&
+              gridY < ent.y + ent.h &&
+              !entIsGravity
+            );
+          }
         }
       });
 
@@ -1380,45 +1417,25 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
         }
       }
 
-      let w = TILE_SIZE,
-        h = TILE_SIZE;
-      if (selectedTool === "goal" || selectedTool === "fake_goal") {
-        w = 30;
-        h = 30;
-      }
-      if (selectedTool === "coin") {
-        w = 20;
-        h = 20;
-      }
-      if (selectedTool === "teleport") {
-        w = 29;
-        h = 29;
-      }
-      if (
-        selectedTool.startsWith("powerup") ||
-        selectedTool.startsWith("block_") ||
-        selectedTool === "checkpoint" ||
-        selectedTool === "powerup_remover"
-      ) {
-        w = 30;
-        h = 30;
-      } // Exactly TILE_SIZE
+      // We remove the redeclaration of w and h here because they are defined at the top of handleInteraction
+      // and we update them there based on the tool.
 
       if (existingIndex !== -1) {
-        if (entities[existingIndex].type !== selectedTool) {
+        if (entities[existingIndex].type !== selectedTool || !showGrid) {
+          // If free movement is on, we might want to allow subtle overlaps or just replace if very close
           const updatedEntities = [...entities];
           updatedEntities[existingIndex] = {
             x:
               selectedTool === "coin"
-                ? gridX + 5
+                ? gridX + (showGrid ? 5 : 0)
                 : selectedTool === "teleport"
-                  ? gridX + 0.5
+                  ? gridX + (showGrid ? 0.5 : 0)
                   : gridX,
             y:
               selectedTool === "coin"
-                ? gridY + 5
+                ? gridY + (showGrid ? 5 : 0)
                 : selectedTool === "teleport"
-                  ? gridY + 0.5
+                  ? gridY + (showGrid ? 0.5 : 0)
                   : gridY,
             w,
             h,
@@ -1448,15 +1465,15 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
         const newEntity = {
           x:
             selectedTool === "coin"
-              ? gridX + 5
+              ? gridX + (showGrid ? 5 : 0)
               : selectedTool === "teleport"
-                ? gridX + 0.5
+                ? gridX + (showGrid ? 0.5 : 0)
                 : gridX,
           y:
             selectedTool === "coin"
-              ? gridY + 5
+              ? gridY + (showGrid ? 5 : 0)
               : selectedTool === "teleport"
-                ? gridY + 0.5
+                ? gridY + (showGrid ? 0.5 : 0)
                 : gridY,
           w,
           h,
@@ -1524,9 +1541,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       const dx = x - dragStartPos.x;
       const dy = y - dragStartPos.y;
 
-      // Snap to grid if needed, or just free move
-      const snapDx = Math.round(dx / 5) * 5;
-      const snapDy = Math.round(dy / 5) * 5;
+      // Snap to 5px if grid is on, or just free move if grid is off
+      const snapDx = showGrid ? Math.round(dx / 5) * 5 : dx;
+      const snapDy = showGrid ? Math.round(dy / 5) * 5 : dy;
 
       const updated = [...entities];
       selectedEntityIndices.forEach((idx, i) => {
@@ -2112,31 +2129,113 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight whitespace-nowrap">
                 {lang === "DE" ? "LÄNGE:" : "LENGTH:"}
               </span>
-              <input
-                type="number"
-                min={GAME_WIDTH}
-                max={GAME_WIDTH * 5}
-                step="30"
-                value={levelWidth}
-                onChange={(e) => {
-                  const newWidth = Math.min(
-                    GAME_WIDTH * 5,
-                    Math.max(
-                      GAME_WIDTH,
-                      parseInt(e.target.value) || GAME_WIDTH,
-                    ),
-                  );
-                  setLevelWidth(newWidth);
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    const next = Math.max(GAME_WIDTH, levelWidth - 30);
+                    setLevelWidth(next);
+                    setHasChanged(true);
+                  }}
+                  className="w-5 h-5 flex items-center justify-center bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-yellow-500 hover:border-yellow-900/50 rounded-sm text-[14px] leading-none transition-all active:scale-95"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={GAME_WIDTH}
+                  max={GAME_WIDTH * 5}
+                  step="30"
+                  value={levelWidth}
+                  onChange={(e) => {
+                    const newWidth = Math.min(
+                      GAME_WIDTH * 5,
+                      Math.max(
+                        GAME_WIDTH,
+                        parseInt(e.target.value) || GAME_WIDTH,
+                      ),
+                    );
+                    setLevelWidth(newWidth);
+                    setHasChanged(true);
+                    const filteredEntities = entities.filter(
+                      (ent) => ent.x < newWidth,
+                    );
+                    if (filteredEntities.length !== entities.length) {
+                      pushHistory(filteredEntities);
+                    }
+                  }}
+                  className="w-20 bg-transparent text-yellow-500 font-arcade text-center outline-none text-[10px] font-bold"
+                />
+                <button
+                  onClick={() => {
+                    const next = Math.min(GAME_WIDTH * 5, levelWidth + 30);
+                    setLevelWidth(next);
+                    setHasChanged(true);
+                  }}
+                  className="w-5 h-5 flex items-center justify-center bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-yellow-500 hover:border-yellow-900/50 rounded-sm text-[14px] leading-none transition-all active:scale-95"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Auto Scroll UI moved to Row 1 Header */}
+          {levelWidth > GAME_WIDTH && (
+            <div className="flex flex-col gap-0.5 items-center justify-center">
+              <button
+                onClick={() => {
+                  setAutoScroll(!autoScroll);
                   setHasChanged(true);
-                  const filteredEntities = entities.filter(
-                    (ent) => ent.x < newWidth,
-                  );
-                  if (filteredEntities.length !== entities.length) {
-                    pushHistory(filteredEntities);
-                  }
                 }}
-                className="w-16 bg-transparent text-yellow-500 font-arcade text-right outline-none text-[10px] font-bold"
-              />
+                className={`h-6 min-w-[90px] px-2 text-[8px] font-arcade border transition-all rounded-sm ${autoScroll ? "bg-purple-900/60 border-purple-400 text-purple-100 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+                title="Auto-Scroll Mode"
+              >
+                {t.scrollMode}: {autoScroll ? t.onLabel : t.offLabel}
+              </button>
+              {autoScroll && (
+                <div className="h-5 flex items-center gap-1 bg-purple-950/20 border border-purple-900/40 px-1.5 rounded-sm">
+                  <span className="text-[6px] text-purple-400 font-bold uppercase">SPD:</span>
+                  <div className="flex items-center gap-0.5">
+                    <button 
+                      onClick={() => {
+                        const newSpeed = Math.max(10, autoScrollSpeed - 10);
+                        setAutoScrollSpeed(newSpeed);
+                        setHasChanged(true);
+                      }}
+                      className="w-3.5 h-3.5 flex items-center justify-center bg-purple-900/30 border border-purple-800/40 text-purple-300 hover:text-white rounded-[1px] text-[8px] leading-none transition-colors"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={10}
+                      max={350}
+                      step={10}
+                      value={autoScrollSpeed}
+                      onChange={(e) => {
+                        setAutoScrollSpeed(
+                          Math.max(
+                            10,
+                            Math.min(350, parseInt(e.target.value) || 150),
+                          ),
+                        );
+                        setHasChanged(true);
+                      }}
+                      className="w-12 bg-transparent text-purple-100 font-arcade text-center outline-none text-[8px] font-bold pr-0.5"
+                    />
+                    <button 
+                      onClick={() => {
+                        const newSpeed = Math.min(350, autoScrollSpeed + 10);
+                        setAutoScrollSpeed(newSpeed);
+                        setHasChanged(true);
+                      }}
+                      className="w-3.5 h-3.5 flex items-center justify-center bg-purple-900/30 border border-purple-800/40 text-purple-300 hover:text-white rounded-[1px] text-[8px] leading-none transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2324,43 +2423,6 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             >
               {t.symmetry}: {symmetryEnabled ? t.onLabel : t.offLabel}
             </button>
-          )}
-
-          {levelWidth > GAME_WIDTH && (
-             <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  setAutoScroll(!autoScroll);
-                  setHasChanged(true);
-                }}
-                className={`h-9 min-w-[110px] px-3 text-[10px] font-arcade border transition-all rounded-sm ${autoScroll ? "bg-purple-900/60 border-purple-400 text-purple-100 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-                title="Auto-Scroll Mode"
-              >
-                {t.scrollMode}: {autoScroll ? t.onLabel : t.offLabel}
-              </button>
-              {autoScroll && (
-                <div className="h-9 flex items-center gap-2 bg-purple-950/20 border border-purple-900/40 px-2 rounded-sm">
-                  <span className="text-[7px] text-purple-400 font-bold uppercase">SPD:</span>
-                  <input
-                    type="number"
-                    min={10}
-                    max={350}
-                    step={10}
-                    value={autoScrollSpeed}
-                    onChange={(e) => {
-                      setAutoScrollSpeed(
-                        Math.max(
-                          10,
-                          Math.min(350, parseInt(e.target.value) || 150),
-                        ),
-                      );
-                      setHasChanged(true);
-                    }}
-                    className="w-10 bg-transparent text-purple-100 font-arcade text-right outline-none text-[10px] font-bold"
-                  />
-                </div>
-              )}
-            </div>
           )}
         </div>
       )}
