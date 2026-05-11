@@ -584,7 +584,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     EntityType | "start" | "startP2" | "eraser" | "select"
   >("wall");
   const [allowedAbility, setAllowedAbility] = useState<LevelAbility>(
-    initialLevel?.allowedAbility || "none",
+    !initialLevel?.allowedAbility || initialLevel?.allowedAbility === "none" ? "double_jump" : initialLevel?.allowedAbility
   );
   const [autoScroll, setAutoScroll] = useState<boolean>(
     initialLevel?.autoScroll || false,
@@ -1318,10 +1318,12 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     const gridX = showGrid ? Math.floor(x / TILE_SIZE) * TILE_SIZE : x - w / 2;
     const gridY = showGrid ? Math.floor(y / TILE_SIZE) * TILE_SIZE : y - h / 2;
 
+    const distToLast = lastPlacedGridPos ? Math.hypot(lastPlacedGridPos.x - gridX, lastPlacedGridPos.y - gridY) : 0;
     if (
       lastPlacedGridPos &&
-      Math.abs(lastPlacedGridPos.x - gridX) < (showGrid ? 1 : 2) &&
-      Math.abs(lastPlacedGridPos.y - gridY) < (showGrid ? 1 : 2) &&
+      (showGrid
+        ? Math.abs(lastPlacedGridPos.x - gridX) < 1 && Math.abs(lastPlacedGridPos.y - gridY) < 1
+        : distToLast < 15) &&
       e.type === "mousemove" &&
       selectedTool !== "eraser" &&
       !isRightClick
@@ -1394,13 +1396,10 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             );
           } else {
             // Overlap check for free mode
-            return (
-              gridX + (w || TILE_SIZE) > ent.x &&
-              gridX < ent.x + ent.w &&
-              gridY + (h || TILE_SIZE) > ent.y &&
-              gridY < ent.y + ent.h &&
-              !entIsGravity
-            );
+            // We only consider it the "same block" to prevent painting over it
+            // if the distance is very small (less than 15 pixels).
+            const dist = Math.hypot(ent.x - gridX, ent.y - gridY);
+            return dist < 15 && !entIsGravity;
           }
         }
       });
@@ -1421,7 +1420,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       // and we update them there based on the tool.
 
       if (existingIndex !== -1) {
-        if (entities[existingIndex].type !== selectedTool || !showGrid) {
+        if (entities[existingIndex].type !== selectedTool) {
           // If free movement is on, we might want to allow subtle overlaps or just replace if very close
           const updatedEntities = [...entities];
           updatedEntities[existingIndex] = {
@@ -1700,7 +1699,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     entities: entities,
     isCustom: true,
     isBrawler: isBrawler,
-    allowedAbility: allowedAbility,
+    allowedAbility: allowedAbility === "none" ? "double_jump" : allowedAbility,
     autoScroll: autoScroll,
     autoScrollSpeed: autoScrollSpeed,
   });
@@ -2078,7 +2077,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             type="text"
             value={levelName}
             onChange={(e) => setLevelName(e.target.value)}
-            placeholder={t.levelNamePlaceholder}
+            placeholder={t.levelName}
             className="h-9 w-48 bg-black text-white border border-neutral-700 px-3 outline-none font-arcade text-[10px] focus:border-blue-500 transition-colors"
           />
 
@@ -2116,10 +2115,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 }}
                 className="bg-transparent text-yellow-400 text-[10px] font-bold font-arcade outline-none cursor-pointer"
               >
-                <option value="none">{t.abNone}</option>
-                <option value="build">{t.abBuild}</option>
-                <option value="double_jump">{t.abDoubleJump}</option>
-                <option value="hook">{t.abHook}</option>
+                <option value="double_jump">{t.abDoubleJump || "DOPPELSPRUNG"}</option>
+                <option value="build">{t.abBuild || "BLOCKBAUER"}</option>
+                <option value="hook">{t.abHook || "GREIFHAKEN"}</option>
               </select>
             </div>
           )}

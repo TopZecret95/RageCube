@@ -255,11 +255,6 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({ levels, onPlay, o
                     <div className="text-[9px] text-neutral-500 font-mono">
                         Entities: {levels[selectedIndex].entities.length}
                     </div>
-                    {levels[selectedIndex].allowedAbility && levels[selectedIndex].allowedAbility !== 'none' && (
-                        <div className="text-[9px] text-blue-400 font-mono uppercase">
-                            Ability: {levels[selectedIndex].allowedAbility}
-                        </div>
-                    )}
                     {levels[selectedIndex].autoScroll && (
                         <div className="text-[9px] text-purple-400 font-mono uppercase">
                             {t.scrollSpeed}: {levels[selectedIndex].autoScrollSpeed || 150}
