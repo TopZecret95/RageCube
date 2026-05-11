@@ -375,17 +375,15 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                     )}
                 </div>
                 <div className="mt-auto pt-4 border-t border-neutral-800 flex flex-col gap-3">
-                    {activeTab === 'custom' && (
-                      <div 
-                          onClick={onToggleGhost}
-                          className={`p-2 border cursor-pointer flex justify-center items-center gap-4 transition-colors ${showGhost ? 'border-green-900/50 bg-green-900/10' : 'border-red-900/50 bg-red-900/10'}`}
-                      >
-                          <span className="text-[10px] font-arcade text-neutral-400">{t.ghostRun}:</span>
-                          <span className={`text-[10px] font-arcade font-bold ${showGhost ? 'text-green-400' : 'text-red-400'}`}>
-                              {showGhost ? "ON" : "OFF"}
-                          </span>
-                      </div>
-                    )}
+                    <div 
+                        onClick={onToggleGhost}
+                        className={`p-2 border cursor-pointer flex justify-center items-center gap-4 transition-colors ${showGhost ? 'border-green-900/50 bg-green-900/10' : 'border-red-900/50 bg-red-900/10'}`}
+                    >
+                        <span className="text-[10px] font-arcade text-neutral-400">{t.ghostRun}:</span>
+                        <span className={`text-[10px] font-arcade font-bold ${showGhost ? 'text-green-400' : 'text-red-400'}`}>
+                            {showGhost ? "ON" : "OFF"}
+                        </span>
+                    </div>
 
                     <button 
                         onClick={() => onPlay(displayLevels[selectedIndex])}
