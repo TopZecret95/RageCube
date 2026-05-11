@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { LevelData, SortMode } from '../types';
 import { TRANSLATIONS } from '../constants';
 import LevelPreview from './LevelPreview';
+import { compressLevel, decompressLevel } from '../services/compressionService';
 
 interface CustomLevelSelectProps {
   levels: LevelData[];
@@ -61,10 +62,11 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
   }, [selectedIndex, displayLevels, activeTab]);
 
   const handleExport = (level: LevelData) => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(level));
+    const compactJson = compressLevel(level);
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(compactJson);
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `${level.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`);
+    downloadAnchorNode.setAttribute("download", `${level.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_compact.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -81,11 +83,14 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const json = JSON.parse(event.target?.result as string) as any;
+                const rawJson = event.target?.result as string;
+                // decompressLevel handles both legacy and compressed formats
+                const json = decompressLevel(rawJson);
                 const itemsToCheck = Array.isArray(json) ? json : [json];
                 
                 itemsToCheck.forEach((item: any, subIndex: number) => {
-                    if (item.id && item.entities && item.start) {
+                    // After decompressLevel, item should be a LevelData structure
+                    if (item.entities && item.start) {
                         const fileName = file.name.replace(/\.[^/.]+$/, "");
                         const newLevel: LevelData = { 
                             ...item, 
@@ -245,9 +250,13 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                                       <span className={`text-[9px] px-1 rounded font-bold ${level.isBrawler ? 'bg-rage-red text-white' : 'bg-blue-900 text-blue-200'}`}>
                                           {level.isBrawler ? 'BRAWLER' : 'NORMAL'}
                                       </span>
-                                      {level.autoScroll && (
-                                          <span className="text-[9px] px-1 rounded font-bold bg-purple-900 text-purple-200">
-                                          {t.scrollMode} ({level.autoScrollSpeed || 150})
+                                      {level.autoScroll ? (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-arcade bg-purple-600 text-white shadow-[0_0_5px_rgba(147,51,234,0.5)]">
+                                            {t.scrollMode}: {level.autoScrollSpeed || 150}
+                                          </span>
+                                      ) : (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded-sm font-arcade bg-neutral-800 text-neutral-500">
+                                            {t.scrollMode}: OFF
                                           </span>
                                       )}
                                       {level.allowedAbility && level.allowedAbility !== 'none' && (
@@ -341,12 +350,20 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                 </div>
                 <div className="flex flex-col gap-1 mt-2 font-arcade">
                     <div className="text-xs text-yellow-400 truncate">{displayLevels[selectedIndex].name}</div>
-                    <div className="text-[9px] text-neutral-500 font-mono">
-                        Entities: {displayLevels[selectedIndex].entities.length}
+                    <div className="flex items-center justify-between text-[9px] font-mono border-b border-neutral-800/50 pb-1">
+                        <span className="text-neutral-500 uppercase">{t.autoScroll || "AUTO-SCROLL"}:</span>
+                        <span className={displayLevels[selectedIndex].autoScroll ? "text-purple-400 font-bold" : "text-neutral-600"}>
+                            {displayLevels[selectedIndex].autoScroll ? "ON" : "OFF"}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[9px] font-mono border-b border-neutral-800/50 pb-1">
+                        <span className="text-neutral-500 uppercase">ENTITIES:</span>
+                        <span className="text-neutral-300 font-bold">{displayLevels[selectedIndex].entities.length}</span>
                     </div>
                     {displayLevels[selectedIndex].autoScroll && (
-                        <div className="text-[9px] text-purple-400 font-mono uppercase">
-                            {t.scrollSpeed}: {displayLevels[selectedIndex].autoScrollSpeed || 150}
+                        <div className="flex items-center justify-between text-[9px] font-mono border-b border-neutral-800/50 pb-1">
+                            <span className="text-neutral-500 uppercase">{t.scrollSpeed}:</span>
+                            <span className="text-purple-300 font-bold">{displayLevels[selectedIndex].autoScrollSpeed || 150}</span>
                         </div>
                     )}
                     {displayLevels[selectedIndex].allowedAbility && displayLevels[selectedIndex].allowedAbility !== 'none' && (
