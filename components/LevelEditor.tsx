@@ -545,6 +545,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     initialLevel?.name || "My Custom Level",
   );
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // History State
   const [history, setHistory] = useState<Entity[][]>(
@@ -2052,70 +2053,74 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           </div>
         </div>
       )}
-      <div className="bg-neutral-800 border-b border-neutral-600 flex flex-wrap items-center justify-between p-2 shrink-0 gap-2">
-        <div className="flex items-center gap-2 grow md:grow-0">
+    <div className="bg-neutral-900 border-b border-neutral-700 p-2 flex flex-col gap-2 select-none relative z-[60] shadow-xl">
+      {/* Row 1: Level Identity & Main Settings */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <input
+            type="text"
             value={levelName}
             onChange={(e) => setLevelName(e.target.value)}
-            className="bg-black text-white p-2 border border-neutral-600 font-arcade text-xs w-full md:w-48 focus:border-rage-red outline-none"
-            placeholder={t.levelName}
+            placeholder={t.levelNamePlaceholder}
+            className="h-9 w-48 bg-black text-white border border-neutral-700 px-3 outline-none font-arcade text-[10px] focus:border-blue-500 transition-colors"
           />
-        </div>
-        <div className="flex items-center gap-1 bg-black border border-neutral-700 px-2 py-1">
-          <span className="text-[10px] text-neutral-400 font-bold">TYPE:</span>
-          <select
-            value={isBrawler ? "brawler" : "normal"}
-            onChange={(e) => {
-              const b = e.target.value === "brawler";
-              setIsBrawler(b);
-              setHasChanged(true);
-              setSelectedTool("wall");
-              if (b) {
-                setLevelWidth(GAME_WIDTH);
-                setLevelHeight(GAME_HEIGHT);
-              }
-            }}
-            className="bg-black text-cyan-400 text-[10px] md:text-xs font-bold font-arcade outline-none cursor-pointer"
-          >
-            <option value="normal">NORMAL</option>
-            <option value="brawler">BRAWLER</option>
-          </select>
-        </div>
-        {!isBrawler && (
-          <div className="flex items-center gap-1 bg-black border border-neutral-700 px-2 py-1">
-            <span className="text-[10px] text-neutral-400 font-bold">
-              {t.ability}:
-            </span>
+
+          <div className="h-9 flex items-center gap-2 bg-black border border-neutral-700 px-3 rounded-sm">
+            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">TYPE:</span>
             <select
-              value={allowedAbility}
+              value={isBrawler ? "brawler" : "normal"}
               onChange={(e) => {
-                setAllowedAbility(e.target.value as LevelAbility);
+                const b = e.target.value === "brawler";
+                setIsBrawler(b);
                 setHasChanged(true);
+                setSelectedTool("wall");
+                if (b) {
+                  setLevelWidth(GAME_WIDTH);
+                  setLevelHeight(GAME_HEIGHT);
+                }
               }}
-              className="bg-black text-yellow-400 text-[10px] md:text-xs font-bold font-arcade outline-none cursor-pointer"
+              className="bg-transparent text-cyan-400 text-[10px] font-bold font-arcade outline-none cursor-pointer"
             >
-              <option value="none">{t.abNone}</option>
-              <option value="build">{t.abBuild}</option>
-              <option value="double_jump">{t.abDoubleJump}</option>
-              <option value="hook">{t.abHook}</option>
+              <option value="normal">NORMAL</option>
+              <option value="brawler">BRAWLER</option>
             </select>
           </div>
-        )}
-        <div className="flex items-center gap-2">
+
           {!isBrawler && (
-            <div className="flex items-center gap-1 bg-black border border-neutral-700 px-2 py-1">
-              <span className="text-[10px] text-neutral-400 font-bold whitespace-nowrap">
-                {lang === "DE" ? "Länge:" : "Length:"}
+            <div className="h-9 flex items-center gap-2 bg-black border border-neutral-700 px-3 rounded-sm">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">
+                {t.ability}:
+              </span>
+              <select
+                value={allowedAbility}
+                onChange={(e) => {
+                  setAllowedAbility(e.target.value as LevelAbility);
+                  setHasChanged(true);
+                }}
+                className="bg-transparent text-yellow-400 text-[10px] font-bold font-arcade outline-none cursor-pointer"
+              >
+                <option value="none">{t.abNone}</option>
+                <option value="build">{t.abBuild}</option>
+                <option value="double_jump">{t.abDoubleJump}</option>
+                <option value="hook">{t.abHook}</option>
+              </select>
+            </div>
+          )}
+
+          {!isBrawler && (
+            <div className="h-9 flex items-center gap-2 bg-black border border-neutral-700 px-3 rounded-sm">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight whitespace-nowrap">
+                {lang === "DE" ? "LÄNGE:" : "LENGTH:"}
               </span>
               <input
                 type="number"
                 min={GAME_WIDTH}
-                max={GAME_WIDTH * 3}
+                max={GAME_WIDTH * 5}
                 step="30"
                 value={levelWidth}
                 onChange={(e) => {
                   const newWidth = Math.min(
-                    GAME_WIDTH * 3,
+                    GAME_WIDTH * 5,
                     Math.max(
                       GAME_WIDTH,
                       parseInt(e.target.value) || GAME_WIDTH,
@@ -2130,117 +2135,33 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                     pushHistory(filteredEntities);
                   }
                 }}
-                className="w-20 bg-transparent text-yellow-400 font-arcade text-right outline-none"
+                className="w-16 bg-transparent text-yellow-500 font-arcade text-right outline-none text-[10px] font-bold"
               />
             </div>
           )}
-          {isBrawler && (
-            <button
-              onClick={() => setSymmetryEnabled(!symmetryEnabled)}
-              className={`px-3 py-2 text-[10px] font-arcade border transition-all ${symmetryEnabled ? "bg-cyan-900 border-cyan-400 text-cyan-200" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-              title="Auto-Symmetry (S)"
-            >
-              {t.symmetry}: {symmetryEnabled ? t.onLabel : t.offLabel}
-            </button>
-          )}
-          {!isBrawler && (
-            <div className="flex flex-col items-center gap-1">
-              <button
-                onClick={() => {
-                  setAutoScroll(!autoScroll);
-                  setHasChanged(true);
-                }}
-                className={`flex items-center justify-center w-full min-w-[80px] gap-1 px-2 py-1 text-[10px] font-arcade border transition-all ${autoScroll ? "bg-purple-900 border-purple-400 text-purple-200" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-                title="Auto-Scroll Mode"
-              >
-                {t.scrollMode}: {autoScroll ? t.onLabel : t.offLabel}
-              </button>
-              {autoScroll && (
-                <div className="flex items-center gap-1 bg-purple-950/50 border border-purple-800 px-1 py-0.5">
-                  <span className="text-[8px] text-purple-400">
-                    {t.scrollSpeed}:
-                  </span>
-                  <input
-                    type="number"
-                    min={10}
-                    max={350}
-                    step={10}
-                    value={autoScrollSpeed}
-                    onChange={(e) => {
-                      setAutoScrollSpeed(
-                        Math.max(
-                          10,
-                          Math.min(350, parseInt(e.target.value) || 150),
-                        ),
-                      );
-                      setHasChanged(true);
-                    }}
-                    className="w-16 bg-transparent text-purple-200 font-arcade text-right outline-none text-[10px]"
-                    title={t.scrollSpeed}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          <button
-            onClick={() => setShowGrid(!showGrid)}
-            className={`px-3 py-2 text-[10px] font-arcade border transition-all ${showGrid ? "bg-neutral-700 border-neutral-400 text-white" : "bg-neutral-800 border-neutral-700 text-neutral-500"}`}
-            title="Toggle Grid (G)"
-          >
-            {t.gridLabel}: {showGrid ? t.onLabel : t.offLabel}
-          </button>
+        </div>
 
-          <button
-            onClick={() => {
-              if (onSettingsChange && settings) {
-                onSettingsChange({
-                  ...settings,
-                  editorEdgeScroll: !settings.editorEdgeScroll,
-                });
-              }
-            }}
-            className={`px-3 py-2 text-[10px] font-arcade border transition-all ${settings?.editorEdgeScroll ? "bg-red-900 border-red-500 text-red-200" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
-            title="Editor Edge Scroll"
-          >
-            {t.editorEdgeScroll}: {settings?.editorEdgeScroll ? t.onLabel : t.offLabel}
-          </button>
-          
-          <div className="flex flex-col gap-0.5 bg-black border border-neutral-700 px-2 py-0.5 min-w-[120px]">
-            <label className="text-[8px] text-neutral-500 uppercase font-bold tracking-tight flex justify-between">
-              <span>RADIAL SCALE</span>
-              <span className="text-neutral-300">{(radialScale * 100).toFixed(0)}%</span>
-            </label>
-            <input
-              type="range"
-              min="0.3"
-              max="1.5"
-              step="0.05"
-              value={radialScale}
-              onChange={(e) => setRadialScale(parseFloat(e.target.value))}
-              className="w-full accent-blue-500 h-1.5 cursor-pointer bg-neutral-800 rounded-lg appearance-none"
-            />
-          </div>
-
+        <div className="flex items-center gap-2">
           <select
             value={selectedTool}
             onChange={(e) => setSelectedTool(e.target.value as any)}
-            className="bg-neutral-900 text-white border border-neutral-600 p-2 text-[10px] md:text-xs font-arcade focus:border-rage-red outline-none cursor-pointer appearance-none text-center font-bold tracking-wider"
+            className="h-9 bg-neutral-900 text-white border border-neutral-600 px-4 text-[10px] font-arcade focus:border-rage-red outline-none cursor-pointer appearance-none text-center font-bold tracking-wider rounded-sm shadow-inner"
             style={{
-              color: tools.find((t) => t.id === selectedTool)?.color,
-              borderColor: tools.find((t) => t.id === selectedTool)?.color,
-              minWidth: "120px",
+              color: tools.find((tool) => tool.id === selectedTool)?.color,
+              borderColor: tools.find((tool) => tool.id === selectedTool)?.color,
+              minWidth: "160px",
             }}
           >
             <optgroup label={t.tools || "TOOLS"}>
               {tools
                 .filter(
-                  (t) =>
-                    t.id === "select" ||
-                    t.id === "eraser" ||
-                    t.id === "start" ||
-                    t.id === "startP2" ||
-                    t.id === "goal" ||
-                    t.id === "checkpoint",
+                  (tool) =>
+                    tool.id === "select" ||
+                    tool.id === "eraser" ||
+                    tool.id === "start" ||
+                    tool.id === "startP2" ||
+                    tool.id === "goal" ||
+                    tool.id === "checkpoint",
                 )
                 .map((tool) => (
                   <option
@@ -2260,7 +2181,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               }
             >
               {tools
-                .filter((t) =>
+                .filter((tool) =>
                   [
                     "wall",
                     "hazard",
@@ -2271,7 +2192,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                     "teleport",
                     "gravity_reverse",
                     "gravity_zero",
-                  ].includes(t.id),
+                  ].includes(tool.id),
                 )
                 .map((tool) => (
                   <option
@@ -2293,14 +2214,14 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
               }
             >
               {tools
-                .filter((t) =>
+                .filter((tool) =>
                   [
                     "walkthrough_wall",
                     "ghost_hazard",
                     "fake_ice",
                     "fake_slime",
                     "fake_goal",
-                  ].includes(t.id),
+                  ].includes(tool.id),
                 )
                 .map((tool) => (
                   <option
@@ -2323,8 +2244,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             >
               {tools
                 .filter(
-                  (t) =>
-                    t.id.startsWith("powerup_") || t.id.startsWith("block_"),
+                  (tool) =>
+                    tool.id.startsWith("powerup_") || tool.id.startsWith("block_"),
                 )
                 .map((tool) => (
                   <option
@@ -2337,69 +2258,177 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 ))}
             </optgroup>
           </select>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          {/* Clear Button Removed */}
 
           <button
-            type="button"
-            onClick={handleUndo}
-            disabled={historyIndex <= 0}
-            className={`px-3 py-2 border text-xs transition-colors font-bold ${historyIndex <= 0 ? "bg-neutral-800 border-neutral-700 text-neutral-600" : "bg-neutral-700 border-neutral-600 text-white hover:bg-neutral-600"}`}
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm flex items-center gap-2 ${showAdvanced ? "bg-blue-900 border-blue-400 text-blue-100" : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-white"}`}
+            title="Advanced Editor Settings"
           >
-            UNDO
-          </button>
-          <button
-            type="button"
-            onClick={handleRedo}
-            disabled={historyIndex >= history.length - 1}
-            className={`px-3 py-2 border text-xs transition-colors font-bold ${historyIndex >= history.length - 1 ? "bg-neutral-800 border-neutral-700 text-neutral-600" : "bg-neutral-700 border-neutral-600 text-white hover:bg-neutral-600"}`}
-          >
-            REDO
-          </button>
-
-          <button
-            type="button"
-            onClick={handleTest}
-            className="px-3 py-2 bg-blue-900/50 border border-blue-800 text-blue-200 text-xs hover:bg-blue-900 transition-colors"
-          >
-            {t.editorTest}
-          </button>
-
-          {/* Draft Button */}
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            className="px-3 py-2 bg-yellow-900/50 border border-yellow-800 text-yellow-200 text-xs hover:bg-yellow-900 transition-colors font-bold flex flex-col items-center justify-center leading-none"
-          >
-            <span>{t.editorSaveDraft}</span>
-          </button>
-
-          {/* Release Button */}
-          <button
-            type="button"
-            onClick={handleRelease}
-            disabled={!canRelease}
-            className={`px-3 py-2 border text-xs transition-colors flex flex-col items-center leading-none justify-center ${canRelease ? "bg-green-900/50 border-green-800 text-green-200 hover:bg-green-900 cursor-pointer animate-pulse" : "bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed opacity-50"}`}
-          >
-            <span>{t.editorRelease}</span>
-            {!canRelease && (
-              <span className="text-[8px] mt-1">
-                {hasChanged ? t.editorUnverified : t.editorVerified}
-              </span>
-            )}
-          </button>
-
-          {/* Exit Button */}
-          <button
-            type="button"
-            onClick={handleExitRequest}
-            className="px-3 py-2 bg-red-950/50 border border-red-900 text-red-400 hover:bg-red-900 hover:text-white text-xs font-bold transition-colors"
-          >
-            {t.editorExit}
+            <span>{showAdvanced ? "▼" : "▲"}</span>
+            {lang === "DE" ? "OPTIONEN" : "OPTIONS"}
           </button>
         </div>
       </div>
+
+      {/* Row 2: Advanced View Options & Specific Tools (Conditional) */}
+      {(showAdvanced || (levelWidth > GAME_WIDTH) || isBrawler) && (
+        <div className="flex flex-wrap items-center gap-3 py-1 border-t border-neutral-800/50 animate-in fade-in slide-in-from-top-1 duration-200">
+          {showAdvanced && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${showGrid ? "bg-neutral-700 border-neutral-400 text-white shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+                title="Toggle Grid (G)"
+              >
+                {t.gridLabel}: {showGrid ? t.onLabel : t.offLabel}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (onSettingsChange && settings) {
+                    onSettingsChange({
+                      ...settings,
+                      editorEdgeScroll: !settings.editorEdgeScroll,
+                    });
+                  }
+                }}
+                className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${settings?.editorEdgeScroll ? "bg-red-900/50 border-red-500 text-red-100" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+                title="Editor Edge Scroll"
+              >
+                {t.editorEdgeScroll}: {settings?.editorEdgeScroll ? t.onLabel : t.offLabel}
+              </button>
+              
+              <div className="h-9 flex flex-col justify-center bg-black/40 border border-neutral-700 px-3 min-w-[140px] rounded-sm">
+                <label className="text-[7px] text-neutral-500 uppercase font-bold tracking-tight flex justify-between mb-0.5">
+                  <span>RADIAL SCALE</span>
+                  <span className="text-neutral-300">{(radialScale * 100).toFixed(0)}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="1.5"
+                  step="0.05"
+                  value={radialScale}
+                  onChange={(e) => setRadialScale(parseFloat(e.target.value))}
+                  className="w-full accent-blue-500 h-1 cursor-pointer bg-neutral-800 rounded-lg appearance-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {isBrawler && (
+            <button
+              onClick={() => setSymmetryEnabled(!symmetryEnabled)}
+              className={`h-9 px-3 text-[10px] font-arcade border transition-all rounded-sm ${symmetryEnabled ? "bg-cyan-900 border-cyan-400 text-cyan-200 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+              title="Auto-Symmetry (S)"
+            >
+              {t.symmetry}: {symmetryEnabled ? t.onLabel : t.offLabel}
+            </button>
+          )}
+
+          {levelWidth > GAME_WIDTH && (
+             <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setAutoScroll(!autoScroll);
+                  setHasChanged(true);
+                }}
+                className={`h-9 min-w-[110px] px-3 text-[10px] font-arcade border transition-all rounded-sm ${autoScroll ? "bg-purple-900/60 border-purple-400 text-purple-100 shadow-inner" : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300"}`}
+                title="Auto-Scroll Mode"
+              >
+                {t.scrollMode}: {autoScroll ? t.onLabel : t.offLabel}
+              </button>
+              {autoScroll && (
+                <div className="h-9 flex items-center gap-2 bg-purple-950/20 border border-purple-900/40 px-2 rounded-sm">
+                  <span className="text-[7px] text-purple-400 font-bold uppercase">SPD:</span>
+                  <input
+                    type="number"
+                    min={10}
+                    max={350}
+                    step={10}
+                    value={autoScrollSpeed}
+                    onChange={(e) => {
+                      setAutoScrollSpeed(
+                        Math.max(
+                          10,
+                          Math.min(350, parseInt(e.target.value) || 150),
+                        ),
+                      );
+                      setHasChanged(true);
+                    }}
+                    className="w-10 bg-transparent text-purple-100 font-arcade text-right outline-none text-[10px] font-bold"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+        {/* History & Primary Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-4 py-2 border-t border-neutral-800 bg-neutral-900/50 px-2 rounded-b-lg">
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              className={`h-9 px-5 border text-[10px] font-arcade transition-all rounded-sm flex items-center justify-center gap-2 ${historyIndex <= 0 ? "bg-neutral-800 border-neutral-700 text-neutral-600 shadow-inner" : "bg-neutral-700 border-neutral-600 text-white hover:bg-neutral-600 active:scale-95"}`}
+            >
+              UNDO
+            </button>
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              className={`h-9 px-5 border text-[10px] font-arcade transition-all rounded-sm flex items-center justify-center gap-2 ${historyIndex >= history.length - 1 ? "bg-neutral-800 border-neutral-700 text-neutral-600 shadow-inner" : "bg-neutral-700 border-neutral-600 text-white hover:bg-neutral-600 active:scale-95"}`}
+            >
+              REDO
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTest}
+              className="h-9 px-5 bg-blue-700 hover:bg-blue-600 text-white text-[10px] font-arcade border border-blue-400 shadow-[0_2px_0_#1e3a8a] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+            >
+              {t.editorTest}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="h-9 px-5 bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-arcade border border-amber-500 shadow-[0_2px_0_#92400e] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+            >
+              {t.editorSaveDraft}
+            </button>
+
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={handleRelease}
+                disabled={!canRelease}
+                className={`h-9 px-5 text-[10px] font-arcade border transition-all rounded-sm uppercase tracking-wider ${canRelease ? "bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-400 shadow-[0_2px_0_#064e3b] active:translate-y-[1px] active:shadow-none" : "bg-neutral-800 border-neutral-700 text-neutral-600 cursor-not-allowed opacity-50 shadow-inner"}`}
+              >
+                {t.editorRelease}
+              </button>
+              {!canRelease && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-black border border-neutral-700 text-[8px] text-neutral-400 font-arcade text-center uppercase leading-tight shadow-2xl z-50">
+                  {lang === "DE" ? "Ziel erreichen zum Veröffentlichen" : "Reach Goal to verify & publish"}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleExitRequest}
+              className="h-9 px-5 bg-rose-900 hover:bg-rose-800 text-rose-100 text-[10px] font-arcade border border-rose-700 shadow-[0_2px_0_#4c0519] active:translate-y-[1px] active:shadow-none transition-all rounded-sm uppercase tracking-wider"
+            >
+              {t.editorExit}
+            </button>
+          </div>
+        </div>
       <div className="flex-1 bg-neutral-950 flex items-center justify-center p-2 min-h-0 min-w-0 relative">
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
