@@ -6417,16 +6417,6 @@ const App: React.FC = () => {
                     </div>
                     {onlineService.isHost && (
                       <div className="flex flex-wrap justify-center gap-2">
-                        <button
-                          onClick={() => {
-                            audio.init();
-                            audio.checkContext();
-                          }}
-                          className="px-4 py-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center gap-2"
-                          title="Click here if you don't hear sound"
-                        >
-                          <span>🔊</span> {t.fixAudio || "AUDIO FIX"}
-                        </button>
                         {onlineService.currentMode === 'vs' && (
                           <button
                             onClick={() => {
@@ -6489,16 +6479,6 @@ const App: React.FC = () => {
 
                     {!onlineService.isHost && (
                       <div className="flex flex-wrap justify-center gap-2">
-                        <button
-                          onClick={() => {
-                            audio.init();
-                            audio.checkContext();
-                          }}
-                          className="px-4 py-2 bg-neutral-800 text-neutral-400 hover:text-white rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center gap-2"
-                          title="Click here if you don't hear sound"
-                        >
-                          <span>🔊</span> {t.fixAudio || "AUDIO FIX"}
-                        </button>
                       </div>
                     )}
                   </div>
@@ -6898,12 +6878,6 @@ const App: React.FC = () => {
                         }
                         onHover={setMenuSelection}
                       />
-                      <button
-                        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-[10px] text-neutral-400 rounded border border-neutral-700 transition-all uppercase font-bold"
-                        onClick={() => onlineService.reconnectPeer()}
-                      >
-                        {t.fixConnection || "Fix Connection"}
-                      </button>
                     </div>
                   </div>
                 </div>

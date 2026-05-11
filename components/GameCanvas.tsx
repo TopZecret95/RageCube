@@ -4405,7 +4405,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             hookPos: localP.hookPos,
             oneTimeBuild: localP.oneTimeBuild,
             oneTimeHook: localP.oneTimeHook,
-            moveStartTime: localP.moveStartTime,
           };
           if (localP.lives !== undefined) syncData.health = localP.lives;
           if (localP.inventory !== undefined)
