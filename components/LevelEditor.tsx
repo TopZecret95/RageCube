@@ -128,6 +128,7 @@ const SmoothSlider = ({
   onChange,
   active,
   onActivate,
+  className,
 }: any) => {
   const sliderRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
@@ -183,7 +184,7 @@ const SmoothSlider = ({
   const pct = Math.max(0, Math.min(1, (localValue - min) / (max - min)));
   return (
     <div
-      className={`flex flex-col gap-1 mb-2 ${active ? "bg-neutral-800 border-white/20" : "hover:bg-neutral-800/50 border-transparent"} p-1.5 border rounded transition-colors cursor-pointer group/slider`}
+      className={`flex flex-col gap-1 ${className !== undefined ? className : "mb-2"} ${active ? "bg-neutral-800 border-white/20" : "hover:bg-neutral-800/50 border-transparent"} p-1.5 border rounded transition-colors cursor-pointer group/slider`}
       onMouseDown={handleMouseDown}
     >
       <div className="flex justify-between items-center text-[10px] text-neutral-400 font-mono select-none">
@@ -296,9 +297,9 @@ const PropertyEditor = ({
           x
         </button>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         {!isMulti && (
-          <div className="flex items-center justify-between gap-2 mb-2 w-full">
+          <div className="flex items-center justify-between gap-2 w-full">
             <div className="text-[10px] whitespace-nowrap text-neutral-500 font-bold uppercase tracking-widest shrink-0">
               {tools_trans?.typeLabel || "TYPE"}:
             </div>
@@ -307,7 +308,7 @@ const PropertyEditor = ({
               onChange={(e) =>
                 handleUpdateSelected({ type: e.target.value as EntityType })
               }
-              className="bg-black text-white border border-neutral-700 rounded p-1 w-full max-w-[140px] text-xs outline-none focus:border-cyan-500 overflow-hidden text-ellipsis"
+              className="bg-black text-white border border-neutral-700 rounded p-1 w-full text-[10px] outline-none focus:border-cyan-500 overflow-hidden text-ellipsis"
             >
               {tools
                 .filter(
@@ -323,129 +324,116 @@ const PropertyEditor = ({
           </div>
         )}
 
-        {/* Special Properties */}
-        <div className="flex flex-col gap-1 mb-2 p-2 bg-black/50 rounded border border-neutral-800">
-          <div className="flex items-center justify-between gap-2 text-[10px] text-neutral-400 mb-1">
-            <span className="font-bold">
-              {tools_trans?.movingH || "MOVING HORIZONTAL"}
-            </span>
-            <button
-              className={`min-w-[48px] shrink-0 px-2 py-1 text-[9px] font-bold border transition-colors ${ent.movingH ? "bg-green-600 border-green-500 text-white" : "bg-red-900/50 border-red-800 text-red-300"}`}
-              onClick={() =>
-                handleUpdateSelected({ movingH: !ent.movingH, movingV: false })
-              }
-            >
-              {ent.movingH
-                ? tools_trans?.onLabel || "ON"
-                : tools_trans?.offLabel || "OFF"}
-            </button>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-[10px] text-neutral-400 mb-1">
-            <span className="font-bold">
-              {tools_trans?.movingV || "MOVING VERTICAL"}
-            </span>
-            <button
-              className={`min-w-[48px] shrink-0 px-2 py-1 text-[9px] font-bold border transition-colors ${ent.movingV ? "bg-green-600 border-green-500 text-white" : "bg-red-900/50 border-red-800 text-red-300"}`}
-              onClick={() =>
-                handleUpdateSelected({ movingV: !ent.movingV, movingH: false })
-              }
-            >
-              {ent.movingV
-                ? tools_trans?.onLabel || "ON"
-                : tools_trans?.offLabel || "OFF"}
-            </button>
-          </div>
-          {(ent.movingH || ent.movingV) && (
-            <div className="flex flex-col gap-2 mt-2 border-t border-neutral-800 pt-2">
-              <SmoothSlider
-                label={tools_trans?.moveRange || "MOVE RANGE"}
-                value={ent.moveRange ?? 100}
-                min={10}
-                max={500}
-                onChange={(v: number, commit: boolean) =>
-                  handleUpdateSelected({ moveRange: v }, commit)
-                }
-              />
-              <SmoothSlider
-                label={tools_trans?.moveSpeed || "MOVE SPEED"}
-                value={Math.round((ent.moveSpeed ?? 0.002) * 10000)}
-                min={1}
-                max={100}
-                onChange={(v: number, commit: boolean) =>
-                  handleUpdateSelected({ moveSpeed: v / 10000 }, commit)
-                }
-              />
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2 text-[10px] text-neutral-400 mt-1 border-t border-neutral-800 pt-2">
-            <span className="font-bold">
-              {tools_trans?.fragileBlock || "FRAGILE BLOCK"}
-            </span>
-            <button
-              className={`min-w-[48px] shrink-0 px-2 py-1 text-[9px] font-bold border transition-colors ${ent.fragile ? "bg-green-600 border-green-500 text-white" : "bg-red-900/50 border-red-800 text-red-300"}`}
-              onClick={() => {
-                const updates: Partial<Entity> = { fragile: !ent.fragile };
-                if (!ent.fragile && !ent.id) updates.id = generateStableId();
-                handleUpdateSelected(updates);
-              }}
-            >
-              {ent.fragile
-                ? tools_trans?.onLabel || "ON"
-                : tools_trans?.offLabel || "OFF"}
-            </button>
-          </div>
+        <div className="flex flex-wrap gap-1 bg-black/50 p-1 rounded border border-neutral-800">
+          <button
+            className={`flex-1 py-1 px-1 rounded-[2px] text-[9px] font-bold transition-colors ${ent.movingH ? "bg-cyan-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}
+            onClick={() =>
+              handleUpdateSelected({ movingH: !ent.movingH, movingV: false })
+            }
+          >
+            ↔ MOVE
+          </button>
+          <button
+            className={`flex-1 py-1 px-1 rounded-[2px] text-[9px] font-bold transition-colors ${ent.movingV ? "bg-cyan-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}
+            onClick={() =>
+              handleUpdateSelected({ movingV: !ent.movingV, movingH: false })
+            }
+          >
+            ↕ MOVE
+          </button>
+          <button
+            className={`flex-1 py-1 px-1 rounded-[2px] text-[9px] font-bold transition-colors ${ent.fragile ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-white"}`}
+            onClick={() => {
+              const updates: Partial<Entity> = { fragile: !ent.fragile };
+              if (!ent.fragile && !ent.id) updates.id = generateStableId();
+              handleUpdateSelected(updates);
+            }}
+          >
+            ☠ FRAG
+          </button>
         </div>
 
-        <SmoothSlider
-          label={tools_trans?.width || "WIDTH (W)"}
-          value={ent.w}
-          min={10}
-          max={600}
-          onChange={(v: number, commit: boolean) =>
-            handleUpdateSelected({ w: v }, commit)
-          }
-          active={activeProperty === "w"}
-          onActivate={() => setActiveProperty("w")}
-        />
-        <SmoothSlider
-          label={tools_trans?.height || "HEIGHT (H)"}
-          value={ent.h}
-          min={10}
-          max={600}
-          onChange={(v: number, commit: boolean) =>
-            handleUpdateSelected({ h: v }, commit)
-          }
-          active={activeProperty === "h"}
-          onActivate={() => setActiveProperty("h")}
-        />
-        {!isMulti && (
-          <>
+        {(ent.movingH || ent.movingV) && (
+          <div className="grid grid-cols-2 gap-2 p-1.5 bg-black/50 border border-neutral-800 border-t-0 -mt-2.5 rounded-b pt-2">
             <SmoothSlider
-              label={tools_trans?.xPos || "X POS (X)"}
-              value={ent.x}
-              min={0}
-              max={levelWidth}
+              label="RNG"
+              value={ent.moveRange ?? 100}
+              min={10}
+              max={500}
               onChange={(v: number, commit: boolean) =>
-                handleUpdateSelected({ x: v }, commit)
+                handleUpdateSelected({ moveRange: v }, commit)
               }
-              active={activeProperty === "x"}
-              onActivate={() => setActiveProperty("x")}
+              className="mb-0"
             />
             <SmoothSlider
-              label={tools_trans?.yPos || "Y POS (Y)"}
-              value={ent.y}
-              min={0}
-              max={levelHeight}
+              label="SPD"
+              value={Math.round((ent.moveSpeed ?? 0.002) * 10000)}
+              min={1}
+              max={100}
               onChange={(v: number, commit: boolean) =>
-                handleUpdateSelected({ y: v }, commit)
+                handleUpdateSelected({ moveSpeed: v / 10000 }, commit)
               }
-              active={activeProperty === "y"}
-              onActivate={() => setActiveProperty("y")}
+              className="mb-0"
             />
-          </>
+          </div>
         )}
-        <div className="text-[9px] text-neutral-600 text-center mt-1 uppercase tracking-tighter">
-          {tools_trans?.editorHint || "CLICK LABEL + WASD/ARROWS TO ADJUST"}
+
+        <div className="grid grid-cols-2 gap-2">
+          <SmoothSlider
+            label="W"
+            value={ent.w}
+            min={10}
+            max={600}
+            onChange={(v: number, commit: boolean) =>
+              handleUpdateSelected({ w: v }, commit)
+            }
+            active={activeProperty === "w"}
+            onActivate={() => setActiveProperty("w")}
+            className="mb-0"
+          />
+          <SmoothSlider
+            label="H"
+            value={ent.h}
+            min={10}
+            max={600}
+            onChange={(v: number, commit: boolean) =>
+              handleUpdateSelected({ h: v }, commit)
+            }
+            active={activeProperty === "h"}
+            onActivate={() => setActiveProperty("h")}
+            className="mb-0"
+          />
+          {!isMulti && (
+            <>
+              <SmoothSlider
+                label="X"
+                value={ent.x}
+                min={0}
+                max={levelWidth}
+                onChange={(v: number, commit: boolean) =>
+                  handleUpdateSelected({ x: v }, commit)
+                }
+                active={activeProperty === "x"}
+                onActivate={() => setActiveProperty("x")}
+                className="mb-0"
+              />
+              <SmoothSlider
+                label="Y"
+                value={ent.y}
+                min={0}
+                max={levelHeight}
+                onChange={(v: number, commit: boolean) =>
+                  handleUpdateSelected({ y: v }, commit)
+                }
+                active={activeProperty === "y"}
+                onActivate={() => setActiveProperty("y")}
+                className="mb-0"
+              />
+            </>
+          )}
+        </div>
+        <div className="text-[8px] text-neutral-600 text-center mt-0 uppercase tracking-tighter">
+          {tools_trans?.editorHint || "CLICK LABEL + WASD TO ADJUST"}
         </div>
       </div>
       <button
