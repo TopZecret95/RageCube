@@ -4309,8 +4309,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const maxCamX = Math.max(0, (level.width || GAME_WIDTH) - GAME_WIDTH);
       const maxCamY = Math.max(0, (level.height || GAME_HEIGHT) - GAME_HEIGHT);
 
-      const anyFinished = players.current.some(p => p.finished);
-      if (level.autoScroll && hasStartedMoving.current && !anyFinished) {
+      const allFinished = players.current.every(p => p.finished);
+      if (level.autoScroll && hasStartedMoving.current && !allFinished) {
         const scrollSpeed = level.autoScrollSpeed || 150;
         scrollWallX.current += (scrollSpeed * dt) / 60;
       }
@@ -4352,10 +4352,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
       targetCameraY = Math.max(0, Math.min(targetCameraY, maxCamY));
       
-      // In auto-scroll mode, camera shouldn't go left of the death wall if possible
-      if (level.autoScroll) {
+      // In auto-scroll mode, camera normally sits at the wall (left bound) for the player.
+      // However, spectators should follow their target smoothly.
+      if (level.autoScroll && !isSpectatingNowLocal) {
          cameraRef.current.x = scrollWallX.current;
       } else {
+         // Smoothly transition both in normal levels and when spectating auto-scroll levels
          cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
       }
       cameraRef.current.y += (targetCameraY - cameraRef.current.y) * 0.1;
