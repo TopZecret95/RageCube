@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import GameCanvas from "./components/GameCanvas";
 import LevelEditor from "./components/LevelEditor";
 import CustomLevelSelect from "./components/CustomLevelSelect";
@@ -2248,7 +2249,7 @@ const App: React.FC = () => {
           const isHost = onlineService.lobbyCode ? onlineService.isHost : true;
           if (isMulti && isHost && newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT && onlineFinishTimerRef.current === null) {
             // Force start the end-of-round sequence
-            setOnlineFinishTimer(0);
+            setTimeout(() => finalizeMatch(stateRef.current.onlineResults), 0);
           }
 
           return {
@@ -3984,7 +3985,11 @@ const App: React.FC = () => {
           currentLevelIndex: 0,
         }));
       } else if (status === "summary") {
-        // Result Screen transition disabled as per user request
+        setGameState((p) => ({
+          ...p,
+          status: "online_summary",
+          previousStatus: p.status,
+        }));
         setOnlineFinishTimer(null);
       } else if (status === "closed") {
         setGameState((p) => ({ ...p, status: "online_menu" }));
@@ -4066,17 +4071,18 @@ const App: React.FC = () => {
             const isOnlineRoom = !!onlineService.lobbyCode;
             const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
             
-            // Defensively calculate total players
-            // If in an online room, we expect at least the number of players current in that room.
-            // If it's a vs/brawler mode, we expect at least 2.
-            let totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
-            if (isMultiSession && totalPlayersCount < 2) {
-              totalPlayersCount = 2; // Safeguard: online rooms or vs/brawler modes are multi-player
+            // Calculate total players expected to finish
+            let totalPlayersCount = 1;
+            if (isOnlineRoom) {
+              totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+            } else if (status === "vs_playing" || status === "brawler_playing") {
+              totalPlayersCount = 2; // Local VS/Brawler
             }
             
             // Check for early finish if everyone is done
             if (newResults.length >= totalPlayersCount) {
-              setOnlineFinishTimer(0);
+              setOnlineFinishTimer(null);
+              setTimeout(() => finalizeMatch(newResults), 0);
             } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
               // First person finished, start grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
@@ -4096,7 +4102,11 @@ const App: React.FC = () => {
           return;
         }
         setOnlineResults(data.results);
-        // Result Screen transition disabled as per user request
+        setGameState((p) => ({
+          ...p,
+          status: "online_summary",
+          previousStatus: p.status,
+        }));
         setOnlineFinishTimer(null);
       }
     };
@@ -4123,98 +4133,106 @@ const App: React.FC = () => {
 
   const lastStartTimeRef = useRef(0);
 
+  // Finalize Match directly
+  const finalizeMatch = useCallback((finalResults: any[]) => {
+    if (
+      stateRef.current.gameState.status === "online_lobby" ||
+      stateRef.current.gameState.status === "menu" ||
+      stateRef.current.gameState.status === "online_menu"
+    ) {
+      setOnlineFinishTimer(null);
+      return;
+    }
+    
+    if (onlineService.lobbyCode) {
+      if (onlineService.isHost) {
+        const currentStatus = stateRef.current.gameState.status;
+        const isGameSession = currentStatus === "vs_playing" || currentStatus === "brawler_playing" || currentStatus === "playing";
+        if (!isGameSession) {
+           setOnlineFinishTimer(null);
+           return;
+        }
+
+        const compiledResults = Array.from(onlineService.players.values()).map(
+          (p) => {
+            const stats = finalResults.find((r) => r.id === p.id);
+            const isLocal = p.id === onlineService.localPlayer?.id;
+            let localScore = stateRef.current.gameState.score;
+            if (
+              stateRef.current.gameState.status === "brawler_playing" &&
+              isLocal
+            ) {
+              localScore =
+                stateRef.current.gameState.winner ===
+                onlineService.localPlayer?.name
+                  ? 1
+                  : 0;
+            }
+            return {
+              name: p.name,
+              id: p.id,
+              score: stats ? stats.score : isLocal ? localScore : 0,
+              time: stats
+                ? stats.time
+                : isLocal
+                  ? stateRef.current.gameState.levelTime
+                  : 999,
+              deaths: stats
+                ? stats.deaths
+                : isLocal
+                  ? stateRef.current.gameState.levelDeaths
+                  : 0,
+            };
+          },
+        );
+        compiledResults.sort((a, b) => b.score - a.score || a.time - b.time);
+        onlineService.sendEvent("online_results", { results: compiledResults });
+        onlineService.finishGame(); 
+        setOnlineResults(compiledResults);
+        setGameState((p) => ({
+          ...p,
+          status: "online_summary",
+          previousStatus: p.status,
+        }));
+        setOnlineFinishTimer(null);
+      }
+    } else {
+      // Local VS Mode Fallback
+      const compiledResults = [...finalResults];
+      const p1Finished = compiledResults.find((r) => r.name === "P1");
+      const p2Finished = compiledResults.find((r) => r.name === "P2");
+      if (!p1Finished)
+        compiledResults.push({
+          id: "P1",
+          name: "P1",
+          score: 0,
+          time: 999,
+          deaths: 0,
+        });
+      if (!p2Finished)
+        compiledResults.push({
+          id: "P2",
+          name: "P2",
+          score: 0,
+          time: 999,
+          deaths: 0,
+        });
+      compiledResults.sort((a, b) => a.time - b.time);
+      setOnlineResults(compiledResults);
+      setGameState((p) => ({
+        ...p,
+        status: "online_summary",
+        previousStatus: p.status,
+      }));
+      setOnlineFinishTimer(null);
+    }
+  }, [onlineService]);
+
   // Online Finish Timer
   useEffect(() => {
     if (onlineFinishTimer === null) return;
     if (onlineFinishTimer <= 0) {
-      if (
-        stateRef.current.gameState.status === "online_lobby" ||
-        stateRef.current.gameState.status === "menu" ||
-        stateRef.current.gameState.status === "online_menu"
-      ) {
-        setOnlineFinishTimer(null);
-        return;
-      }
-      if (onlineService.lobbyCode) {
-        if (onlineService.isHost) {
-          // Only broadcast if we are actually playing and transitioning to summary
-          const currentStatus = stateRef.current.gameState.status;
-          const isGameSession = currentStatus === "vs_playing" || currentStatus === "brawler_playing" || currentStatus === "playing";
-          if (!isGameSession) {
-             setOnlineFinishTimer(null);
-             return;
-          }
-
-          // Compile results and broadcast
-          const results = Array.from(onlineService.players.values()).map(
-            (p) => {
-              const stats = onlineResults.find((r) => r.id === p.id);
-              const isLocal = p.id === onlineService.localPlayer?.id;
-              let localScore = stateRef.current.gameState.score;
-              if (
-                stateRef.current.gameState.status === "brawler_playing" &&
-                isLocal
-              ) {
-                localScore =
-                  stateRef.current.gameState.winner ===
-                  onlineService.localPlayer?.name
-                    ? 1
-                    : 0;
-              }
-              return {
-                name: p.name,
-                id: p.id,
-                score: stats ? stats.score : isLocal ? localScore : 0,
-                time: stats
-                  ? stats.time
-                  : isLocal
-                    ? stateRef.current.gameState.levelTime
-                    : 999,
-                deaths: stats
-                  ? stats.deaths
-                  : isLocal
-                    ? stateRef.current.gameState.levelDeaths
-                    : 0,
-              };
-            },
-          );
-          // Sort by score desc, then time asc
-          results.sort((a, b) => b.score - a.score || a.time - b.time);
-          onlineService.sendEvent("online_results", { results });
-          onlineService.finishGame(); // Set room status to summary
-          setOnlineResults(results);
-          // Result Screen transition disabled as per user request
-          setOnlineFinishTimer(null);
-        }
-      } else {
-        // Local VS Mode
-        setOnlineResults((prev) => {
-          const results = [...prev];
-          const p1Finished = results.find((r) => r.name === "P1");
-          const p2Finished = results.find((r) => r.name === "P2");
-          if (!p1Finished)
-            results.push({
-              id: "P1",
-              name: "P1",
-              score: 0,
-              time: 999,
-              deaths: 0,
-            });
-          if (!p2Finished)
-            results.push({
-              id: "P2",
-              name: "P2",
-              score: 0,
-              time: 999,
-              deaths: 0,
-            });
-          results.sort((a, b) => a.time - b.time);
-          return results;
-        });
-        
-        // Result Screen transition disabled as per user request
-        setOnlineFinishTimer(null);
-      }
+      finalizeMatch(onlineResults);
       return;
     }
 
@@ -4224,7 +4242,7 @@ const App: React.FC = () => {
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [onlineFinishTimer, onlineResults]);
+  }, [onlineFinishTimer, onlineResults, finalizeMatch]);
 
   const calculateLevelScore = (timeTaken: number, deaths: number) => {
     let s = 1000;
@@ -4360,10 +4378,13 @@ const App: React.FC = () => {
           
           if (isLocalFinish) {
             const playerName = isLocalName || "Unknown";
+            const levelPoints = calculateLevelScore(finalTime, livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths);
             const myStats = {
               id: onlineService.localPlayer?.id,
               name: playerName,
-              score: (winnerName && winnerName !== "DRAW" && winnerName !== "GAVE UP") ? 1 : 0,
+              score: gameState.status === "brawler_playing" 
+                ? ((winnerName && winnerName !== "DRAW" && winnerName !== "GAVE UP") ? 1 : 0)
+                : levelPoints,
               time: finalTime,
               deaths: livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths,
             };
@@ -4381,14 +4402,17 @@ const App: React.FC = () => {
                 const isOnlineRoom = !!onlineService.lobbyCode;
                 const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
                 
-                // Defensively calculate total players
-                let totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
-                if (isMultiSession && totalPlayersCount < 2) {
-                  totalPlayersCount = 2; // Safeguard
+                // Calculate total players expected to finish
+                let totalPlayersCount = 1;
+                if (isOnlineRoom) {
+                  totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+                } else if (status === "vs_playing" || status === "brawler_playing") {
+                  totalPlayersCount = 2; // Local VS/Brawler
                 }
                 
                 if (newResults.length >= totalPlayersCount) {
-                  setOnlineFinishTimer(0);
+                  setOnlineFinishTimer(null);
+                  setTimeout(() => finalizeMatch(newResults), 0);
                 } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
@@ -4425,20 +4449,25 @@ const App: React.FC = () => {
           
           setOnlineResults((prev) => {
             if (prev.find((r) => r.name === winnerName)) return prev;
+            const deaths = livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
+            const points = calculateLevelScore(finalTime, deaths);
             const newResults = [
               ...prev,
               {
                 id: winnerName,
                 name: winnerName,
-                score: 0,
+                score: points,
                 time: finalTime,
-                deaths: livesStats && winnerName ? livesStats[winnerName] || 0 : 0,
+                deaths: deaths,
               },
             ];
             if (newResults.length >= 2) {
               setOnlineFinishTimer(null);
-              // Result Screen transition disabled as per user request
-              // We go back to local menu or just stay in-game
+              setGameState((p) => ({
+                ...p,
+                status: "online_summary",
+                previousStatus: p.status,
+              }));
             } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled !== false) {
               setOnlineFinishTimer(20);
             }
@@ -4479,8 +4508,12 @@ const App: React.FC = () => {
         results.sort((a, b) => b.score - a.score || a.time - b.time);
         setOnlineResults(results);
 
-        // Result Screen transition disabled as per user request
-        setGameState((p) => ({ ...p, status: "online_lobby" }));
+        setGameState((p) => ({
+          ...p,
+          status: "online_summary",
+          previousStatus: "brawler_playing",
+          onlineWins: newWins,
+        }));
         if (isWinner) {
           checkAchievements({ onlineWins: newWins });
         }
@@ -7412,27 +7445,60 @@ const App: React.FC = () => {
             {/* Online Summary Screen */}
             {gameState.status === "online_summary" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
-                <h2 className="text-4xl text-cyan-400 font-arcade mb-8 tracking-widest">
-                  GAME RESULTS
+                <h2 className="text-4xl text-cyan-400 font-arcade mb-2 tracking-widest">
+                  {t.gameResults || "SPIEL-ERGEBNISSE"}
                 </h2>
+
+                {/* Podium / Träppchen */}
+                {onlineResults.length > 0 && (
+                  <div className="flex items-end justify-center gap-4 mb-8 mt-4 h-40">
+                     {/* 2nd Place */}
+                     {onlineResults[1] && (
+                        <div className="flex flex-col items-center">
+                           <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">{onlineResults[1].name}</div>
+                           <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: "60px" }}
+                              className="w-16 bg-neutral-600 border-x-2 border-t-2 border-neutral-500 flex items-center justify-center font-arcade text-white text-xl"
+                           >2</motion.div>
+                        </div>
+                     )}
+                     {/* 1st Place */}
+                     {onlineResults[0] && (
+                        <div className="flex flex-col items-center">
+                           <div className="text-xs text-yellow-400 font-bold mb-1 truncate max-w-[100px]">{onlineResults[0].name}</div>
+                           <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: "90px" }}
+                              transition={{ delay: 0.2 }}
+                              className="w-20 bg-yellow-600 border-x-2 border-t-2 border-yellow-500 flex items-center justify-center font-arcade text-white text-2xl shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                           >1</motion.div>
+                        </div>
+                     )}
+                     {/* 3rd Place */}
+                     {onlineResults[2] && (
+                        <div className="flex flex-col items-center">
+                           <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">{onlineResults[2].name}</div>
+                           <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: "40px" }}
+                              transition={{ delay: 0.4 }}
+                              className="w-16 bg-orange-800 border-x-2 border-t-2 border-orange-700 flex items-center justify-center font-arcade text-white text-lg"
+                           >3</motion.div>
+                        </div>
+                     )}
+                  </div>
+                )}
 
                 <div className="w-full max-w-2xl bg-neutral-900 border-2 border-neutral-700 p-6 rounded-lg shadow-2xl custom-scrollbar overflow-y-auto max-h-[70vh]">
                   <table className="w-full text-left font-mono">
                     <thead>
                       <tr className="text-neutral-500 border-b border-neutral-800 text-xs">
-                        <th className="pb-2">RANK</th>
-                        <th className="pb-2">PLAYER</th>
-                        {gameState.previousStatus === "brawler_playing" && (
-                          <th className="pb-2">SCORE</th>
-                        )}
-                        {gameState.previousStatus !== "brawler_playing" && (
-                          <th className="pb-2">TIME</th>
-                        )}
-                        <th className="pb-2">
-                          {gameState.previousStatus === "brawler_playing"
-                            ? "LEBEN"
-                            : "DEATHS"}
-                        </th>
+                        <th className="pb-2">PLATZ</th>
+                        <th className="pb-2">SPIELER</th>
+                        <th className="pb-2">ZEIT</th>
+                        <th className="pb-2">TODE</th>
+                        <th className="pb-2">PUNKTE</th>
                       </tr>
                     </thead>
                     <tbody className="text-sm">
@@ -7447,18 +7513,16 @@ const App: React.FC = () => {
                           <td className="py-3 font-bold text-white">
                             {res.name}{" "}
                             {res.id === onlineService.localPlayer?.id
-                              ? "(YOU)"
+                              ? "(DU)"
                               : ""}
                           </td>
-                          {gameState.previousStatus === "brawler_playing" && (
-                            <td className="py-3 text-green-400">{res.score}</td>
-                          )}
-                          {gameState.previousStatus !== "brawler_playing" && (
-                            <td className="py-3 text-cyan-300">
-                              {res.time === 999 ? "-" : `${res.time}s`}
-                            </td>
-                          )}
+                          <td className="py-3 text-cyan-300">
+                            {res.time === 999 ? "-" : `${res.time}s`}
+                          </td>
                           <td className="py-3 text-red-500">{res.deaths}</td>
+                          <td className="py-3 text-green-400">
+                             {res.score}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
