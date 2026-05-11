@@ -4062,15 +4062,24 @@ const App: React.FC = () => {
             const newResults = [...prev, data];
             
             // Get total players from accurate count
-            const isMulti = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
-            const minExpected = isMulti ? 2 : 1;
-            const totalPlayersCount = Math.max(minExpected, onlineService.players.size || stateRef.current.onlinePlayersCount || 0);
+            const roomPlayers = onlineService.players.size;
+            const status = stateRef.current.gameState.status;
+            const isOnlineRoom = !!onlineService.lobbyCode;
+            const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
+            
+            // Defensively calculate total players
+            // If in an online room, we expect at least the number of players current in that room.
+            // If it's a vs/brawler mode, we expect at least 2.
+            let totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+            if (isMultiSession && totalPlayersCount < 2) {
+              totalPlayersCount = 2; // Safeguard: online rooms or vs/brawler modes are multi-player
+            }
             
             // Check for early finish if everyone is done
             if (newResults.length >= totalPlayersCount) {
               setOnlineFinishTimer(0);
-            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
-              // First person finished, start 20s grace period timer
+            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
+              // First person finished, start grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
             }
@@ -4135,7 +4144,8 @@ const App: React.FC = () => {
         if (onlineService.isHost) {
           // Only broadcast if we are actually playing and transitioning to summary
           const currentStatus = stateRef.current.gameState.status;
-          if (currentStatus !== "vs_playing" && currentStatus !== "brawler_playing") {
+          const isGameSession = currentStatus === "vs_playing" || currentStatus === "brawler_playing" || currentStatus === "playing";
+          if (!isGameSession) {
              setOnlineFinishTimer(null);
              return;
           }
@@ -4378,13 +4388,20 @@ const App: React.FC = () => {
                 const newResults = [...prev, myStats];
                 
                 // Get total players from accurate count
-                const isMulti = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing";
-                const minExpected = isMulti ? 2 : 1;
-                const totalPlayersCount = Math.max(minExpected, onlineService.players.size || stateRef.current.onlinePlayersCount || 0);
+                const roomPlayers = onlineService.players.size;
+                const status = stateRef.current.gameState.status;
+                const isOnlineRoom = !!onlineService.lobbyCode;
+                const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
+                
+                // Defensively calculate total players
+                let totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+                if (isMultiSession && totalPlayersCount < 2) {
+                  totalPlayersCount = 2; // Safeguard
+                }
                 
                 if (newResults.length >= totalPlayersCount) {
                   setOnlineFinishTimer(0);
-                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false) {
+                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled !== false && isMultiSession) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
