@@ -4072,9 +4072,9 @@ const App: React.FC = () => {
             const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
             
             // Calculate total players expected to finish
-            let totalPlayersCount = 1;
+            let totalPlayersCount = 2; // Force at least 2 for multiplayer
             if (isOnlineRoom) {
-              totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+              totalPlayersCount = Math.max(2, roomPlayers, stateRef.current.onlinePlayersCount || 0);
             } else if (status === "vs_playing" || status === "brawler_playing") {
               totalPlayersCount = 2; // Local VS/Brawler
             }
@@ -4403,9 +4403,9 @@ const App: React.FC = () => {
                 const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
                 
                 // Calculate total players expected to finish
-                let totalPlayersCount = 1;
+                let totalPlayersCount = 2; // Force at least 2 for multiplayer 
                 if (isOnlineRoom) {
-                  totalPlayersCount = Math.max(1, roomPlayers, stateRef.current.onlinePlayersCount || 0);
+                  totalPlayersCount = Math.max(2, roomPlayers, stateRef.current.onlinePlayersCount || 0);
                 } else if (status === "vs_playing" || status === "brawler_playing") {
                   totalPlayersCount = 2; // Local VS/Brawler
                 }
