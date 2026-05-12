@@ -2023,8 +2023,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           }
         }
 
-        // Only set tool if enough distance
-        if (distance >= ringThreshold && toolsList.length > 0) {
+        // Only set tool if enough distance and more than one tool
+        if (distance >= ringThreshold && toolsList.length > 1) {
           setHoveredRadialTool(toolsList[toolIdx] as any);
         } else {
           setHoveredRadialTool(null);
@@ -2147,7 +2147,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
             {/* Render Tools for Active Category (Outer Ring) */}
             {activeRadialCategory !== null &&
-              currentCategories[activeRadialCategory].tools.length > 0 &&
+              currentCategories[activeRadialCategory].tools.length > 1 &&
               currentCategories[activeRadialCategory].tools.map((tId, idx, toolsList) => {
                 const catCenterAngle =
                   activeRadialCategory * ((Math.PI * 2) / currentCategories.length);
