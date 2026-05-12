@@ -120,6 +120,42 @@ const RADIAL_CATEGORIES = [
   },
 ];
 
+const BRAWLER_RADIAL_CATEGORIES = [
+  {
+    name: "Auswahl",
+    tools: ["select"],
+    color: "#ffffff",
+  },
+  {
+    name: "Werkzeuge",
+    tools: ["start", "startP2"],
+    color: "#ffffff",
+  },
+  {
+    name: "Radierer",
+    tools: ["eraser"],
+    color: "#ffffff",
+  },
+  {
+    name: "Blöcke",
+    tools: [
+      "wall",
+      "hazard",
+      "ice",
+      "trampoline",
+      "slime",
+      "gravity_reverse",
+      "gravity_zero",
+    ],
+    color: "#00ffff",
+  },
+  {
+    name: "Extras",
+    tools: ["block_dash", "block_shrink", "block_grow", "powerup_spawner"],
+    color: "#ffff00",
+  },
+];
+
 const HoldButton = ({ onClick, className, children }: any) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -1924,6 +1960,94 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       )
     : allTools.filter((t) => !["startP2", "powerup_spawner"].includes(t.id));
 
+  const currentCategories = isBrawler
+    ? BRAWLER_RADIAL_CATEGORIES
+    : RADIAL_CATEGORIES;
+
+  const handleMouseMoveRadial = (e: React.MouseEvent) => {
+    if (!radialMenuPos) return;
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    e.stopPropagation();
+    const dx = e.clientX - radialMenuPos.x;
+    const dy = e.clientY - radialMenuPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    let angle = Math.atan2(dy, dx);
+    if (angle < 0) angle += Math.PI * 2;
+    const centerThreshold = 70 * radialScale;
+    const ringThreshold = 230 * radialScale;
+
+    if (distance <= centerThreshold) {
+      setActiveRadialCategory(null);
+      setHoveredRadialTool(null);
+    } else {
+      let catIndex = activeRadialCategory;
+      if (distance < ringThreshold && !hoveredRadialTool) {
+        const normalizedAngle =
+          (angle + Math.PI / currentCategories.length) % (Math.PI * 2);
+        catIndex = Math.floor(
+          normalizedAngle / ((Math.PI * 2) / currentCategories.length),
+        );
+        setActiveRadialCategory(catIndex);
+        setHoveredRadialTool(null);
+      } else {
+        if (catIndex === null) {
+          const normalizedAngle =
+            (angle + Math.PI / currentCategories.length) % (Math.PI * 2);
+          catIndex = Math.floor(
+            normalizedAngle / ((Math.PI * 2) / currentCategories.length),
+          );
+          setActiveRadialCategory(catIndex);
+        }
+        const toolsList = currentCategories[catIndex].tools;
+        const catCenterAngle =
+          catIndex * ((Math.PI * 2) / currentCategories.length);
+        let relAngle = angle - catCenterAngle;
+        if (relAngle > Math.PI) relAngle -= Math.PI * 2;
+        if (relAngle < -Math.PI) relAngle += Math.PI * 2;
+
+        const spread = Math.PI * 0.8;
+        const startAngle = -spread / 2;
+        const endAngle = spread / 2;
+
+        let toolIdx = 0;
+        if (toolsList.length > 0) {
+          if (relAngle <= startAngle) {
+            toolIdx = 0;
+          } else if (relAngle >= endAngle) {
+            toolIdx = toolsList.length - 1;
+          } else {
+            const percent = (relAngle - startAngle) / spread;
+            toolIdx = Math.floor(percent * toolsList.length);
+            toolIdx = Math.max(0, Math.min(toolsList.length - 1, toolIdx));
+          }
+        }
+
+        // Only set tool if enough distance
+        if (distance >= ringThreshold && toolsList.length > 0) {
+          setHoveredRadialTool(toolsList[toolIdx] as any);
+        } else {
+          setHoveredRadialTool(null);
+        }
+      }
+    }
+  };
+
+  const handleMouseUpRadial = (e: React.MouseEvent) => {
+    if (e.button === 2 || e.button === 0) {
+      if (hoveredRadialTool) {
+        setSelectedTool(hoveredRadialTool as any);
+      } else if (activeRadialCategory !== null) {
+        const toolsList = currentCategories[activeRadialCategory].tools;
+        if (toolsList.length === 1) {
+          setSelectedTool(toolsList[0] as any);
+        }
+      }
+      setRadialMenuPos(null);
+      setHoveredRadialTool(null);
+    }
+  };
+
   const modalText = {
     // Changed title slightly to reflect that it's a general confirmation now, though maintaining original style
     title:
@@ -1972,96 +2096,25 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
         <div
           className="fixed inset-0 z-[100]"
           onContextMenu={(e) => e.preventDefault()}
-          onMouseUp={(e) => {
-            if (e.button === 2 || e.button === 0) {
-              if (hoveredRadialTool) {
-                setSelectedTool(hoveredRadialTool as any);
-              } else if (activeRadialCategory !== null) {
-                const toolsList = RADIAL_CATEGORIES[activeRadialCategory].tools;
-                if (toolsList.length === 1) {
-                  setSelectedTool(toolsList[0] as any);
-                }
-              }
-              setRadialMenuPos(null);
-              setHoveredRadialTool(null);
-            }
-          }}
-          onMouseMove={(e) => {
-            mousePosRef.current = { x: e.clientX, y: e.clientY };
-            e.stopPropagation();
-            const dx = e.clientX - radialMenuPos.x;
-            const dy = e.clientY - radialMenuPos.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            let angle = Math.atan2(dy, dx);
-            if (angle < 0) angle += Math.PI * 2;
-            const centerThreshold = 70 * radialScale;
-            const ringThreshold = 230 * radialScale;
-
-            if (distance <= centerThreshold) {
-              setActiveRadialCategory(null);
-              setHoveredRadialTool(null);
-            } else {
-              let catIndex = activeRadialCategory;
-              if (distance < ringThreshold && !hoveredRadialTool) {
-                const normalizedAngle = (angle + Math.PI / RADIAL_CATEGORIES.length) % (Math.PI * 2);
-                catIndex = Math.floor(normalizedAngle / ((Math.PI * 2) / RADIAL_CATEGORIES.length));
-                setActiveRadialCategory(catIndex);
-                setHoveredRadialTool(null);
-              } else {
-                if (catIndex === null) {
-                  const normalizedAngle = (angle + Math.PI / RADIAL_CATEGORIES.length) % (Math.PI * 2);
-                  catIndex = Math.floor(normalizedAngle / ((Math.PI * 2) / RADIAL_CATEGORIES.length));
-                  setActiveRadialCategory(catIndex);
-                }
-                const toolsList = RADIAL_CATEGORIES[catIndex].tools;
-                const catCenterAngle = catIndex * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
-                let relAngle = angle - catCenterAngle;
-                if (relAngle > Math.PI) relAngle -= Math.PI * 2;
-                if (relAngle < -Math.PI) relAngle += Math.PI * 2;
- 
-                const spread = Math.PI * 0.8;
-                const startAngle = -spread / 2;
-                const endAngle = spread / 2;
- 
-                let toolIdx = 0;
-                if (relAngle <= startAngle) {
-                  toolIdx = 0;
-                } else if (relAngle >= endAngle) {
-                  toolIdx = toolsList.length - 1;
-                } else {
-                  const percent = (relAngle - startAngle) / spread;
-                  toolIdx = Math.floor(percent * toolsList.length);
-                  toolIdx = Math.max(
-                    0,
-                    Math.min(toolsList.length - 1, toolIdx),
-                  );
-                }
-                
-                // Only set tool if enough distance
-                if (distance >= ringThreshold) {
-                   setHoveredRadialTool(toolsList[toolIdx] as any);
-                } else {
-                   setHoveredRadialTool(null);
-                }
-              }
-            }
-          }}
+          onMouseUp={handleMouseUpRadial}
+          onMouseMove={handleMouseMoveRadial}
         >
           <div
             className="absolute transition-opacity duration-200"
             style={{ left: radialMenuPos.x, top: radialMenuPos.y, opacity: 1 }}
           >
             {/* Render Categories (Inner Ring) */}
-            {RADIAL_CATEGORIES.map((cat, idx) => {
-              const angle = idx * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
+            {currentCategories.map((cat, idx) => {
+              const angle = idx * ((Math.PI * 2) / currentCategories.length);
               const radius = 150 * radialScale;
               const tx = Math.cos(angle) * radius;
               const ty = Math.sin(angle) * radius;
               const isHovered = activeRadialCategory === idx;
               const baseSize = 140 * radialScale;
 
-              let catName = t.radialCategories?.[cat.name as keyof typeof t.radialCategories] || cat.name;
+              let catName =
+                t.radialCategories?.[cat.name as keyof typeof t.radialCategories] ||
+                cat.name;
 
               return (
                 <div
@@ -2094,59 +2147,62 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
             {/* Render Tools for Active Category (Outer Ring) */}
             {activeRadialCategory !== null &&
-              RADIAL_CATEGORIES[activeRadialCategory].tools.length > 1 &&
-              RADIAL_CATEGORIES[activeRadialCategory].tools.map(
-                (tId, idx, toolsList) => {
-                  const catCenterAngle = activeRadialCategory * ((Math.PI * 2) / RADIAL_CATEGORIES.length);
-                  const spread = Math.PI * 0.8;
-                  const startAngle = catCenterAngle - spread / 2;
-                  const angleOffset = spread / toolsList.length;
-                  const angle = startAngle + (idx + 0.5) * angleOffset;
+              currentCategories[activeRadialCategory].tools.length > 0 &&
+              currentCategories[activeRadialCategory].tools.map((tId, idx, toolsList) => {
+                const catCenterAngle =
+                  activeRadialCategory * ((Math.PI * 2) / currentCategories.length);
+                const spread = Math.PI * 0.8;
+                const startAngle = catCenterAngle - spread / 2;
+                const angleOffset = spread / toolsList.length;
+                const angle = startAngle + (idx + 0.5) * angleOffset;
 
-                  const radius = 350 * radialScale;
-                  const tx = Math.cos(angle) * radius;
-                  const ty = Math.sin(angle) * radius;
-                  const tool = allTools.find((t) => t.id === tId);
-                  const isHovered = hoveredRadialTool === tId;
-                  const toolSize = 110 * radialScale;
+                const radius = 350 * radialScale;
+                const tx = Math.cos(angle) * radius;
+                const ty = Math.sin(angle) * radius;
+                const tool = allTools.find((t) => t.id === tId);
+                const isHovered = hoveredRadialTool === tId;
+                const toolSize = 110 * radialScale;
 
-                  const displayValue = t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || "";
+                const displayValue =
+                  t.blockNames?.[tId as keyof typeof t.blockNames] ||
+                  tool?.label.split(" (")[0] ||
+                  "";
 
-                  return (
-                    <div
-                      key={tId}
-                      title={t.blockNames?.[tId as keyof typeof t.blockNames] || tool?.label.split(" (")[0]}
-                      className={`absolute z-10 flex items-center justify-center rounded-full font-bold transition-all p-2 text-center
+                return (
+                  <div
+                    key={tId}
+                    title={
+                      t.blockNames?.[tId as keyof typeof t.blockNames] ||
+                      tool?.label.split(" (")[0]
+                    }
+                    className={`absolute z-10 flex items-center justify-center rounded-full font-bold transition-all p-2 text-center
                           ${isHovered ? "z-30 border-2 border-white bg-neutral-700 text-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" : "z-10 border border-neutral-600 bg-neutral-900 opacity-90 text-neutral-400"}`}
-                      style={{
-                        width: `${toolSize}px`,
-                        height: `${toolSize}px`,
-                        marginLeft: `-${toolSize / 2}px`,
-                        marginTop: `-${toolSize / 2}px`,
-                        transform: `translate(${tx}px, ${ty}px) scale(${isHovered ? 1.25 : 1})`,
-                        fontFamily: "'Press Start 2P', cursive",
-                        fontSize: `${9 * radialScale}px`,
-                        lineHeight: "1.2",
-                        backgroundColor:
-                          isHovered && tool && tool.color
-                            ? tool.color
-                            : undefined,
-                        color:
-                          isHovered &&
-                          tool &&
-                          tool.color &&
-                          ["#ffff00", "#00ff88", "#00ffff", "#ffffff"].includes(
-                            tool.color.toLowerCase(),
-                          )
-                            ? "#000"
-                            : undefined,
-                      }}
-                    >
-                      {displayValue.toUpperCase()}
-                    </div>
-                  );
-                },
-              )}
+                    style={{
+                      width: `${toolSize}px`,
+                      height: `${toolSize}px`,
+                      marginLeft: `-${toolSize / 2}px`,
+                      marginTop: `-${toolSize / 2}px`,
+                      transform: `translate(${tx}px, ${ty}px) scale(${isHovered ? 1.25 : 1})`,
+                      fontFamily: "'Press Start 2P', cursive",
+                      fontSize: `${9 * radialScale}px`,
+                      lineHeight: "1.2",
+                      backgroundColor:
+                        isHovered && tool && tool.color ? tool.color : undefined,
+                      color:
+                        isHovered &&
+                        tool &&
+                        tool.color &&
+                        ["#ffff00", "#00ff88", "#00ffff", "#ffffff"].includes(
+                          tool.color.toLowerCase(),
+                        )
+                          ? "#000"
+                          : undefined,
+                    }}
+                  >
+                    {displayValue.toUpperCase()}
+                  </div>
+                );
+              })}
             {/* Center Dot Area */}
             {(() => {
               let displayLabel = "";
@@ -2154,18 +2210,23 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
               if (hoveredRadialTool) {
                 const tool = allTools.find((t) => t.id === hoveredRadialTool);
-                displayLabel = t.blockNames?.[hoveredRadialTool as keyof typeof t.blockNames] || tool?.label.split(" (")[0] || hoveredRadialTool;
+                displayLabel =
+                  t.blockNames?.[hoveredRadialTool as keyof typeof t.blockNames] ||
+                  tool?.label.split(" (")[0] ||
+                  hoveredRadialTool;
                 displayColor = tool?.color || "#fff";
               } else if (activeRadialCategory !== null) {
-                const cat = RADIAL_CATEGORIES[activeRadialCategory];
-                displayLabel = t.radialCategories?.[cat.name as keyof typeof t.radialCategories] || cat.name;
+                const cat = currentCategories[activeRadialCategory];
+                displayLabel =
+                  t.radialCategories?.[cat.name as keyof typeof t.radialCategories] ||
+                  cat.name;
                 displayColor = cat.color;
               }
 
               const centerSize = 128 * radialScale;
- 
+
               return (
-                <div 
+                <div
                   className="absolute z-50 flex items-center justify-center rounded-full border-2 border-neutral-600 bg-[#0a0a0a] pointer-events-none shadow-[0_0_20px_rgba(0,0,0,1)]"
                   style={{
                     width: `${centerSize}px`,
@@ -2175,19 +2236,19 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                   }}
                 >
                   {displayLabel ? (
-                    <span 
+                    <span
                       className="break-words px-2 text-center font-bold leading-normal tracking-tighter"
-                      style={{ 
-                        color: displayColor, 
+                      style={{
+                        color: displayColor,
                         fontFamily: "'Press Start 2P', cursive",
                         fontSize: `${16 * radialScale}px`,
-                        textShadow: "0 0 5px rgba(0,0,0,0.5)"
+                        textShadow: "0 0 5px rgba(0,0,0,0.5)",
                       }}
                     >
                       {displayLabel.toUpperCase()}
                     </span>
                   ) : (
-                    <div 
+                    <div
                       className="rounded-full bg-neutral-700 shadow-inner"
                       style={{
                         width: `${16 * radialScale}px`,
@@ -2230,23 +2291,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
           <div className="h-9 flex items-center gap-2 bg-black border border-neutral-700 px-3 rounded-sm">
             <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">TYPE:</span>
-            <select
-              value={isBrawler ? "brawler" : "normal"}
-              onChange={(e) => {
-                const b = e.target.value === "brawler";
-                setIsBrawler(b);
-                setHasChanged(true);
-                setSelectedTool("wall");
-                if (b) {
-                  setLevelWidth(GAME_WIDTH);
-                  setLevelHeight(GAME_HEIGHT);
-                }
-              }}
-              className="bg-transparent text-cyan-400 text-[10px] font-bold font-arcade outline-none cursor-pointer"
-            >
-              <option value="normal">NORMAL</option>
-              <option value="brawler">BRAWLER</option>
-            </select>
+            <span className="text-cyan-400 text-[10px] font-bold font-arcade uppercase">
+              {isBrawler ? (t.editorTypeBrawler || "BRAWLER ARENA") : (t.editorTypeNormal || "NORMAL LEVEL")}
+            </span>
           </div>
 
           {!isBrawler && (

@@ -21,6 +21,7 @@ import {
   BrawlerTeamMode,
   BrawlerHazardMode,
   Achievement,
+  Status,
 } from "./types";
 import {
   INITIAL_LEVELS,
@@ -32,6 +33,8 @@ import {
   ACHIEVEMENTS_LIST,
   STANDARD_EMOJIS,
   SPECIAL_EMOJIS,
+  GAME_WIDTH,
+  GAME_HEIGHT,
 } from "./constants";
 import { audio } from "./services/audioService";
 import {
@@ -2179,6 +2182,24 @@ const App: React.FC = () => {
     });
   };
 
+  const startNewEditor = (isBrawler: boolean) => {
+    setEditorData({
+      id: `custom_${Date.now()}`,
+      name: "New Level",
+      start: { x: 50, y: 450 },
+      startP2: isBrawler ? { x: GAME_WIDTH - 70, y: 450 } : undefined,
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      entities: [],
+      isCustom: true,
+      isBrawler: isBrawler,
+      isVerified: false
+    });
+    setEditorHistory(null);
+    setEditorVerified(false);
+    setGameState((p) => ({ ...p, status: "editor" }));
+  };
+
   const handleEditLevel = (levelToEdit: LevelData) => {
     setEditorData(levelToEdit);
     setEditorHistory(null);
@@ -2427,7 +2448,11 @@ const App: React.FC = () => {
     setOnlineResults([]);
     setOnlineFinishTimer(null);
     stateRef.current.onlineResults = [];
+    stateRef.current.onlineFinishTimer = null;
     setCurrentVote(null);
+    
+    // Reset winner
+    setGameState(prev => ({ ...prev, winner: null }));
 
     setGameState((prev) => {
       let nextStatus: GameState["status"] = "playing";
@@ -5030,6 +5055,71 @@ const App: React.FC = () => {
           <div 
              className="aspect-video h-full w-full max-w-full max-h-full bg-black shadow-[0_0_50px_rgba(255,0,68,0.2)] border-4 border-neutral-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center"
           >
+            {/* Editor Type Select */}
+            {gameState.status === "editor_type_select" && (
+              <div className="flex flex-col items-center justify-center gap-12 w-full p-8">
+                <div className="flex flex-col items-center gap-4">
+                  <h2 className="text-4xl text-white font-arcade tracking-widest text-center">
+                    {t.editorTypeTitle}
+                  </h2>
+                  <div className="h-1 w-24 bg-cyan-500 rounded-full" />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+                  {/* Normal Level Option */}
+                  <button
+                    onClick={() => startNewEditor(false)}
+                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-cyan-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                      🚩
+                    </div>
+                    <div>
+                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-cyan-400">
+                        {t.editorTypeNormal}
+                      </h3>
+                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                        {t.editorTypeNormalDesc}
+                      </p>
+                    </div>
+                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-cyan-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                      Select
+                    </div>
+                  </button>
+
+                  {/* Brawler Level Option */}
+                  <button
+                    onClick={() => startNewEditor(true)}
+                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-red-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-red-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                      ⚔️
+                    </div>
+                    <div>
+                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-red-400">
+                        {t.editorTypeBrawler}
+                      </h3>
+                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                        {t.editorTypeBrawlerDesc}
+                      </p>
+                    </div>
+                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-red-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                      Select
+                    </div>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setGameState(p => ({ ...p, status: "menu" }))}
+                  className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
+                >
+                  ← {t.back}
+                </button>
+              </div>
+            )}
+
             {/* Editor Layer */}
             {gameState.status === "editor" && (
               <LevelEditor
@@ -6301,10 +6391,7 @@ const App: React.FC = () => {
                         index={4}
                         label={t.editor}
                         onClick={() => {
-                          setEditorData(null);
-                          setEditorHistory(null);
-                          setEditorVerified(false);
-                          setGameState((p) => ({ ...p, status: "editor" }));
+                          setGameState((p) => ({ ...p, status: "editor_type_select" }));
                         }}
                         isSelected={menuSelection === 4}
                         onHover={setMenuSelection}
@@ -7313,13 +7400,29 @@ const App: React.FC = () => {
                     if (
                       (!onlineService.lobbyCode || onlineService.isHost) &&
                       gameState.customLevelsQueue &&
-                      gameState.currentLevelIndex <
-                        gameState.customLevelsQueue.length - 1
+                      gameState.customLevelsQueue.length > 1
                     ) {
-                      buttons.push({
-                        label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL SKIPPEN" : (t.nextLevelBtn || "NEXT LEVEL"),
-                        onClick: handleNextLevel,
-                      });
+                      if (gameState.currentLevelIndex < gameState.customLevelsQueue.length - 1) {
+                        buttons.push({
+                          label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL SKIPPEN" : (t.nextLevelBtn || "NEXT LEVEL"),
+                          onClick: handleNextLevel,
+                        });
+                      }
+                      
+                      if (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") {
+                        buttons.push({ 
+                          label: "LEVEL WIEDERHOLEN", 
+                          onClick: handleRetry 
+                        });
+                        
+                        buttons.push({
+                          label: "NEUSTART",
+                          onClick: () => {
+                            setGameState(p => ({ ...p, currentLevelIndex: 0 }));
+                            handleRetry();
+                          }
+                        });
+                      }
                     }
 
                     if (
@@ -7328,10 +7431,13 @@ const App: React.FC = () => {
                         gameState.previousStatus === "brawler_playing"
                       ) || !onlineService.lobbyCode
                     ) {
-                      buttons.push({ 
-                        label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL WIEDERHOLEN" : (t.retry || "RETRY"), 
-                        onClick: handleRetry 
-                      });
+                      // Only add standard RETRY if not already added by custom logic above
+                      if (!(gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing")) {
+                        buttons.push({ 
+                          label: t.retry || "RETRY", 
+                          onClick: handleRetry 
+                        });
+                      }
                     }
 
                     if (onlineService.lobbyCode) {
@@ -7363,16 +7469,29 @@ const App: React.FC = () => {
                           }
                         },
                       });
-                    } else if (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") {
-                      buttons.push({
-                        label: t.backToLobby,
-                        onClick: () => {
-                          setGameState((p) => ({
-                            ...p,
-                            status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup",
-                          }));
-                        },
-                      });
+                    } else {
+                      // Back to Lobby / Selection for local modes
+                      const isLocalMulti = gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing";
+                      const isStory = gameState.previousStatus === "playing" || gameState.previousStatus === "random_run";
+                      
+                      if (isLocalMulti || isStory) {
+                        buttons.push({
+                          label: t.backToLobby || "ZURÜCK ZUR LOBBY",
+                          onClick: () => {
+                            setGameState((p) => {
+                              let nextStatus: Status = "menu";
+                              if (p.previousStatus === "brawler_playing") nextStatus = "brawler_setup";
+                              else if (p.previousStatus === "vs_playing") nextStatus = "vs_setup";
+                              else if (p.previousStatus === "playing" || p.previousStatus === "random_run") nextStatus = "difficulty_select";
+                              
+                              return {
+                                ...p,
+                                status: nextStatus
+                              };
+                            });
+                          },
+                        });
+                      }
                     }
 
                     buttons.push({

@@ -5,6 +5,7 @@
 
 
 import { Language, LevelData, Achievement, Entity } from './types';
+import { decompressLevel } from './services/compressionService';
 
 // Physics
 export const GRAVITY = 0.9;
@@ -271,6 +272,11 @@ export const TRANSLATIONS = {
     sortDate: "DATE",
     sortName: "NAME",
     sortPlayed: "PLAYED",
+    editorTypeTitle: "CHOOSE EDITOR TYPE",
+    editorTypeNormal: "NORMAL LEVEL",
+    editorTypeBrawler: "BRAWLER ARENA",
+    editorTypeNormalDesc: "Classic objective-based levels. Focus on platforming and reaching the goal.",
+    editorTypeBrawlerDesc: "Arena-based combat levels. Focus on space, symmetry, and hazard placement.",
     draft: "DRAFT",
     lockedItem: "LOCKED: ",
     confirm: "SURE?",
@@ -569,11 +575,13 @@ export const TRANSLATIONS = {
     },
     radialCategories: {
       Normal: "NORMAL",
+      Blöcke: "BLOCKS",
       Schein: "FAKE-BLOCKS",
       Werkzeuge: "TOOLS",
       Powerup: "POWER",
       Extras: "EXTRA",
       Auswahl: "SELECT",
+      Radierer: "ERASER",
       Spezial: "SPECIAL"
     },
     kickPlayer: "KICK PLAYER",
@@ -807,6 +815,11 @@ export const TRANSLATIONS = {
     sortDate: "DATUM",
     sortName: "NAME",
     sortPlayed: "GESPIELT",
+    editorTypeTitle: "EDITORTYP WÄHLEN",
+    editorTypeNormal: "NORMALES LEVEL",
+    editorTypeBrawler: "BRAWLER ARENA",
+    editorTypeNormalDesc: "Klassische Level mit Ziel. Fokus auf Jump'n'Run und Geschicklichkeit.",
+    editorTypeBrawlerDesc: "Arena-basierte Kampf-Level. Fokus auf Platz, Symmetrie und Gefahren.",
     draft: "ENTWURF",
     lockedItem: "GESPERRT: ",
     confirm: "SICHER?",
@@ -1105,11 +1118,13 @@ export const TRANSLATIONS = {
     },
     radialCategories: {
       Normal: "NORMAL",
+      Blöcke: "BLÖCKE",
       Schein: "FAKE-BLÖCKE",
       Werkzeuge: "WERKZEUGE",
       Powerup: "POWERUP",
       Extras: "EXTRAS",
       Auswahl: "AUSWAHL",
+      Radierer: "RADIERER",
       Spezial: "SPEZIALBLÖCKE"
     },
     kickPlayer: "SPIELER KICKEN",
@@ -1334,6 +1349,11 @@ export const TRANSLATIONS = {
     sortDate: "FECHA",
     sortName: "NOMBRE",
     sortPlayed: "JUGADO",
+    editorTypeTitle: "ELEGIR TIPO DE EDITOR",
+    editorTypeNormal: "NIVEL NORMAL",
+    editorTypeBrawler: "ARENA BRAWLER",
+    editorTypeNormalDesc: "Niveles clásicos basados en objetivos. Enfoque en plataformas y llegar a la meta.",
+    editorTypeBrawlerDesc: "Niveles de combate basados en arena. Enfoque en el espacio, la simetría y la colocación de peligros.",
     draft: "BORRADOR",
     lockedItem: "BLOQUEADO: ",
     confirm: "¿SEGURO?",
@@ -1649,6 +1669,7 @@ export const TRANSLATIONS = {
     },
     radialCategories: {
       Normal: "NORMAL",
+      Blöcke: "BLOQUES",
       Schein: "FALSO",
       Werkzeuge: "HERRAM.",
       Powerup: "PODER",
@@ -6684,7 +6705,8 @@ export const EXPERT_LEVELS: LevelData[] = [
   "isBrawler": false,
   "isVerified": true
 },
-  ...generateLevelSequence(8, 'exp', 3)
+decompressLevel('{"v":1,"n":"Expert_Level_5","s":[695,485],"dim":[960,540],"e":[[1,0,510,30,30],[9,450,30,30,30],[9,450,60,30,30],[9,450,150,30,30],[9,450,180,30,30],[9,450,270,30,30],[9,450,390,30,30],[9,450,420,30,30],[9,450,450,30,30],[9,450,480,30,30],[9,450,360,30,30],[9,450,330,30,30],[9,450,300,30,30],[9,450,240,30,30],[9,450,210,30,30],[9,450,120,30,30],[9,450,90,30,30],[42,255,30,421,481,1,230,3,"",100],[9,30,0,30,30],[9,60,0,30,30],[1,90,0,30,30],[1,120,0,30,30],[1,150,0,30,30],[1,180,0,30,30],[1,210,0,30,30],[1,240,0,30,30],[1,270,0,30,30],[1,300,0,30,30],[1,330,0,30,30],[1,360,0,30,30],[1,390,0,30,30],[1,510,0,28,28],[1,540,0,30,30],[1,570,0,30,30],[1,600,0,30,30],[1,630,0,30,30],[1,660,0,30,30],[1,690,0,30,30],[1,720,0,30,30],[1,750,0,30,30],[1,780,0,30,30],[1,810,0,30,30],[1,840,0,30,30],[1,870,0,30,30],[1,900,0,30,30],[1,450,0,30,30],[1,420,0,30,30],[1,480,0,30,30],[9,0,0,30,30],[9,0,30,30,30],[1,0,60,30,30],[1,0,90,30,30],[1,0,120,30,30],[1,0,150,30,30],[1,0,180,30,30],[1,0,210,30,30],[1,0,240,30,30],[1,0,270,30,30],[1,0,300,30,30],[1,0,330,30,30],[1,0,360,30,30],[1,0,390,30,30],[1,0,420,30,30],[1,0,450,30,30],[1,0,480,30,30],[1,930,480,30,30],[1,930,450,30,30],[1,930,420,30,30],[1,930,390,30,30],[1,930,360,30,30],[1,930,330,30,30],[1,930,300,30,30],[1,930,270,30,30],[1,930,240,30,30],[1,930,210,30,30],[9,930,180,30,30],[9,930,150,30,30],[1,930,120,30,30],[1,930,90,30,30],[1,930,60,30,30],[1,930,30,30,30],[1,930,0,30,30],[18,600,360,30,30],[18,630,360,30,30],[15,510,120,30,30,0,100,20,"e_1777019236949_p2690o53q",100],[0,510,1,30,30],[0,870,210,30,30],[0,900,210,30,30],[1,511,0,28,28],[12,901,181,29,29],[5,875,185,20,20,0,100,20,"e_1777019507031_n6p8g8gvq",100],[12,31,31,29,29],[9,60,30,30,30],[9,60,60,30,30],[9,60,90,30,30],[9,60,120,30,30],[9,60,150,30,30],[15,30,90,30,30,0,100,20,"e_1777019554435_iy255lwit",100],[43,120,240,30,30],[2,240,30,38,17,1,150,14,"",100],[5,245,245,20,20,0,100,20,"e_1777019681009_pvy6kya0v",100],[1,90,150,30,30],[1,120,150,30,30],[1,150,150,30,30],[1,180,150,30,30],[1,210,150,30,30],[0,30,510,30,30],[0,90,510,30,30],[1,120,510,30,30],[0,150,510,30,30],[0,180,510,30,30],[0,210,510,30,30],[0,240,510,30,30],[0,270,510,30,30],[0,300,510,30,30],[0,330,510,30,30],[0,360,510,30,30],[0,390,510,30,30],[0,420,510,30,30],[0,450,510,30,30],[0,480,510,30,30],[0,510,510,30,30],[0,540,510,30,30],[0,570,510,30,30],[0,600,510,30,30],[0,630,510,30,30],[0,660,510,30,30],[0,690,510,30,30],[0,720,510,30,30],[0,750,510,30,30],[0,780,510,30,30],[0,810,510,30,30],[0,840,510,30,30],[0,870,510,30,30],[0,900,510,30,30],[0,930,510,30,30],[0,60,510,30,30],[1,120,330,30,30],[1,120,360,30,30],[1,120,390,30,30],[1,120,420,30,30],[1,120,450,30,30],[1,120,480,30,30],[44,210,240,30,30],[18,750,300,30,30],[18,780,300,30,30],[0,240,150,30,30]],"a":0,"sc":0,"ss":150,"ib":0}') as LevelData,
+  ...generateLevelSequence(7, 'exp', 4)
 ];
 
 // --- GOD (10 Levels) ---
