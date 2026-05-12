@@ -123,14 +123,19 @@ const RADIAL_CATEGORIES = [
 const HoldButton = ({ onClick, className, children }: any) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const onClickRef = useRef(onClick);
+
+  useEffect(() => {
+    onClickRef.current = onClick;
+  }, [onClick]);
 
   const startHold = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (e.button !== 0) return;
-    onClick();
+    onClickRef.current();
     timeoutRef.current = setTimeout(() => {
       intervalRef.current = setInterval(() => {
-        onClick();
+        onClickRef.current();
       }, 50);
     }, 400);
   };
