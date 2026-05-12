@@ -2034,7 +2034,7 @@ const App: React.FC = () => {
 
   // Sync Ref with State
   useEffect(() => {
-    stateRef.current = {
+    Object.assign(stateRef.current, {
       gameState,
       menuSelection,
       editingKey,
@@ -2052,7 +2052,8 @@ const App: React.FC = () => {
       showDeleteConfirm,
       brawlerPowerups,
       unlockEverything,
-    };
+      onlineResults,
+    });
   });
 
   useEffect(() => {
@@ -2422,6 +2423,12 @@ const App: React.FC = () => {
     // Strict Reset for current level context
     processedCoins.current.clear();
 
+    // Reset results for VS/Multi
+    setOnlineResults([]);
+    setOnlineFinishTimer(null);
+    stateRef.current.onlineResults = [];
+    setCurrentVote(null);
+
     setGameState((prev) => {
       let nextStatus: GameState["status"] = "playing";
       if (prev.customLevelsQueue) {
@@ -2437,6 +2444,9 @@ const App: React.FC = () => {
         status: nextStatus,
         levelTime: 0,
         levelDeaths: 0,
+        winner: null,
+        isSpectating: false,
+        spectateTargetId: undefined,
         // Reset score to what it was when level started (undo penalties/gains)
         score: prev.levelStartScore,
         collectedCoins: [], // Clear coins collected in this level
@@ -2489,6 +2499,7 @@ const App: React.FC = () => {
 
       setOnlineResults([]);
       setOnlineFinishTimer(null);
+      stateRef.current.onlineResults = [];
       setCurrentVote(null);
 
       if (onlineService.lobbyCode && onlineService.isHost) {
@@ -2532,6 +2543,9 @@ const App: React.FC = () => {
           customLevelsQueue: prev.customLevelsQueue || (onlineService.lobbyCode ? collection : null),
           levelTime: 0,
           levelDeaths: 0,
+          winner: null,
+          isSpectating: false,
+          spectateTargetId: undefined,
           blocksPlaced: 0,
           collectedCoins: [], // Clear coins
           // IMPORTANT: Snapshot total score at start of new level
@@ -3121,26 +3135,31 @@ const App: React.FC = () => {
       } // Quick Retry
 
       const buttonsCount =
-        1 +
+        1 + // Weiter
         ((!onlineService.lobbyCode || onlineService.isHost) &&
         gameState.customLevelsQueue &&
         gameState.currentLevelIndex < gameState.customLevelsQueue.length - 1
           ? 1
-          : 0) +
+          : 0) + // Nächstes Level
         (!(
           gameState.previousStatus === "vs_playing" ||
           gameState.previousStatus === "brawler_playing"
-        )
+        ) || !onlineService.lobbyCode
           ? 1
-          : 0) +
-        (onlineService.lobbyCode ? 2 : 0) + // Give Up and Lobby button
-        1; // Main Menu button
+          : 0) + // Wiederholen / Neustart
+        (onlineService.lobbyCode ? 2 : 0) + // Give Up & Lobby (Online)
+        (!onlineService.lobbyCode &&
+        (gameState.previousStatus === "vs_playing" ||
+          gameState.previousStatus === "brawler_playing")
+          ? 1
+          : 0) + // Lobby (Local)
+        1 + // Settings
+        1; // Main Menu
 
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
       if (e.code === "ArrowDown" || e.code === "KeyS")
         navDown(buttonsCount - 1);
       if (e.code === "Enter" || e.code === "Space") {
-        // We need to find which button was clicked based on index
         const buttons: any[] = [];
         buttons.push({
           action: () =>
@@ -3162,7 +3181,7 @@ const App: React.FC = () => {
           !(
             gameState.previousStatus === "vs_playing" ||
             gameState.previousStatus === "brawler_playing"
-          )
+          ) || !onlineService.lobbyCode
         ) {
           buttons.push({ action: handleRetry });
         }
@@ -3187,7 +3206,34 @@ const App: React.FC = () => {
               }
             },
           });
+        } else if (
+          gameState.previousStatus === "vs_playing" ||
+          gameState.previousStatus === "brawler_playing"
+        ) {
+          buttons.push({
+            action: () => {
+              setGameState((p) => ({
+                ...p,
+                status:
+                  p.previousStatus === "brawler_playing"
+                    ? "brawler_setup"
+                    : "vs_setup",
+              }));
+            },
+          });
         }
+
+        // Settings Button
+        buttons.push({
+          action: () => {
+            setGameState((p) => ({
+              ...p,
+              status: "settings",
+              previousStatus: "paused",
+            }));
+            setMenuSelection(0);
+          },
+        });
 
         buttons.push({
           action: () => {
@@ -7263,9 +7309,9 @@ const App: React.FC = () => {
                       !(
                         gameState.previousStatus === "vs_playing" ||
                         gameState.previousStatus === "brawler_playing"
-                      )
+                      ) || !onlineService.lobbyCode
                     ) {
-                      buttons.push({ label: t.retry, onClick: handleRetry });
+                      buttons.push({ label: t.retry || "RETRY", onClick: handleRetry });
                     }
 
                     if (onlineService.lobbyCode) {
@@ -7295,6 +7341,16 @@ const App: React.FC = () => {
                               status: "online_lobby",
                             }));
                           }
+                        },
+                      });
+                    } else if (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") {
+                      buttons.push({
+                        label: t.backToLobby,
+                        onClick: () => {
+                          setGameState((p) => ({
+                            ...p,
+                            status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup",
+                          }));
                         },
                       });
                     }
