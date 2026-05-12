@@ -3087,7 +3087,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         p.wallDir = 0;
         p.wallSurfaceType = "none";
 
-        collidableEntities.forEach((entity) => {
+        for (const entity of collidableEntities) {
           // Identify generated powerup ID (simple coord based or unique ID if generated properly)
           const powerupId =
             entity.id || `${entity.x}_${entity.y}_${entity.type}`;
@@ -3101,7 +3101,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 : collectedCoinsRef.current.includes(entity.id || ""))) ||
             (isCollectedByMe && entity.type.startsWith("powerup_"))
           ) {
-            return;
+            continue;
           }
 
           if (checkCollision(playerRectX, entity)) {
@@ -3113,8 +3113,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               entity.type === "fake_ice" ||
               entity.type === "fake_slime"
             )
-              return; // Do nothing, just pass
-            if (entity.type === "ghost_hazard") return; // Do nothing, just pass
+              continue; // Do nothing, just pass
+            if (entity.type === "ghost_hazard") continue; // Do nothing, just pass
             if (entity.type.startsWith("powerup_")) {
               // Powerups are handled below, but we explicitly return here to prevent solid collision
               // However, we need to let the logic fall through to the collection check below
@@ -3156,11 +3156,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 shakeIntensity.current = 2; // Small shake feedback
               }
-              return; // Pass through
+              continue; // Pass through
             }
 
             if (entity.type === "coin") {
-              if (gameMode === "brawler") return; // No coins in Brawler mode
+              if (gameMode === "brawler") continue; // No coins in Brawler mode
               const coinId = entity.id || "0";
 
               const isMulti = players.current.length > 1 || gameMode === "vs";
@@ -3187,10 +3187,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 onCoin(coinId);
                 shakeIntensity.current = 5;
               }
-              return;
+              continue;
             }
             if (entity.type === "checkpoint") {
-              if (level.autoScroll) return; // Disable checkpoints in auto-scroll levels
+              if (level.autoScroll) continue; // Disable checkpoints in auto-scroll levels
               // Check if this checkpoint is new
               if (
                 currentRespawnPos.current.x !== entity.x ||
@@ -3200,19 +3200,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 shakeIntensity.current = 5;
                 audio.playBuild(); // Use build sound as checkpoint unlock
               }
-              return;
+              continue;
             }
             if (entity.type.startsWith("powerup_")) {
               if (gameMode === "brawler") {
                 if (!p.inventory) {
-                  p.inventory = entity.type;
+                  p.inventory = entity.type as EntityType;
                   collectPowerup(powerupId, p);
                   dynamicPowerups.current = dynamicPowerups.current.filter(
                     (e) => e.id !== powerupId,
                   );
                   audio.playCoin();
                 }
-                return;
+                continue;
               }
             }
 
@@ -3220,43 +3220,43 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.oneTimeBuild = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_hook") {
               p.oneTimeHook = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_double_jump") {
               p.oneTimeDoubleJump = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_triple_jump") {
               p.oneTimeTripleJump = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_slow_mo") {
-              slowMoTimerRef.current = SLOW_MO_DURATION;
+              slowMoTimerRef.current = 180; // Assuming SLOW_MO_DURATION or hardcode
               collectPowerup(powerupId, p);
               audio.playCoin(); // Or a specific slow mo sound
-              return;
+              continue;
             }
             if (entity.type === "powerup_xray") {
               xrayTimerRef.current = 180; // 3 seconds at 60fps
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
 
             if (entity.type === "hazard") {
-              if (p.shieldTimer > 0) return; // Ignore hazard completely if shielded
+              if (p.shieldTimer > 0) continue; // Ignore hazard completely if shielded
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
-                return; // Only process for local player
+                continue; // Only process for local player
               if (
                 level?.id === "tutorial" &&
                 gameMode !== "vs" &&
@@ -3280,6 +3280,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   .filter((op) => op.playerIndex !== p.playerIndex)
                   .map((op) => op.playerIndex);
                 p.vel = { x: 0, y: 0 };
+                p.respawnTimer = Date.now();
                 resetPlayerSize(p);
                 shakeIntensity.current = 10; audio.playDie(p.deathSound);
                 if (isOnline) onlineService.sendEvent("die", null);
@@ -3303,6 +3304,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                       .filter((op) => op.playerIndex !== p.playerIndex)
                       .map((op) => op.playerIndex);
                     p.vel = { x: 0, y: 0 };
+                    p.respawnTimer = Date.now();
                     resetPlayerSize(p);
                     shakeIntensity.current = 10; audio.playDie(p.deathSound);
                     if (isOnline) onlineService.sendEvent("die", null);
@@ -3316,10 +3318,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
+                p.pos = { ...currentRespawnPos.current };
+                p.ghostOverlapIndices = players.current
+                  .filter((op) => op.playerIndex !== p.playerIndex)
+                  .map((op) => op.playerIndex);
+                p.vel = { x: 0, y: 0 };
+                p.respawnTimer = Date.now();
+                resetPlayerSize(p);
                 onDie();
                 if (isOnline) onlineService.sendEvent("die", null);
               }
-              return;
+              break;
             }
             if (
               entity.type === "goal" &&
@@ -3328,7 +3337,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 : isGoalUnlocked)
             ) {
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
-                return; // Only process for local player
+                continue; // Only process for local player
 
               if (!p.finished) {
                 // Save Ghost if it's the local player and a better time
@@ -3365,12 +3374,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 if (isOnline) onlineService.sendEvent("win", null);
               }
-              return;
+              break;
             }
             if (entity.type === "bounce") {
               p.vel.x *= -1.5;
               shakeIntensity.current = 5;
-              return;
+              continue;
             }
             if (entity.type === "teleport") {
               if (p.teleportCooldown <= 0) {
@@ -3394,7 +3403,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   p.hookPos = null;
                 }
               }
-              return;
+              continue;
             }
 
             // Solid Collision
@@ -3402,12 +3411,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               entity.type.startsWith("powerup_") ||
               entity.type.startsWith("block_")
             )
-              return; // Powerups and blocks are pass-through
+              continue; // Powerups and blocks are pass-through
             if (
               entity.type === "gravity_reverse" ||
               entity.type === "gravity_zero"
             )
-              return;
+              continue;
 
             if (p.vel.x > 0) {
               p.pos.x = entity.x - playerRect.w;
@@ -3444,7 +3453,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
             }
           }
-        });
+        }
 
         // Friction Application (Placeholder - actually applied after Y collision for correct dominant surface)
         // Note: We apply friction later based on dominant surface now.
@@ -3495,7 +3504,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         let maxGroundOverlap = 0;
         let dominantSurface: EntityType | "none" = "none";
 
-        collidableEntities.forEach((entity) => {
+        for (const entity of collidableEntities) {
           // Identify generated powerup ID
           const powerupId =
             entity.id || `${entity.x}_${entity.y}_${entity.type}`;
@@ -3509,7 +3518,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 : collectedCoinsRef.current.includes(entity.id || ""))) ||
             (isCollectedByMe && entity.type.startsWith("powerup_"))
           ) {
-            return;
+            continue;
           }
 
           if (checkCollision(playerRect, entity)) {
@@ -3520,8 +3529,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               entity.type === "fake_ice" ||
               entity.type === "fake_slime"
             )
-              return; // Do nothing
-            if (entity.type === "ghost_hazard") return; // Do nothing
+              continue; // Do nothing
+            if (entity.type === "ghost_hazard") continue; // Do nothing
             if (entity.type.startsWith("powerup_")) {
               // Allow collection logic to run (it's handled in X-axis check mainly, but let's ensure consistency)
               // Actually, powerups are collected in X-axis check. If we missed it there (e.g. falling onto it), we should collect here too.
@@ -3564,11 +3573,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 shakeIntensity.current = 2; // Small shake feedback
               }
-              return; // Pass through
+              continue; // Pass through
             }
 
             if (entity.type === "coin") {
-              if (gameMode === "brawler") return;
+              if (gameMode === "brawler") continue;
               const coinId = entity.id || "0";
 
               const isMulti = players.current.length > 1 || gameMode === "vs";
@@ -3594,10 +3603,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               } else {
                 onCoin(coinId);
               }
-              return;
+              continue;
             }
             if (entity.type === "checkpoint") {
-              if (level.autoScroll) return;
+              if (level.autoScroll) continue;
               if (
                 currentRespawnPos.current.x !== entity.x ||
                 currentRespawnPos.current.y !== entity.y
@@ -3613,19 +3622,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   "spark",
                 );
               }
-              return;
+              continue;
             }
             if (entity.type.startsWith("powerup_")) {
               if (gameMode === "brawler") {
                 if (!p.inventory) {
-                  p.inventory = entity.type;
+                  p.inventory = entity.type as EntityType;
                   collectPowerup(powerupId, p);
                   dynamicPowerups.current = dynamicPowerups.current.filter(
                     (e) => e.id !== powerupId,
                   );
                   audio.playCoin();
                 }
-                return;
+                continue;
               }
             }
 
@@ -3633,43 +3642,43 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.oneTimeBuild = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_hook") {
               p.oneTimeHook = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_double_jump") {
               p.oneTimeDoubleJump = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_triple_jump") {
               p.oneTimeTripleJump = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_slow_mo") {
-              slowMoTimerRef.current = SLOW_MO_DURATION;
+              slowMoTimerRef.current = 180;
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
             if (entity.type === "powerup_xray") {
               xrayTimerRef.current = 180; // 3 seconds at 60fps
               collectPowerup(powerupId, p);
               audio.playCoin();
-              return;
+              continue;
             }
 
             if (entity.type === "hazard") {
-              if (p.shieldTimer > 0) return; // Ignore hazard completely if shielded
+              if (p.shieldTimer > 0) continue; // Ignore hazard completely if shielded
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
-                return; // Only process for local player
+                continue; // Only process for local player
               if (
                 level?.id === "tutorial" &&
                 gameMode !== "vs" &&
@@ -3691,6 +3700,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   .filter((op) => op.playerIndex !== p.playerIndex)
                   .map((op) => op.playerIndex);
                 p.vel = { x: 0, y: 0 };
+                p.respawnTimer = Date.now();
                 resetPlayerSize(p);
                 shakeIntensity.current = 10; audio.playDie(p.deathSound);
                 if (isOnline) onlineService.sendEvent("die", null);
@@ -3714,6 +3724,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                       .filter((op) => op.playerIndex !== p.playerIndex)
                       .map((op) => op.playerIndex);
                     p.vel = { x: 0, y: 0 };
+                    p.respawnTimer = Date.now();
                     resetPlayerSize(p);
                     shakeIntensity.current = 10; audio.playDie(p.deathSound);
                     if (isOnline) onlineService.sendEvent("die", null);
@@ -3727,10 +3738,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
+                p.pos = { ...currentRespawnPos.current };
+                p.ghostOverlapIndices = players.current
+                  .filter((op) => op.playerIndex !== p.playerIndex)
+                  .map((op) => op.playerIndex);
+                p.vel = { x: 0, y: 0 };
+                p.respawnTimer = Date.now();
+                resetPlayerSize(p);
                 onDie();
                 if (isOnline) onlineService.sendEvent("die", null);
               }
-              return;
+              break;
             }
             if (
               entity.type === "goal" &&
@@ -3739,7 +3757,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 : isGoalUnlocked)
             ) {
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
-                return; // Only process for local player
+                continue; // Only process for local player
 
               if (!p.finished) {
                 // Save Ghost if it's the local player and a better time
@@ -3776,12 +3794,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 if (isOnline) onlineService.sendEvent("win", null);
               }
-              return;
+              break;
             }
             if (entity.type === "bounce") {
               p.vel.y = (p.gravity < 0 ? -JUMP_FORCE : JUMP_FORCE) * 1.5;
               shakeIntensity.current = 5;
-              return;
+              continue;
             }
             if (entity.type === "trampoline") {
               p.vel.y = p.gravity < 0 ? -TRAMPOLINE_FORCE : TRAMPOLINE_FORCE;
@@ -3793,7 +3811,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               shakeIntensity.current = 5;
               audio.playJump();
               if (onJump) onJump();
-              return;
+              continue;
             }
             if (entity.type === "teleport") {
               if (p.teleportCooldown <= 0) {
@@ -3815,7 +3833,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   p.hookPos = null;
                 }
               }
-              return;
+              continue;
             }
 
             // Solid Collision
@@ -3823,12 +3841,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               entity.type.startsWith("powerup_") ||
               entity.type.startsWith("block_")
             )
-              return; // Powerups and blocks are pass-through
+              continue; // Powerups and blocks are pass-through
             if (
               entity.type === "gravity_reverse" ||
               entity.type === "gravity_zero"
             )
-              return;
+              continue;
 
             const relVelY = p.vel.y - (entity.dy || 0);
             const isFalling =
@@ -3918,7 +3936,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             }
             p.vel.y = 0;
           }
-        });
+        }
 
         if (foundGround) {
           p.surfaceType = dominantSurface;
@@ -4180,6 +4198,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               .filter((op) => op.playerIndex !== p.playerIndex)
               .map((op) => op.playerIndex);
             p.respawnTimer = Date.now();
+            p.vel = { x: 0, y: 0 };
+            resetPlayerSize(p);
             onDie();
             if (isOnline) onlineService.sendEvent("die", null);
           }
