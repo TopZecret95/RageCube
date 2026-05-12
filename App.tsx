@@ -2431,12 +2431,25 @@ const App: React.FC = () => {
 
     setGameState((prev) => {
       let nextStatus: GameState["status"] = "playing";
-      if (prev.customLevelsQueue) {
-        nextStatus = "random_run";
-      } else if (prev.status === "vs_won" || prev.previousStatus === "vs_playing" || prev.onlineMode === "vs") {
+      
+      const isVS =
+        prev.status === "vs_won" ||
+        prev.previousStatus === "vs_playing" ||
+        prev.onlineMode === "vs" ||
+        (prev.status === "paused" && prev.previousStatus === "vs_playing");
+
+      const isBrawler =
+        prev.status === "brawler_won" ||
+        prev.previousStatus === "brawler_playing" ||
+        prev.onlineMode === "brawler" ||
+        (prev.status === "paused" && prev.previousStatus === "brawler_playing");
+
+      if (isVS) {
         nextStatus = "vs_playing";
-      } else if (prev.status === "brawler_won" || prev.previousStatus === "brawler_playing" || prev.onlineMode === "brawler") {
+      } else if (isBrawler) {
         nextStatus = "brawler_playing";
+      } else if (prev.customLevelsQueue) {
+        nextStatus = "random_run";
       }
 
       return {
@@ -3170,6 +3183,8 @@ const App: React.FC = () => {
                 (p.customLevelsQueue ? "random_run" : "playing"),
             })),
         });
+
+        // Skip Level Button (Local VS/Brawler with queue)
         if (
           (!onlineService.lobbyCode || onlineService.isHost) &&
           gameState.customLevelsQueue &&
@@ -3177,6 +3192,8 @@ const App: React.FC = () => {
         ) {
           buttons.push({ action: handleNextLevel });
         }
+
+        // Retry Level Button (Always in Local VS/Brawler, or if authorized/STORY)
         if (
           !(
             gameState.previousStatus === "vs_playing" ||
@@ -7300,7 +7317,7 @@ const App: React.FC = () => {
                         gameState.customLevelsQueue.length - 1
                     ) {
                       buttons.push({
-                        label: t.nextLevelBtn || "NEXT LEVEL",
+                        label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL SKIPPEN" : (t.nextLevelBtn || "NEXT LEVEL"),
                         onClick: handleNextLevel,
                       });
                     }
@@ -7311,7 +7328,10 @@ const App: React.FC = () => {
                         gameState.previousStatus === "brawler_playing"
                       ) || !onlineService.lobbyCode
                     ) {
-                      buttons.push({ label: t.retry || "RETRY", onClick: handleRetry });
+                      buttons.push({ 
+                        label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL WIEDERHOLEN" : (t.retry || "RETRY"), 
+                        onClick: handleRetry 
+                      });
                     }
 
                     if (onlineService.lobbyCode) {
