@@ -4393,11 +4393,11 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [onlineFinishTimer, onlineResults, finalizeMatch]);
 
-  const calculateLevelScore = (timeTaken: number, deaths: number) => {
+  const calculateLevelScore = (timeTaken: number, deaths: number, isRun: boolean) => {
     let s = 1000;
     s -= timeTaken * 5;
     s -= deaths * 50;
-    return Math.max(0, s);
+    return isRun ? s : Math.max(0, s);
   };
 
   const handleDie = useCallback(async () => {
@@ -4435,7 +4435,9 @@ const App: React.FC = () => {
       ...prev,
       deaths: newTotalDeaths,
       levelDeaths: prev.levelDeaths + 1,
-      score: Math.max(0, prev.score - 50), // Fixed 50 points penalty per death
+      score: (prev.status === "random_run" || !!prev.storyCategoryName)
+        ? prev.score - 50
+        : Math.max(0, prev.score - 50), // Fixed 50 points penalty per death
     }));
 
     setRespawnTrigger((prev) => prev + 1);
@@ -4527,7 +4529,11 @@ const App: React.FC = () => {
           
           if (isLocalFinish) {
             const playerName = isLocalName || "Unknown";
-            const levelPoints = calculateLevelScore(finalTime, livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths);
+            const levelPoints = calculateLevelScore(
+              finalTime,
+              livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths,
+              gameState.status === "random_run" || !!gameState.storyCategoryName
+            );
             const myStats = {
               id: onlineService.localPlayer?.id,
               name: playerName,
@@ -4600,7 +4606,11 @@ const App: React.FC = () => {
           if (prev.find((r) => r.name === winnerName)) return;
           
           const deaths = livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
-          const points = calculateLevelScore(finalTime, deaths);
+          const points = calculateLevelScore(
+            finalTime,
+            deaths,
+            gameState.status === "random_run" || !!gameState.storyCategoryName
+          );
           const newResults = [
             ...prev,
             {
@@ -4693,9 +4703,11 @@ const App: React.FC = () => {
         time: gameState.time,
       });
 
+      const isRun = gameState.status === "random_run" || !!gameState.storyCategoryName;
       const levelBonus = calculateLevelScore(
         gameState.levelTime,
         gameState.levelDeaths,
+        isRun
       );
 
       // Auto-submit to global leaderboard if it's a story level
@@ -4732,6 +4744,7 @@ const App: React.FC = () => {
       gameState.status,
       gameState.deaths,
       gameState.blocksPlaced,
+      gameState.storyCategoryName,
       checkAchievements,
       level.id,
     ],
@@ -4987,6 +5000,14 @@ const App: React.FC = () => {
                     </div>
                   )}
                 </div>
+                {(gameState.status === "random_run" || !!gameState.storyCategoryName) && (
+                  <div className="bg-rage-red/20 text-white px-2 py-0.5 text-[10px] md:text-xs border border-rage-red/50 flex flex-col items-center min-w-[60px]">
+                    <div className="flex gap-1 items-center justify-center">
+                      <span className="opacity-70 text-[8px] md:text-[10px] uppercase font-bold text-rage-red">{t.score}:</span>
+                      <span className="font-bold text-rage-red">{gameState.score}</span>
+                    </div>
+                  </div>
+                )}
                 {onlineService.lobbyCode && (
                   <div className="flex gap-1 ml-2">
                     {onlineService.isHost && (
