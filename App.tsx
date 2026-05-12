@@ -2422,16 +2422,27 @@ const App: React.FC = () => {
     // Strict Reset for current level context
     processedCoins.current.clear();
 
-    setGameState((prev) => ({
-      ...prev,
-      status: prev.customLevelsQueue ? "random_run" : "playing",
-      levelTime: 0,
-      levelDeaths: 0,
-      // Reset score to what it was when level started (undo penalties/gains)
-      score: prev.levelStartScore,
-      collectedCoins: [], // Clear coins collected in this level
-      blocksPlaced: 0, // Reset blocks for this run segment
-    }));
+    setGameState((prev) => {
+      let nextStatus: GameState["status"] = "playing";
+      if (prev.customLevelsQueue) {
+        nextStatus = "random_run";
+      } else if (prev.status === "vs_won" || prev.previousStatus === "vs_playing" || prev.onlineMode === "vs") {
+        nextStatus = "vs_playing";
+      } else if (prev.status === "brawler_won" || prev.previousStatus === "brawler_playing" || prev.onlineMode === "brawler") {
+        nextStatus = "brawler_playing";
+      }
+
+      return {
+        ...prev,
+        status: nextStatus,
+        levelTime: 0,
+        levelDeaths: 0,
+        // Reset score to what it was when level started (undo penalties/gains)
+        score: prev.levelStartScore,
+        collectedCoins: [], // Clear coins collected in this level
+        blocksPlaced: 0, // Reset blocks for this run segment
+      };
+    });
     setRespawnTrigger((p) => p + 1);
     setResetTrigger((p) => p + 1);
   };
@@ -3623,30 +3634,47 @@ const App: React.FC = () => {
       if (isVS) {
         if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
         if (e.code === "ArrowDown" || e.code === "KeyS") {
-          const max = hasNext ? 2 : 1;
-          navDown(max);
+          let maxItems = 1;
+          if (hasNext) maxItems = 2; // Next, Lobby, Menu
+          else if (!onlineService.lobbyCode) maxItems = 2; // Play Again, Lobby, Menu
+          navDown(maxItems);
         }
         if (e.code === "Enter" || e.code === "Space") {
-          if (sel === 0) {
-            if (hasNext) {
-              handleNextLevel();
-            } else {
-              setGameState((p) => ({
-                ...p,
-                status: onlineService.lobbyCode ? "online_lobby" : "menu",
-              }));
-            }
-          } else if (sel === 1) {
-            if (hasNext) {
-              setGameState((p) => ({
-                ...p,
-                status: onlineService.lobbyCode ? "online_lobby" : "menu",
-              }));
-            } else {
+          if (hasNext) {
+            if (sel === 0) handleNextLevel();
+            else if (sel === 1) {
+              if (onlineService.lobbyCode && onlineService.isHost) {
+                onlineService.returnToLobby();
+              } else {
+                setGameState((p) => ({
+                  ...p,
+                  status: onlineService.lobbyCode ? "online_lobby" : p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+                }));
+              }
+            } else if (sel === 2) {
+              if (onlineService.lobbyCode) onlineService.disconnect();
               setGameState((p) => ({ ...p, status: "menu" }));
             }
-          } else if (sel === 2) {
-            setGameState((p) => ({ ...p, status: "menu" }));
+          } else if (onlineService.lobbyCode) {
+            // Online mode without next queue
+            if (sel === 0) {
+              if (onlineService.isHost) onlineService.returnToLobby();
+            } else if (sel === 1) {
+              onlineService.disconnect();
+              setGameState((p) => ({ ...p, status: "menu" }));
+            }
+          } else {
+            // Local mode without next queue
+            if (sel === 0) {
+              handleRetry();
+            } else if (sel === 1) {
+              setGameState((p) => ({
+                ...p,
+                status: p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+              }));
+            } else if (sel === 2) {
+              setGameState((p) => ({ ...p, status: "menu" }));
+            }
           }
         }
       } else {
@@ -3691,14 +3719,22 @@ const App: React.FC = () => {
       }
     } else if (status === "online_summary") {
       const isHost = onlineService.isHost;
+      const isOnline = !!onlineService.lobbyCode;
       const hasNext =
         st.gameState.customLevelsQueue &&
         st.gameState.currentLevelIndex <
           st.gameState.customLevelsQueue.length - 1;
 
-      let maxItems = 1; // Default for non-host (Warte auf Host, Main Menu)
-      if (isHost) {
-        maxItems = hasNext ? 3 : 2; // Next (if any), Repeat, Lobby, Menu
+      let maxItems = 1; 
+      if (isOnline) {
+        if (isHost) {
+          maxItems = hasNext ? 3 : 2; // Next (if any), Repeat, Lobby, Menu
+        } else {
+          maxItems = 2; // Waiting, Lobby, Menu (3 buttons = index 0,1,2 so maxItems 2)
+        }
+      } else {
+        // Local mode
+        maxItems = hasNext ? 2 : 2; // Next, Mode Selection, Menu OR Play Again, Mode Selection, Menu
       }
 
       if (e.code === "ArrowUp" || e.code === "KeyW") {
@@ -3708,27 +3744,43 @@ const App: React.FC = () => {
         setMenuSelection((prev) => (prev >= maxItems ? 0 : prev + 1));
       }
       if (e.code === "Enter" || e.code === "Space") {
-        if (isHost) {
-          if (hasNext) {
-            if (sel === 0) onlineService.initiateVote("next");
-            else if (sel === 1) onlineService.initiateVote("repeat");
-            else if (sel === 2) onlineService.returnToLobby();
-            else if (sel === 3) {
-              onlineService.disconnect();
-              setGameState((p) => ({ ...p, status: "menu" }));
+        if (isOnline) {
+          if (isHost) {
+            if (hasNext) {
+              if (sel === 0) onlineService.initiateVote("next");
+              else if (sel === 1) onlineService.initiateVote("repeat");
+              else if (sel === 2) onlineService.returnToLobby();
+              else if (sel === 3) {
+                onlineService.disconnect();
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
+            } else {
+              if (sel === 0) onlineService.initiateVote("repeat");
+              else if (sel === 1) onlineService.returnToLobby();
+              else if (sel === 2) {
+                onlineService.disconnect();
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
             }
           } else {
-            if (sel === 0) onlineService.initiateVote("repeat");
-            else if (sel === 1) onlineService.returnToLobby();
+            if (sel === 1) {
+              setGameState((p) => ({ ...p, status: "online_lobby" }));
+            }
             else if (sel === 2) {
               onlineService.disconnect();
               setGameState((p) => ({ ...p, status: "menu" }));
             }
           }
         } else {
-          if (sel === 1) {
-            onlineService.disconnect();
-            setGameState((p) => ({ ...p, status: "menu" }));
+          // Local mode
+          if (hasNext) {
+            if (sel === 0) handleNextLevel();
+            else if (sel === 1) setGameState((p) => ({ ...p, status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup" }));
+            else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
+          } else {
+            if (sel === 0) handleRetry();
+            else if (sel === 1) setGameState((p) => ({ ...p, status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup" }));
+            else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
           }
         }
       }
@@ -4069,10 +4121,12 @@ const App: React.FC = () => {
       if (event === "finish_stats") {
         const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing" || stateRef.current.gameState.status === "playing";
         if (onlineService.isHost && isPlaying) {
-          setOnlineResults((prev) => {
-            const existing = prev.findIndex((r) => r.id === data.id);
-            if (existing !== -1) return prev;
+          const prev = stateRef.current.onlineResults || [];
+          const existing = prev.findIndex((r) => r.id === data.id);
+          if (existing === -1) {
             const newResults = [...prev, data];
+            stateRef.current.onlineResults = newResults;
+            setOnlineResults(newResults);
             
             // Get total players from accurate count
             const roomPlayers = onlineService.players.size;
@@ -4097,9 +4151,7 @@ const App: React.FC = () => {
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
             }
-            
-            return newResults;
-          });
+          }
         }
       }
       if (event === "online_results") {
@@ -4400,10 +4452,12 @@ const App: React.FC = () => {
             onlineService.sendEvent("finish_stats", myStats);
 
             if (onlineService.isHost) {
-              setOnlineResults((prev) => {
-                const existing = prev.findIndex((r) => r.id === myStats.id);
-                if (existing !== -1) return prev;
+              const prev = stateRef.current.onlineResults || [];
+              const existing = prev.findIndex((r) => r.id === myStats.id);
+              if (existing === -1) {
                 const newResults = [...prev, myStats];
+                stateRef.current.onlineResults = newResults;
+                setOnlineResults(newResults);
                 
                 // Get total players from accurate count
                 const roomPlayers = onlineService.players.size;
@@ -4426,9 +4480,7 @@ const App: React.FC = () => {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
-                
-                return newResults;
-              });
+              }
             }
           }
 
@@ -4456,32 +4508,31 @@ const App: React.FC = () => {
         if (gameState.status === "vs_playing") {
           setGameState((p) => ({ ...p, winner: p.winner || winnerName }));
           
-          setOnlineResults((prev) => {
-            if (prev.find((r) => r.name === winnerName)) return prev;
-            const deaths = livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
-            const points = calculateLevelScore(finalTime, deaths);
-            const newResults = [
-              ...prev,
-              {
-                id: winnerName,
-                name: winnerName,
-                score: points,
-                time: finalTime,
-                deaths: deaths,
-              },
-            ];
-            if (newResults.length >= 2) {
-              setOnlineFinishTimer(null);
-              setGameState((p) => ({
-                ...p,
-                status: "online_summary",
-                previousStatus: p.status,
-              }));
-              } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled === true) {
-              setOnlineFinishTimer(20);
-            }
-            return newResults;
-          });
+          const prev = stateRef.current.onlineResults || [];
+          if (prev.find((r) => r.name === winnerName)) return;
+          
+          const deaths = livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
+          const points = calculateLevelScore(finalTime, deaths);
+          const newResults = [
+            ...prev,
+            {
+              id: winnerName,
+              name: winnerName,
+              score: points,
+              time: finalTime,
+              deaths: deaths,
+            },
+          ];
+          
+          stateRef.current.onlineResults = newResults;
+          setOnlineResults(newResults);
+          
+          if (newResults.length >= 2) {
+            setOnlineFinishTimer(null);
+            setTimeout(() => finalizeMatch(newResults), 0);
+          } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled === true) {
+            setOnlineFinishTimer(20);
+          }
           return;
         }
 
@@ -7348,30 +7399,14 @@ const App: React.FC = () => {
                             onHover={setMenuSelection}
                           />
                         </>
-                      ) : (
+                      ) : onlineService.lobbyCode ? (
                         <>
                           <MenuButton
                             index={0}
-                            label={
-                              onlineService.lobbyCode
-                                ? t.backToLobby
-                                : "ZURÜCK ZUR AUSWAHL"
-                            }
+                            label={t.backToLobby}
                             onClick={() => {
-                              if (
-                                onlineService.lobbyCode &&
-                                onlineService.isHost
-                              ) {
+                              if (onlineService.isHost) {
                                 onlineService.returnToLobby();
-                              } else {
-                                setGameState((p) => ({
-                                  ...p,
-                                  status: onlineService.lobbyCode
-                                    ? "online_lobby"
-                                    : gameState.status === "brawler_won"
-                                      ? "brawler_setup"
-                                      : "vs_setup",
-                                }));
                               }
                             }}
                             isSelected={menuSelection === 0}
@@ -7382,11 +7417,44 @@ const App: React.FC = () => {
                             label={t.mainMenu}
                             danger
                             onClick={() => {
-                              if (onlineService.lobbyCode)
-                                onlineService.disconnect();
+                              onlineService.disconnect();
                               setGameState((p) => ({ ...p, status: "menu" }));
                             }}
                             isSelected={menuSelection === 1}
+                            onHover={setMenuSelection}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <MenuButton
+                            index={0}
+                            label={lang === Language.DE ? "NOCHMAL SPIELEN" : "PLAY AGAIN"}
+                            onClick={() => {
+                              handleRetry();
+                            }}
+                            isSelected={menuSelection === 0}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={1}
+                            label={lang === Language.DE ? "ZURÜCK ZUR LOBBY" : "BACK TO LOBBY"}
+                            onClick={() => {
+                              setGameState((p) => ({
+                                ...p,
+                                status: gameState.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+                              }));
+                            }}
+                            isSelected={menuSelection === 1}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={2}
+                            label={t.mainMenu}
+                            danger
+                            onClick={() => {
+                              setGameState((p) => ({ ...p, status: "menu" }));
+                            }}
+                            isSelected={menuSelection === 2}
                             onHover={setMenuSelection}
                           />
                         </>
@@ -7763,6 +7831,15 @@ const App: React.FC = () => {
                         <>
                           <MenuButton
                             index={0}
+                            label={lang === Language.DE ? "NOCHMAL SPIELEN" : "PLAY AGAIN"}
+                            onClick={() => {
+                              handleRetry();
+                            }}
+                            isSelected={menuSelection === 0}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={1}
                             label={t.backToSelection}
                             onClick={() =>
                               setGameState((p) => ({
@@ -7773,17 +7850,17 @@ const App: React.FC = () => {
                                     : "vs_setup",
                               }))
                             }
-                            isSelected={menuSelection === 0}
+                            isSelected={menuSelection === 1}
                             onHover={setMenuSelection}
                           />
                           <MenuButton
-                            index={1}
+                            index={2}
                             label={t.mainMenu}
                             danger
                             onClick={() =>
                               setGameState((p) => ({ ...p, status: "menu" }))
                             }
-                            isSelected={menuSelection === 1}
+                            isSelected={menuSelection === 2}
                             onHover={setMenuSelection}
                           />
                         </>

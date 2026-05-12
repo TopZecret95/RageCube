@@ -3330,39 +3330,41 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
                 return; // Only process for local player
 
-              // Save Ghost if it's the local player and a better time
-              if (idx === 0 && gameMode === "story") {
-                const currentTime =
-                  recordedFrames.current.length * (16.67 / 1000);
-                const existingGhost = localStorage.getItem(`ghost_${level.id}`);
-                let shouldSave = true;
-                if (existingGhost) {
-                  try {
-                    const parsed = JSON.parse(existingGhost);
-                    if (parsed.time <= currentTime) shouldSave = false;
-                  } catch (e) {
-                    shouldSave = true;
+              if (!p.finished) {
+                // Save Ghost if it's the local player and a better time
+                if (idx === 0 && gameMode === "story") {
+                  const currentTime =
+                    recordedFrames.current.length * (16.67 / 1000);
+                  const existingGhost = localStorage.getItem(`ghost_${level.id}`);
+                  let shouldSave = true;
+                  if (existingGhost) {
+                    try {
+                      const parsed = JSON.parse(existingGhost);
+                      if (parsed.time <= currentTime) shouldSave = false;
+                    } catch (e) {
+                      shouldSave = true;
+                    }
+                  }
+
+                  if (shouldSave) {
+                    const newGhost: GhostRun = {
+                      levelId: level.id,
+                      frames: [...recordedFrames.current],
+                      time: currentTime,
+                      customization: customization,
+                    };
+                    localStorage.setItem(
+                      `ghost_${level.id}`,
+                      JSON.stringify(newGhost),
+                    );
                   }
                 }
 
-                if (shouldSave) {
-                  const newGhost: GhostRun = {
-                    levelId: level.id,
-                    frames: [...recordedFrames.current],
-                    time: currentTime,
-                    customization: customization,
-                  };
-                  localStorage.setItem(
-                    `ghost_${level.id}`,
-                    JSON.stringify(newGhost),
-                  );
-                }
+                p.finished = true;
+                triggerWin(p.name);
+
+                if (isOnline) onlineService.sendEvent("win", null);
               }
-
-              p.finished = true;
-              triggerWin(p.name);
-
-              if (isOnline) onlineService.sendEvent("win", null);
               return;
             }
             if (entity.type === "bounce") {
@@ -3739,39 +3741,41 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (isOnline && p.onlineId !== onlineService.localPlayer?.id)
                 return; // Only process for local player
 
-              // Save Ghost if it's the local player and a better time
-              if (idx === 0 && gameMode === "story") {
-                const currentTime =
-                  recordedFrames.current.length * (16.67 / 1000);
-                const existingGhost = localStorage.getItem(`ghost_${level.id}`);
-                let shouldSave = true;
-                if (existingGhost) {
-                  try {
-                    const parsed = JSON.parse(existingGhost);
-                    if (parsed.time <= currentTime) shouldSave = false;
-                  } catch (e) {
-                    shouldSave = true;
+              if (!p.finished) {
+                // Save Ghost if it's the local player and a better time
+                if (idx === 0 && gameMode === "story") {
+                  const currentTime =
+                    recordedFrames.current.length * (16.67 / 1000);
+                  const existingGhost = localStorage.getItem(`ghost_${level.id}`);
+                  let shouldSave = true;
+                  if (existingGhost) {
+                    try {
+                      const parsed = JSON.parse(existingGhost);
+                      if (parsed.time <= currentTime) shouldSave = false;
+                    } catch (e) {
+                      shouldSave = true;
+                    }
+                  }
+
+                  if (shouldSave) {
+                    const newGhost: GhostRun = {
+                      levelId: level.id,
+                      frames: [...recordedFrames.current],
+                      time: currentTime,
+                      customization: customization,
+                    };
+                    localStorage.setItem(
+                      `ghost_${level.id}`,
+                      JSON.stringify(newGhost),
+                    );
                   }
                 }
 
-                if (shouldSave) {
-                  const newGhost: GhostRun = {
-                    levelId: level.id,
-                    frames: [...recordedFrames.current],
-                    time: currentTime,
-                    customization: customization,
-                  };
-                  localStorage.setItem(
-                    `ghost_${level.id}`,
-                    JSON.stringify(newGhost),
-                  );
-                }
+                p.finished = true;
+                triggerWin(p.name);
+
+                if (isOnline) onlineService.sendEvent("win", null);
               }
-
-              p.finished = true;
-              triggerWin(p.name);
-
-              if (isOnline) onlineService.sendEvent("win", null);
               return;
             }
             if (entity.type === "bounce") {
@@ -6062,7 +6066,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const dy = screenY - targetY;
           const dist = Math.sqrt(dx * dx + dy * dy);
           
-          const scale = Math.min(2.5, 1 + dist / 400);
+          const scale = Math.min(2.5, 0.5 + dist / 400);
 
           ctx.save();
           ctx.translate(targetX, targetY);
