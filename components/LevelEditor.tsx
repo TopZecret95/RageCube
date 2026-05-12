@@ -685,7 +685,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     EntityType | "start" | "startP2" | "eraser" | "select"
   >("wall");
   const [allowedAbility, setAllowedAbility] = useState<LevelAbility>(
-    !initialLevel?.allowedAbility || initialLevel?.allowedAbility === "none" ? "double_jump" : initialLevel?.allowedAbility
+    initialLevel?.allowedAbility || "double_jump"
   );
   const [autoScroll, setAutoScroll] = useState<boolean>(
     initialLevel?.autoScroll || false,
@@ -1887,7 +1887,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     entities: entities,
     isCustom: true,
     isBrawler: isBrawler,
-    allowedAbility: allowedAbility === "none" ? "double_jump" : allowedAbility,
+    allowedAbility: allowedAbility,
     autoScroll: autoScroll,
     autoScrollSpeed: autoScrollSpeed,
   });
@@ -2309,6 +2309,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 }}
                 className="bg-transparent text-yellow-400 text-[10px] font-bold font-arcade outline-none cursor-pointer"
               >
+                <option value="none">{t.abNone || "KEINE"}</option>
                 <option value="double_jump">{t.abDoubleJump || "DOPPELSPRUNG"}</option>
                 <option value="build">{t.abBuild || "BLOCKBAUER"}</option>
                 <option value="hook">{t.abHook || "GREIFHAKEN"}</option>
