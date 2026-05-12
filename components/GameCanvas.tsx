@@ -6038,6 +6038,54 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // Draw HUD UI
       ctx.restore(); // Restore camera translation to screen space
 
+      // Draw off-screen indicators for local players
+      players.current.forEach((p) => {
+        if (!p.isLocal || !p.pos) return;
+
+        const camX = cameraRef.current.x;
+        const camY = cameraRef.current.y;
+        
+        const isOffLeft = p.pos.x + p.w < camX;
+        const isOffRight = p.pos.x > camX + GAME_WIDTH;
+        const isOffTop = p.pos.y + p.h < camY;
+        const isOffBottom = p.pos.y > camY + GAME_HEIGHT;
+
+        if (isOffLeft || isOffRight || isOffTop || isOffBottom) {
+          const screenX = p.pos.x + p.w / 2 - camX;
+          const screenY = p.pos.y + p.h / 2 - camY;
+
+          const margin = 30;
+          let targetX = Math.max(margin, Math.min(GAME_WIDTH - margin, screenX));
+          let targetY = Math.max(margin, Math.min(GAME_HEIGHT - margin, screenY));
+
+          const dx = screenX - targetX;
+          const dy = screenY - targetY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          const scale = Math.min(2.5, 1 + dist / 400);
+
+          ctx.save();
+          ctx.translate(targetX, targetY);
+          
+          const angle = Math.atan2(dy, dx);
+          ctx.rotate(angle);
+
+          ctx.beginPath();
+          ctx.moveTo(10 * scale, 0);
+          ctx.lineTo(-6 * scale, 8 * scale);
+          ctx.lineTo(-6 * scale, -8 * scale);
+          ctx.closePath();
+          
+          ctx.fillStyle = p.color || "#ffffff";
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "rgba(0,0,0,0.5)";
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      });
+
       if (gameMode === "brawler" || gameMode === "vs" || gameMode === "story") {
         ctx.font = '10px "Press Start 2P", monospace';
         ctx.textBaseline = "top";

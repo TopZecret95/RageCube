@@ -912,8 +912,15 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             const newVal =
               (ent[activeProperty as keyof Entity] as number) + delta;
             let validated = newVal;
-            if (activeProperty === "w" || activeProperty === "h")
+            if (activeProperty === "w" || activeProperty === "h") {
               validated = Math.max(10, newVal);
+            } else if (activeProperty === "x") {
+              const w = ent.w || 30;
+              validated = Math.max(0, Math.min(levelWidth - w, newVal));
+            } else if (activeProperty === "y") {
+              const h = ent.h || 30;
+              validated = Math.max(0, Math.min(levelHeight - h, newVal));
+            }
             updated[idx] = { ...ent, [activeProperty]: validated };
           });
           pushHistory(updated);
@@ -1659,10 +1666,16 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       const updated = [...entities];
       selectedEntityIndices.forEach((idx, i) => {
         if (updated[idx]) {
+          const w = updated[idx].w || 30;
+          const h = updated[idx].h || 30;
+          let newX = initialDragPositions[i].x + snapDx;
+          let newY = initialDragPositions[i].y + snapDy;
+          newX = Math.max(0, Math.min(newX, levelWidth - w));
+          newY = Math.max(0, Math.min(newY, levelHeight - h));
           updated[idx] = {
             ...updated[idx],
-            x: initialDragPositions[i].x + snapDx,
-            y: initialDragPositions[i].y + snapDy,
+            x: newX,
+            y: newY,
           };
         }
       });
@@ -1774,14 +1787,36 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
         const currentEntities = entitiesRef.current;
         const updated = [...currentEntities];
         currentIndices.forEach((idx) => {
-          if (updated[idx]) updated[idx] = { ...updated[idx], ...updates };
+          if (updated[idx]) {
+            let ent = { ...updated[idx], ...updates };
+            if (updates.x !== undefined) {
+              const w = ent.w || 30;
+              ent.x = Math.max(0, Math.min(ent.x, levelWidth - w));
+            }
+            if (updates.y !== undefined) {
+              const h = ent.h || 30;
+              ent.y = Math.max(0, Math.min(ent.y, levelHeight - h));
+            }
+            updated[idx] = ent;
+          }
         });
         pushHistory(updated);
       } else {
         setEntities((prev) => {
           const updated = [...prev];
           currentIndices.forEach((idx) => {
-            if (updated[idx]) updated[idx] = { ...updated[idx], ...updates };
+            if (updated[idx]) {
+              let ent = { ...updated[idx], ...updates };
+              if (updates.x !== undefined) {
+                const w = ent.w || 30;
+                ent.x = Math.max(0, Math.min(ent.x, levelWidth - w));
+              }
+              if (updates.y !== undefined) {
+                const h = ent.h || 30;
+                ent.y = Math.max(0, Math.min(ent.y, levelHeight - h));
+              }
+              updated[idx] = ent;
+            }
           });
           return updated;
         });
