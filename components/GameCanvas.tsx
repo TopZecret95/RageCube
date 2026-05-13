@@ -4689,17 +4689,58 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           // Slightly reduced visual size to match tighter hitbox
           const r = Math.min(ent.w, ent.h) / 2 - 2;
 
+          const frame = Math.floor(Date.now() / 400) % 3;
+          const pulse = Math.sin(Date.now() / 300) * 0.5 + 0.5;
+
           ctx.save();
           ctx.translate(cx, cy);
-          ctx.rotate(Date.now() / 25);
-          ctx.beginPath();
-          ctx.arc(0, 0, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#fff";
-          for (let i = 0; i < 8; i++) {
-            ctx.rotate(Math.PI / 4);
-            ctx.fillRect(r - 8, -2, 12, 4);
+
+          // Rotate the entire entity to simulate spinning
+          ctx.rotate(Date.now() / 1000);
+
+          // 1. Das Zentrum: quadratischer Kern (tiefrot/schwarz)
+          const coreSize = r * 1.0;
+          ctx.fillStyle = "#110000"; 
+          ctx.fillRect(-coreSize / 2, -coreSize / 2, coreSize, coreSize);
+
+          // Hellrotes pulsierendes Licht
+          ctx.fillStyle = `rgba(255, 36, 0, ${0.3 + pulse * 0.7})`;
+          const lightSize = coreSize * 0.5;
+          ctx.fillRect(-lightSize / 2, -lightSize / 2, lightSize, lightSize);
+
+          // 2. Die Zähne (Fliessende / Smouthe Animation)
+          const numTeeth = 16;
+          const bladeColor = "#FF2400";
+          ctx.fillStyle = bladeColor;
+          
+          const animPhase = Date.now() / 250;
+
+          for (let i = 0; i < numTeeth; i++) {
+            ctx.rotate((Math.PI * 2) / numTeeth);
+            
+            const isMain = i % 2 === 0;
+            // Pulsierende Werte sanft mit Sinus interpolieren
+            const toothPulse = Math.sin(animPhase + (isMain ? 0 : Math.PI));
+            // Wert von 0 bis 1 für einfachere Berechnungen
+            const normalizedPulse = (toothPulse + 1) / 2;
+            
+            const tipExt = isMain 
+              ? r + 2 + toothPulse * 1.5 
+              : coreSize / 2 + normalizedPulse * (r + 4 - coreSize / 2);
+              
+            const toothHalfWidth = isMain
+              ? r * 0.15 + toothPulse * r * 0.05
+              : r * 0.12 * normalizedPulse;
+
+            if (tipExt > coreSize / 2) {
+              ctx.beginPath();
+              ctx.moveTo(coreSize / 2 - 1, -toothHalfWidth);
+              ctx.lineTo(tipExt, 0);
+              ctx.lineTo(coreSize / 2 - 1, toothHalfWidth);
+              ctx.fill();
+            }
           }
+
           ctx.restore();
 
           if (isFake && isXrayActive) {
