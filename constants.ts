@@ -474,7 +474,8 @@ export const TRANSLATIONS = {
       hearts: "Hearts",
       hypno: "Hypno",
       googly: "Googly",
-      void_eyes: "Void Eyes"
+      void_eyes: "Void Eyes",
+      evil: "Evil Eyes"
     },
     acc_names: {
       none: "None",
@@ -1017,7 +1018,8 @@ export const TRANSLATIONS = {
       hearts: "Herzen",
       hypno: "Hypno",
       googly: "Kuller",
-      void_eyes: "Leeren-Augen"
+      void_eyes: "Leeren-Augen",
+      evil: "Böse Augen"
     },
     acc_names: {
       none: "Keines",

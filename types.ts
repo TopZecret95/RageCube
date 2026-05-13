@@ -52,7 +52,7 @@ export interface LevelData {
   lastPlayed?: number; // Timestamp for sorting
 }
 
-export type EyeType = 'normal' | 'angry' | 'cyclops' | 'derp' | 'anime' | 'dead' | 'sunglasses' | 'pirate' | 'rich' | 'glowing' | 'ninja' | 'tired' | 'laser' | 'kawaii' | 'monocle' | 'masked' | 'alien' | 'cyborg' | 'stars' | 'hearts' | 'hypno' | 'googly' | 'void_eyes';
+export type EyeType = 'normal' | 'angry' | 'cyclops' | 'derp' | 'anime' | 'dead' | 'sunglasses' | 'pirate' | 'rich' | 'glowing' | 'ninja' | 'tired' | 'laser' | 'kawaii' | 'monocle' | 'masked' | 'alien' | 'cyborg' | 'stars' | 'hearts' | 'hypno' | 'googly' | 'void_eyes' | 'evil';
 export type AccessoryType = 'none' | 'crown' | 'horns' | 'headband' | 'cowboy' | 'viking' | 'halo' | 'headphones' | 'tophat' | 'cap' | 'propeller' | 'cat_ears' | 'demon_horns' | 'builder_hat' | 'wizard_hat' | 'bunny_ears' | 'pirate_hat' | 'party_hat' | 'sombrero' | 'ushanka' | 'fedora' | 'chef' | 'police' | 'pumpkin' | 'unicorn' | 'secret_crown' | 'rainbow_horn' | 'ghost_sheet' | 'coffee_cup';
 
 export interface PlayerCustomization {

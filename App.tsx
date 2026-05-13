@@ -131,6 +131,7 @@ const EYE_OPTIONS: EyeType[] = [
   "hearts",
   "hypno",
   "googly",
+  "evil",
 ];
 const ACC_OPTIONS: AccessoryType[] = [
   "none",
@@ -223,6 +224,7 @@ const SHOP_ITEMS = [
   { id: 'hypno', type: 'eyes', name: 'Hypno Eyes', price: 250 },
   { id: 'googly', type: 'eyes', name: 'Googly Eyes', price: 60 },
   { id: 'void_eyes', type: 'eyes', name: 'Void Eyes', price: 99999 },
+  { id: 'evil', type: 'eyes', name: 'Evil Eyes', price: 666 },
 
   // Accessories (Prices 50-250)
   { id: 'none', type: 'accessory', name: 'None', price: 0 },
@@ -1210,6 +1212,33 @@ const CharacterPreview = React.memo(
           case "derp":
             ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
             ctx.fillRect(px + w - 8 * scale, py + 8 * scale, 4 * scale, 4 * scale);
+            break;
+          case "evil":
+            const evilPulse = 10 + Math.sin(frame / 5) * 5;
+            ctx.fillStyle = "#ff0000"; 
+            ctx.shadowBlur = evilPulse * scale;
+            ctx.shadowColor = "#ff0000";
+            // Left eye - slanted
+            ctx.beginPath();
+            ctx.moveTo(px + 3 * scale, py + 3 * scale);
+            ctx.lineTo(px + 9 * scale, py + 6 * scale);
+            ctx.lineTo(px + 8 * scale, py + 9 * scale);
+            ctx.lineTo(px + 2 * scale, py + 6 * scale);
+            ctx.closePath();
+            ctx.fill();
+            // Right eye - slanted
+            ctx.beginPath();
+            ctx.moveTo(px + w - 3 * scale, py + 3 * scale);
+            ctx.lineTo(px + w - 9 * scale, py + 6 * scale);
+            ctx.lineTo(px + w - 8 * scale, py + 9 * scale);
+            ctx.lineTo(px + w - 2 * scale, py + 6 * scale);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            // Pupils
+            ctx.fillStyle = "black";
+            ctx.fillRect(px + 5 * scale, py + 6 * scale, 2 * scale, 2 * scale);
+            ctx.fillRect(px + w - 7 * scale, py + 6 * scale, 2 * scale, 2 * scale);
             break;
           case "angry":
             ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
