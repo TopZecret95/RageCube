@@ -6170,32 +6170,46 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Comic Intro */}
-            {gameState.status === "intro" && (
-              <ComicIntro 
-                onComplete={() => {
-                  localStorage.setItem("ragecube_intro_seen", "true");
-                  setGameState((p) => ({ ...p, status: "menu" }));
-                }}
-              />
-            )}
-
-            {/* Main Menu */}
-            {gameState.status === "menu" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-between p-8 z-30 overflow-hidden bg-neutral-950">
-                {/* Volcanic Background */}
-                <div className="absolute inset-0 z-[-1]">
-                  <img 
-                    src="https://picsum.photos/seed/volcano/1920/1080?blur=2" 
-                    alt="Volcanic Background" 
-                    className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-110"
-                    referrerPolicy="no-referrer"
+            {/* Comic Intro & Menu Transition */}
+            <AnimatePresence mode="wait">
+              {gameState.status === "intro" && (
+                <motion.div
+                  key="intro"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0 z-50"
+                >
+                  <ComicIntro 
+                    onComplete={() => {
+                      localStorage.setItem("ragecube_intro_seen", "true");
+                      setGameState((p) => ({ ...p, status: "menu" }));
+                    }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-red-950 via-transparent to-red-950 opacity-80"></div>
-                  <div className="absolute inset-0 bg-black/40"></div>
-                  
-                  {/* Lava particles / glow effects can be added here if needed */}
-                </div>
+                </motion.div>
+              )}
+
+              {gameState.status === "menu" && (
+                <motion.div
+                  key="menu"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.8 }}
+                  className="absolute inset-0 flex flex-col items-center justify-between p-8 z-30 overflow-hidden bg-neutral-950"
+                >
+                  {/* Volcanic Background */}
+                  <div className="absolute inset-0 z-[-1]">
+                    <img 
+                      src="https://picsum.photos/seed/volcano/1920/1080?blur=2" 
+                      alt="Volcanic Background" 
+                      className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-red-950 via-transparent to-red-950 opacity-80"></div>
+                    <div className="absolute inset-0 bg-black/40"></div>
+                  </div>
 
                 {/* Split Logo */}
                 <div className="mt-8 md:mt-12 flex flex-col md:flex-row gap-4 md:gap-16 relative items-center">
@@ -6496,8 +6510,9 @@ const App: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Online Menu */}
             {gameState.status === "online_menu" && (
