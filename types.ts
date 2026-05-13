@@ -122,7 +122,7 @@ export interface Achievement {
   rewardId?: string;
 }
 
-export type Status = 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'editor_type_select' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book';
+export type Status = 'intro' | 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'editor_type_select' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book';
 
 export interface GameState {
   status: Status;

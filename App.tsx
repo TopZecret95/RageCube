@@ -48,6 +48,7 @@ import {
   leaderboardService,
   LeaderboardEntry,
 } from "./services/leaderboardService";
+import { ComicIntro } from "./components/ComicIntro";
 
 const DEFAULT_CUSTOMIZATION: PlayerCustomization = {
   color: "#ff0044",
@@ -1716,8 +1717,17 @@ const App: React.FC = () => {
   const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">("effects");
   const [hoveredShopItem, setHoveredShopItem] = useState<any>(null);
 
+  // Check intro status
+  const hasSeenIntro = (() => {
+    try {
+      return localStorage.getItem("ragecube_intro_seen") === "true";
+    } catch {
+      return false;
+    }
+  })();
+
   const [gameState, setGameState] = useState<GameState>({
-    status: "menu",
+    status: hasSeenIntro ? "menu" : "intro",
     currentLevelIndex: 0,
     deaths: 0,
     levelDeaths: 0,
@@ -6158,6 +6168,16 @@ const App: React.FC = () => {
                   />
                 </div>
               </div>
+            )}
+
+            {/* Comic Intro */}
+            {gameState.status === "intro" && (
+              <ComicIntro 
+                onComplete={() => {
+                  localStorage.setItem("ragecube_intro_seen", "true");
+                  setGameState((p) => ({ ...p, status: "menu" }));
+                }}
+              />
             )}
 
             {/* Main Menu */}
