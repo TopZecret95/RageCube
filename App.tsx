@@ -1488,20 +1488,20 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<GameSettings>(() => {
     const stored = localStorage.getItem("ragecube_settings");
     const defaultKeybindingsP1: Keybindings = {
-      up: ["KeyW", "GP_B0", "GP_B12"],
-      down: ["KeyS", "GP_B13"],
-      left: ["KeyA", "GP_B14"],
-      right: ["KeyD", "GP_B15"],
-      action: ["KeyQ", "GP_B2"],
-      dash: ["KeyF", "GP_B1"],
+      up: ["KeyW", "Space"],
+      down: ["KeyS"],
+      left: ["KeyA"],
+      right: ["KeyD"],
+      action: ["KeyQ"],
+      dash: ["KeyF"],
     };
     const defaultKeybindingsP2: Keybindings = {
-      up: ["ArrowUp", "GP_B0", "GP_B12"],
-      down: ["ArrowDown", "GP_B13"],
-      left: ["ArrowLeft", "GP_B14"],
-      right: ["ArrowRight", "GP_B15"],
-      action: ["ControlRight", "Numpad0", "GP_B2"],
-      dash: ["ShiftRight", "GP_B1"],
+      up: ["ArrowUp"],
+      down: ["ArrowDown"],
+      left: ["ArrowLeft"],
+      right: ["ArrowRight"],
+      action: ["ControlRight", "Numpad0"],
+      dash: ["ShiftRight"],
     };
 
     if (stored) {
@@ -1517,10 +1517,24 @@ const App: React.FC = () => {
       if (typeof parsed.opponentOpacity !== 'number' || isNaN(parsed.opponentOpacity)) parsed.opponentOpacity = 0.5;
       if (typeof parsed.resolutionScale !== 'number' || isNaN(parsed.resolutionScale)) parsed.resolutionScale = 1080;
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
-      else if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
+      else {
+        if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
+        // Make sure space is added to jump for P1 if missing
+        if (!parsed.keybindingsP1.up.includes("Space")) parsed.keybindingsP1.up.push("Space");
+        // Strip GP bindings from existing settings
+        (Object.keys(parsed.keybindingsP1) as Array<keyof Keybindings>).forEach(key => {
+            parsed.keybindingsP1[key] = parsed.keybindingsP1[key].filter((k: string) => !k.startsWith("GP_"));
+        });
+      }
       
       if (!parsed.keybindingsP2) parsed.keybindingsP2 = defaultKeybindingsP2;
-      else if (!parsed.keybindingsP2.dash) parsed.keybindingsP2.dash = defaultKeybindingsP2.dash;
+      else {
+        if (!parsed.keybindingsP2.dash) parsed.keybindingsP2.dash = defaultKeybindingsP2.dash;
+        // Strip GP bindings from existing settings
+        (Object.keys(parsed.keybindingsP2) as Array<keyof Keybindings>).forEach(key => {
+            parsed.keybindingsP2[key] = parsed.keybindingsP2[key].filter((k: string) => !k.startsWith("GP_") && !(key === "up" && k === "Space"));
+        });
+      }
       return parsed;
     }
     return {
@@ -1611,64 +1625,7 @@ const App: React.FC = () => {
     action: keyof Keybindings;
   } | null>(null);
 
-  const lastRemapGPState = useRef<boolean[]>([]);
-  const handleGamepadRebind = useCallback((btnCode: string) => {
-    if (!editingKey) return;
-    const { player, action } = editingKey;
-    const key = player === 1 ? "keybindingsP1" : "keybindingsP2";
-    
-    setSettings(p => {
-      const current = p[key] || {};
-      const existing = current[action] || [];
-      // Keep keyboard keys, replace GP_ bindings
-      const newBindings = [...existing.filter(k => !k.startsWith("GP_")), btnCode];
-      return {
-        ...p,
-        [key]: { ...current, [action]: newBindings }
-      };
-    });
-    setEditingKey(null);
-  }, [editingKey]);
 
-  useEffect(() => {
-    if (!editingKey) {
-      lastRemapGPState.current = [];
-      return;
-    }
-
-    let rafId: number;
-    const poll = () => {
-      const gamepads = navigator.getGamepads();
-      for (let i = 0; i < gamepads.length; i++) {
-        const gp = gamepads[i];
-        if (!gp) continue;
-
-        gp.buttons.forEach((btn, bIdx) => {
-          if (btn.pressed && !lastRemapGPState.current[bIdx]) {
-            handleGamepadRebind(`GP_B${bIdx}`);
-          }
-        });
-
-        // Simple Axes detection for stick remapping if desired
-        // (X: 0, Y: 1)
-        gp.axes.forEach((val, aIdx) => {
-           // We only rebind axes if they are pushed far
-           if (Math.abs(val) > 0.8) {
-              const axisCode = `GP_AXIS_${aIdx}_${val > 0 ? 'POS' : 'NEG'}`;
-              // We need a way to debounce axes?
-              // For now let's just stick to buttons as it's more reliable for simple remapping.
-              // Actually D-pad is usually buttons.
-           }
-        });
-
-        lastRemapGPState.current = gp.buttons.map(b => b.pressed);
-      }
-      rafId = requestAnimationFrame(poll);
-    };
-
-    rafId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rafId);
-  }, [editingKey, handleGamepadRebind]);
   const [highscoreLevelIndex, setHighscoreLevelIndex] = useState(0);
   const [globalScores, setGlobalScores] = useState<LeaderboardEntry[]>([]);
   const [isLoadingScores, setIsLoadingScores] = useState(false);
@@ -2193,7 +2150,8 @@ const App: React.FC = () => {
       entities: [],
       isCustom: true,
       isBrawler: isBrawler,
-      isVerified: false
+      isVerified: false,
+      allowedAbility: "none"
     });
     setEditorHistory(null);
     setEditorVerified(false);
@@ -3301,84 +3259,60 @@ const App: React.FC = () => {
         }));
     } else if (status === "settings") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(10);
-      if (
-        e.code === "ArrowLeft" ||
-        e.code === "ArrowRight" ||
-        e.code === "KeyA" ||
-        e.code === "KeyD"
-      ) {
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(12);
+      if (e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "KeyA" || e.code === "KeyD") {
         const diff = e.code === "ArrowRight" || e.code === "KeyD" ? 0.1 : -0.1;
-        if (sel === 0)
-          setSettings((p) => ({
-            ...p,
-            sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)),
-          }));
-        if (sel === 1)
-          setSettings((p) => ({
-            ...p,
-            deathVolume: Math.min(1, Math.max(0, (p.deathVolume ?? 0.5) + diff)),
-          }));
-        if (sel === 2) {
+        if (sel === 2)
+          setSettings((p) => ({ ...p, sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)) }));
+        if (sel === 3)
+          setSettings((p) => ({ ...p, deathVolume: Math.min(1, Math.max(0, (p.deathVolume ?? 0.5) + diff)) }));
+        if (sel === 4)
+          setSettings((p) => ({ ...p, opponentOpacity: Math.min(1, Math.max(0, (p.opponentOpacity ?? 0.5) + diff)) }));
+        if (sel === 5) {
           setSettings((p) => {
             const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
+            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
             if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
             if (nextIndex < 0) nextIndex = FPS_OPTIONS.length - 1;
             return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
           });
         }
-        if (sel === 3) {
+        if (sel === 6) {
           setSettings((p) => {
             const currentScale = p.uiScale || 1;
             const currentIndex = UI_SCALE_OPTIONS.indexOf(currentScale) !== -1 ? UI_SCALE_OPTIONS.indexOf(currentScale) : 2;
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
+            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
             if (nextIndex >= UI_SCALE_OPTIONS.length) nextIndex = UI_SCALE_OPTIONS.length - 1;
             if (nextIndex < 0) nextIndex = 0;
             return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
           });
         }
-        if (sel === 4) {
+        if (sel === 7) {
           setSettings((p) => {
             const currentScale = p.resolutionScale || 1080;
             const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
+            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
             if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = RESOLUTION_OPTIONS.length - 1;
             if (nextIndex < 0) nextIndex = 0;
             return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
           });
         }
-        if (sel === 5) {
-          setSettings((p) => ({
-            ...p,
-            screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)),
-          }));
-        }
-        if (sel === 6) {
-          setSettings((p) => ({
-            ...p,
-            opponentOpacity: Math.min(1, Math.max(0, (p.opponentOpacity ?? 0.5) + diff)),
-          }));
+        if (sel === 8) {
+          setSettings((p) => ({ ...p, screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)) }));
         }
       }
       if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 7) {
-          setSettings((p) => ({ ...p, editorEdgeScroll: !p.editorEdgeScroll }));
-        }
-        if (sel === 8) {
+        if (sel === 1) {
           setGameState((p) => ({ ...p, status: "keybindings" }));
           setMenuSelection(0);
         }
         if (sel === 9) {
+          setSettings((p) => ({ ...p, invertXOnGravityReverse: !p.invertXOnGravityReverse }));
+        }
+        if (sel === 10) {
+          setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
+        }
+        if (sel === 11) {
           setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
         }
       }
@@ -3414,8 +3348,10 @@ const App: React.FC = () => {
                 });
           
           const existing = currentBindings[action] || [];
-          // Keep GP_ keys, replace keyboard keys
-          const newBindings = [...existing.filter(k => k.startsWith("GP_")), e.code];
+          // If it's Player 1 and action is up, we always append "Space" as a secondary jump key
+          const newBindings = player === 1 && action === "up" && e.code !== "Space" 
+            ? [e.code, "Space"] 
+            : [e.code];
 
           return {
             ...p,
@@ -8538,159 +8474,222 @@ const App: React.FC = () => {
             {/* Settings Menu */}
             {gameState.status === "settings" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-12">
-                <h2 className="text-3xl mb-8 text-rage-red">{t.settings}</h2>
-                <div className="w-72 space-y-6">
-                  <div
-                    className={`p-4 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(0)}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <span className="uppercase text-[10px] font-arcade text-neutral-400 w-full text-left ml-2">
-                        {t.playerNameLabel || "PLAYER NAME"}
-                      </span>
-                      <div className="w-full bg-black border border-neutral-700 p-1">
-                        <input
-                          type="text"
-                          value={settings.playerName || ""}
-                          maxLength={10}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
-                            setSettings((p) => ({ ...p, playerName: val }));
-                            setPlayerName(val);
-                          }}
-                          className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800"
-                          placeholder="???"
-                        />
+                <h2 className="text-3xl mb-8 text-rage-red uppercase tracking-widest">{t.settings}</h2>
+                <div className="flex gap-12 w-full max-w-4xl px-8 items-start justify-center">
+                  
+                  {/* LEFT COLUMN: Player & Audio */}
+                  <div className="flex flex-col gap-6 w-80">
+                    <h3 className="text-xl text-neutral-400 font-arcade mb-2">Player & Audio</h3>
+                    
+                    <div
+                      className={`p-4 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(0)}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="uppercase text-[10px] font-arcade text-neutral-400 w-full text-left ml-2">
+                          {t.playerNameLabel || "PLAYER NAME"}
+                        </span>
+                        <div className="w-full bg-black border border-neutral-700 p-1">
+                          <input
+                            type="text"
+                            value={settings.playerName || ""}
+                            maxLength={10}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
+                              setSettings((p) => ({ ...p, playerName: val }));
+                              setPlayerName(val);
+                            }}
+                            className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800"
+                            placeholder="???"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[7px] text-neutral-600 mt-2 text-center uppercase tracking-widest">
+                        Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
                       </div>
                     </div>
-                    <div className="text-[7px] text-neutral-600 mt-2 text-center uppercase tracking-widest">
-                      Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
-                    </div>
+
+                    <MenuButton
+                      index={1}
+                      label={t.keybindings}
+                      onClick={() => {
+                        setGameState((p) => ({ ...p, status: "keybindings" }));
+                        setMenuSelection(0);
+                      }}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+
+                    <SettingsSlider
+                      label={t.sfx}
+                      value={settings.sfxVolume}
+                      index={2}
+                      colorClass="bg-troll-green"
+                      onChange={(v: number) =>
+                        setSettings((p) => ({ ...p, sfxVolume: v }))
+                      }
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+
+                    <SettingsSlider
+                      label={t.deathSounds || "DEATH SOUNDS"}
+                      value={settings.deathVolume ?? 0.5}
+                      index={3}
+                      colorClass="bg-red-500"
+                      onChange={(v: number) =>
+                        setSettings((p) => ({ ...p, deathVolume: v }))
+                      }
+                      isSelected={menuSelection === 3}
+                      onHover={setMenuSelection}
+                    />
+
+                    <SettingsSlider
+                      label={t.opponentOpacity || "OPPONENT OPACITY"}
+                      value={settings.opponentOpacity ?? 0.5}
+                      index={4}
+                      colorClass="bg-cyan-500"
+                      onChange={(v: number) =>
+                        setSettings((p) => ({ ...p, opponentOpacity: v }))
+                      }
+                      isSelected={menuSelection === 4}
+                      onHover={setMenuSelection}
+                    />
                   </div>
-                  <SettingsSlider
-                    label={t.sfx}
-                    value={settings.sfxVolume}
-                    index={1}
-                    colorClass="bg-troll-green"
-                    onChange={(v: number) =>
-                      setSettings((p) => ({ ...p, sfxVolume: v }))
-                    }
-                    isSelected={menuSelection === 1}
-                    onHover={setMenuSelection}
-                  />
-                  <SettingsSlider
-                    label={t.deathSounds || "DEATH SOUNDS"}
-                    value={settings.deathVolume ?? 0.5}
-                    index={2}
-                    colorClass="bg-red-500"
-                    onChange={(v: number) =>
-                      setSettings((p) => ({ ...p, deathVolume: v }))
-                    }
-                    isSelected={menuSelection === 2}
-                    onHover={setMenuSelection}
-                  />
-                  <div
-                    className={`p-4 border cursor-pointer ${menuSelection === 3 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(3)}
-                    onClick={() => {
-                      setSettings((p) => {
-                        const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
-                        let nextIndex = currentIndex + 1;
-                        if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
-                        return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
-                      });
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>MAX FPS</span>
-                      <span className="text-blue-400 font-bold">
-                        {settings.fpsCap === 0 ? "UNLIMITED" : settings.fpsCap}
-                      </span>
+
+                  {/* RIGHT COLUMN: Graphics & Gameplay */}
+                  <div className="flex flex-col gap-6 w-80">
+                    <h3 className="text-xl text-neutral-400 font-arcade mb-2">Graphics & Gameplay</h3>
+
+                    <div
+                      className={`p-4 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(5)}
+                      onClick={() => {
+                        setSettings((p) => {
+                          const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
+                          let nextIndex = currentIndex + 1;
+                          if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
+                          return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
+                        });
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span>MAX FPS</span>
+                        <span className="text-blue-400 font-bold">
+                          {settings.fpsCap === 0 ? "UNLIMITED" : settings.fpsCap}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-neutral-500 mt-1">
+                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-neutral-500 mt-1">
-                      {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
+
+                    <div
+                      className={`p-4 border cursor-pointer ${menuSelection === 6 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(6)}
+                      onClick={() => {
+                        setSettings((p) => {
+                          const currentScale = p.uiScale || 1;
+                          const currentIndex = UI_SCALE_OPTIONS.indexOf(currentScale) !== -1 ? UI_SCALE_OPTIONS.indexOf(currentScale) : 2;
+                          let nextIndex = currentIndex + 1;
+                          if (nextIndex >= UI_SCALE_OPTIONS.length) nextIndex = 0;
+                          return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
+                        });
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span>{t.uiSize || "UI SIZE"}</span>
+                        <span className="text-blue-400 font-bold">
+                          {Math.round((settings.uiScale || 1) * 100)}%
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-neutral-500 mt-1">
+                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
+                      </div>
                     </div>
+
+                     <div
+                      className={`p-4 border cursor-pointer ${menuSelection === 7 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(7)}
+                      onClick={() => {
+                        setSettings((p) => {
+                          const currentScale = p.resolutionScale || 1080;
+                          const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
+                          let nextIndex = currentIndex + 1;
+                          if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = 0;
+                          return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
+                        });
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span>AUFLÖSUNG / RESOLUTION</span>
+                        <span className="text-blue-400 font-bold">
+                          {settings.resolutionScale === 720 ? "720p (HD)" : settings.resolutionScale === 1080 ? "1080p (FHD)" : settings.resolutionScale === 1440 ? "1440p (WQHD)" : "2160p (4K)"}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-neutral-500 mt-1">
+                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
+                      </div>
+                    </div>
+
+                    <SettingsSlider
+                      label="SCREEN SHAKE"
+                      value={settings.screenShake ?? 1}
+                      index={8}
+                      colorClass="bg-yellow-500"
+                      onChange={(v: number) =>
+                        setSettings((p) => ({ ...p, screenShake: v }))
+                      }
+                      isSelected={menuSelection === 8}
+                      onHover={setMenuSelection}
+                    />
+
+                    <div
+                      className={`p-4 border cursor-pointer ${menuSelection === 9 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(9)}
+                      onClick={() => {
+                        setSettings((p) => ({ ...p, invertXOnGravityReverse: !p.invertXOnGravityReverse }));
+                      }}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span>{lang === Language.DE ? "INVERTIERE L/R" : "INVERT L/R"}</span>
+                          <span className="text-blue-400 font-bold text-xl">
+                            {settings.invertXOnGravityReverse ? "ON" : "OFF"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-neutral-500">
+                          {lang === Language.DE ? "(BEI GRAVITATIONS-UMKEHR)" : "(ON GRAVITY REVERSE)"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`p-4 border cursor-pointer ${menuSelection === 10 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      onMouseEnter={() => setMenuSelection(10)}
+                      onClick={() => {
+                        setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
+                      }}
+                    >
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                          <span>{lang === Language.DE ? "INVERTIERE HOCH/RUNTER" : "INVERT UP/DOWN"}</span>
+                          <span className="text-blue-400 font-bold text-xl">
+                            {settings.invertYOnGravityReverse ? "ON" : "OFF"}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-neutral-500">
+                          {lang === Language.DE ? "(BEI GRAVITATIONS-UMKEHR)" : "(ON GRAVITY REVERSE)"}
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                  <div
-                    className={`p-4 border cursor-pointer ${menuSelection === 4 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(4)}
-                    onClick={() => {
-                      setSettings((p) => {
-                        const currentScale = p.uiScale || 1;
-                        const currentIndex = UI_SCALE_OPTIONS.indexOf(currentScale) !== -1 ? UI_SCALE_OPTIONS.indexOf(currentScale) : 2;
-                        let nextIndex = currentIndex + 1;
-                        if (nextIndex >= UI_SCALE_OPTIONS.length) nextIndex = 0;
-                        return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
-                      });
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>{t.uiSize || "UI SIZE"}</span>
-                      <span className="text-blue-400 font-bold">
-                        {Math.round((settings.uiScale || 1) * 100)}%
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-neutral-500 mt-1">
-                      {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
-                    </div>
-                  </div>
-                   <div
-                    className={`p-4 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                    onMouseEnter={() => setMenuSelection(5)}
-                    onClick={() => {
-                      setSettings((p) => {
-                        const currentScale = p.resolutionScale || 1080;
-                        const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
-                        let nextIndex = currentIndex + 1;
-                        if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = 0;
-                        return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
-                      });
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>AUFLÖSUNG / RESOLUTION</span>
-                      <span className="text-blue-400 font-bold">
-                        {settings.resolutionScale === 720 ? "720p (HD)" : settings.resolutionScale === 1080 ? "1080p (FHD)" : settings.resolutionScale === 1440 ? "1440p (WQHD)" : "2160p (4K)"}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-neutral-500 mt-1">
-                      {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
-                    </div>
-                  </div>
-                  <SettingsSlider
-                    label="SCREEN SHAKE"
-                    value={settings.screenShake ?? 1}
-                    index={6}
-                    colorClass="bg-yellow-500"
-                    onChange={(v: number) =>
-                      setSettings((p) => ({ ...p, screenShake: v }))
-                    }
-                    isSelected={menuSelection === 6}
-                    onHover={setMenuSelection}
-                  />
-                  <SettingsSlider
-                    label={t.opponentOpacity || "OPPONENT OPACITY"}
-                    value={settings.opponentOpacity ?? 0.5}
-                    index={7}
-                    colorClass="bg-cyan-500"
-                    onChange={(v: number) =>
-                      setSettings((p) => ({ ...p, opponentOpacity: v }))
-                    }
-                    isSelected={menuSelection === 7}
-                    onHover={setMenuSelection}
-                  />
+                </div>
+
+                <div className="mt-12 w-80">
                   <MenuButton
-                    index={8}
-                    label={t.keybindings}
-                    onClick={() => {
-                      setGameState((p) => ({ ...p, status: "keybindings" }));
-                      setMenuSelection(0);
-                    }}
-                    isSelected={menuSelection === 8}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={9}
+                    index={11}
                     label={t.back}
                     onClick={() => {
                       const nextStatus = gameState.previousStatus || "menu";
@@ -8703,7 +8702,7 @@ const App: React.FC = () => {
                         setMenuSelection(0);
                       }
                     }}
-                    isSelected={menuSelection === 9}
+                    isSelected={menuSelection === 11}
                     onHover={setMenuSelection}
                   />
                 </div>
@@ -8739,9 +8738,8 @@ const App: React.FC = () => {
                         settings.keybindingsP1?.[
                           action as keyof Keybindings
                         ] || [];
-                      const keyBind = bindings.find(k => !k.startsWith("GP_")) || 
-                        (action === "up" ? "KeyW" : action === "down" ? "KeyS" : action === "left" ? "KeyA" : action === "right" ? "KeyD" : action === "action" ? "KeyQ" : "KeyF");
-                      const gpBind = bindings.find(k => k.startsWith("GP_")) || "None";
+                      const keyBinds = bindings.filter(k => k !== "GP_None");
+                      const displayBinds = keyBinds.map(k => k.replace("Arrow", "").replace("Key", "").replace("Digit", "").replace("ControlRight", "R-CTRL").replace("ControlLeft", "L-CTRL").toUpperCase()).join(" / ");
 
                       return (
                         <div
@@ -8768,19 +8766,8 @@ const App: React.FC = () => {
                           <div className="flex justify-between items-center text-[10px]">
                             <div className="flex gap-1 items-center">
                               <span className="font-bold text-blue-400">
-                                {keyBind
-                                    .replace("Arrow", "")
-                                    .replace("Key", "")
-                                    .replace("Digit", "")
-                                    .replace("ControlRight", "R-CTRL")
-                                    .replace("ControlLeft", "L-CTRL")
-                                    .toUpperCase()}
+                                {displayBinds || "NONE"}
                               </span>
-                            </div>
-                            <div className="flex gap-1 items-center">
-                               <span className="font-bold text-yellow-500">
-                                 {gpBind.replace("GP_", "").toUpperCase()}
-                               </span>
                             </div>
                           </div>
                         </div>
@@ -8809,9 +8796,8 @@ const App: React.FC = () => {
                         settings.keybindingsP2?.[
                           action as keyof Keybindings
                         ] || [];
-                      const keyBind = bindings.find(k => !k.startsWith("GP_")) || 
-                        (action === "up" ? "ArrowUp" : action === "down" ? "ArrowDown" : action === "left" ? "ArrowLeft" : action === "right" ? "ArrowRight" : action === "action" ? "ControlRight" : "ShiftRight");
-                      const gpBind = bindings.find(k => k.startsWith("GP_")) || "None";
+                      const keyBinds = bindings.filter(k => k !== "GP_None");
+                      const displayBinds = keyBinds.map(k => k.replace("Arrow", "").replace("Key", "").replace("Digit", "").replace("ControlRight", "R-CTRL").replace("ControlLeft", "L-CTRL").toUpperCase()).join(" / ");
 
                       return (
                         <div
@@ -8838,19 +8824,8 @@ const App: React.FC = () => {
                           <div className="flex justify-between items-center text-[10px]">
                             <div className="flex gap-1 items-center">
                               <span className="font-bold text-blue-400">
-                                {keyBind
-                                    .replace("Arrow", "")
-                                    .replace("Key", "")
-                                    .replace("Digit", "")
-                                    .replace("ControlRight", "R-CTRL")
-                                    .replace("ControlLeft", "L-CTRL")
-                                    .toUpperCase()}
+                                {displayBinds || "NONE"}
                               </span>
-                            </div>
-                            <div className="flex gap-1 items-center">
-                               <span className="font-bold text-yellow-500">
-                                 {gpBind.replace("GP_", "").toUpperCase()}
-                               </span>
                             </div>
                           </div>
                         </div>

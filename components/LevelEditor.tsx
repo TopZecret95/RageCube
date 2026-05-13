@@ -685,7 +685,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     EntityType | "start" | "startP2" | "eraser" | "select"
   >("wall");
   const [allowedAbility, setAllowedAbility] = useState<LevelAbility>(
-    initialLevel?.allowedAbility || "double_jump"
+    initialLevel?.allowedAbility || "none"
   );
   const [autoScroll, setAutoScroll] = useState<boolean>(
     initialLevel?.autoScroll || false,

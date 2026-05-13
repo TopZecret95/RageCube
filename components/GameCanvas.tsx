@@ -425,7 +425,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const collapsingStates = useRef<Record<string, { touchedAt: number }>>({});
   const lastHazardTriggerTime = useRef(0);
   const lastPowerupSpawnTime = useRef(0);
-  const lastGamepadState = useRef<Record<number, { buttons: boolean[] }>>({});
+
 
   // Time Manipulation
   const timeScaleRef = useRef(1.0);
@@ -1924,7 +1924,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        if (p.controls.up.includes(e.code)) {
+        let isJumpKey = p.controls.up.includes(e.code);
+        if (p.gravity < 0 && settings?.invertYOnGravityReverse) {
+          isJumpKey = p.controls.down.includes(e.code);
+        }
+
+        if (isJumpKey) {
           p.jumpBufferTimer = 6;
           triggerJump(p);
         }
@@ -1946,7 +1951,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (isStartingRef.current || paused) return;
         players.current.forEach((p) => {
           if (!p) return;
-          if (p.controls.up.includes(e.code)) p.canJump = true; // allow release and re-press
+          let isJumpKey = p.controls.up.includes(e.code);
+          if (p.gravity < 0 && settings?.invertYOnGravityReverse) {
+            isJumpKey = p.controls.down.includes(e.code);
+          }
+          if (isJumpKey) p.canJump = true; // allow release and re-press
         });
       }
     };
@@ -2640,53 +2649,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           !isOnline || p.onlineId === onlineService.localPlayer?.id;
 
         // --- Gamepad Support ---
-        const gp = navigator.getGamepads()[p.playerIndex];
-        const lastGP = lastGamepadState.current[p.playerIndex];
-
-        const checkAction = (action: keyof Keybindings, isNewPress = false) => {
+        // We check keyboard array directly:
+        const checkAction = (action: keyof Keybindings) => {
           if (!isLocal || paused || isStartingRef.current) return false;
           const bindings = p.controls[action] || [];
-
-          // Keyboard
-          const kb = bindings.some((code) => keys.current[code]);
-          if (kb && !isNewPress) return true; // We don't handle newPress for keyboard here as it's typically handled in handleKeyDown
-
-          // Gamepad
-          if (gp) {
-            return bindings.some((code) => {
-              if (code.startsWith("GP_B")) {
-                const bIdx = parseInt(code.replace("GP_B", ""));
-                const pressed = gp.buttons[bIdx]?.pressed;
-                if (isNewPress) {
-                  return pressed && (!lastGP || !lastGP.buttons[bIdx]);
-                }
-                return pressed;
-              }
-              return false;
-            });
-          }
-          return false;
+          return bindings.some((code) => keys.current[code]);
         };
 
-        const deadzone = 0.3;
-        const gamepadLeft =
-          checkAction("left") || (gp ? gp.axes[0] < -deadzone : false);
-        const gamepadRight =
-          checkAction("right") || (gp ? gp.axes[0] > deadzone : false);
-        const gamepadJump = checkAction("up");
-        const gamepadDown =
-          checkAction("down") || (gp ? gp.axes[1] > deadzone : false);
-        const gamepadAction = checkAction("action");
-        const gamepadDash = checkAction("dash");
+        let pressingLeft = checkAction("left");
+        let pressingRight = checkAction("right");
+        let pressingJump = checkAction("up");
+        let pressingDown = checkAction("down");
+        const pressingAction = checkAction("action");
+        const pressingDash = checkAction("dash");
 
         if (isLocal && !p.hasStartedMove && !paused && !isStartingRef.current) {
           if (
-            gamepadLeft ||
-            gamepadRight ||
-            gamepadJump ||
-            gamepadDown ||
-            gamepadAction ||
-            gamepadDash
+            pressingLeft ||
+            pressingRight ||
+            pressingJump ||
+            pressingDown ||
+            pressingAction ||
+            pressingDash
           ) {
             p.hasStartedMove = true;
             const scrollSpeed = level.autoScrollSpeed || 150;
@@ -2695,27 +2679,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        if (gp && isLocal && !paused && !isStartingRef.current) {
-          // Handle Trigger Presses (Jump/Action) for ones that need edge detection
-          if (checkAction("up", true)) {
-            p.jumpBufferTimer = 6;
-            triggerJump(p);
-            hasStartedMoving.current = true;
-          }
-          if (checkAction("action", true)) {
-            triggerAction(p);
-            hasStartedMoving.current = true;
-          }
-          if (checkAction("dash", true)) {
-            triggerDash(p);
-            hasStartedMoving.current = true;
-          }
 
-          // Update last state
-          lastGamepadState.current[p.playerIndex] = {
-            buttons: gp.buttons.map((b) => b.pressed),
-          };
-        }
 
         // --- Remote Player Interpolation ---
         if (!isLocal) {
@@ -2780,18 +2744,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         p.platformDelta = { x: 0, y: 0 };
 
-        const pressingLeft =
-          !isStartingRef.current &&
-          isLocal &&
-          (p.controls.left.some((k) => keys.current[k]) || gamepadLeft);
-        const pressingRight =
-          !isStartingRef.current &&
-          isLocal &&
-          (p.controls.right.some((k) => keys.current[k]) || gamepadRight);
-        const pressingJump =
-          !isStartingRef.current &&
-          isLocal &&
-          (p.controls.up.some((k) => keys.current[k]) || gamepadJump);
+        if (p.gravity < 0) {
+          if (settings?.invertXOnGravityReverse) {
+            const temp = pressingLeft;
+            pressingLeft = pressingRight;
+            pressingRight = temp;
+          }
+          if (settings?.invertYOnGravityReverse) {
+            const temp = pressingJump;
+            pressingJump = pressingDown;
+            pressingDown = temp;
+          }
+        }
 
         if (isLocal) {
           if (!pressingJump) {
@@ -2805,10 +2769,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        const pressingDown =
-          !isStartingRef.current &&
-          isLocal &&
-          (p.controls.down.some((k) => keys.current[k]) || gamepadDown);
         if (pressingLeft) p.facing = -1;
         if (pressingRight) p.facing = 1;
 
@@ -3437,12 +3397,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.lastWallDir = p.wallDir; // Remember direction
 
               // Check if player is pressing away from wall
-              const isPressingLeft = p.controls.left.some(
-                (k) => keys.current[k],
-              );
-              const isPressingRight = p.controls.right.some(
-                (k) => keys.current[k],
-              );
+              let isPressingLeft = p.controls.left.some((k) => keys.current[k]);
+              let isPressingRight = p.controls.right.some((k) => keys.current[k]);
+              
+              if (p.gravity < 0 && settings?.invertXOnGravityReverse) {
+                const temp = isPressingLeft;
+                isPressingLeft = isPressingRight;
+                isPressingRight = temp;
+              }
+
               const isPressingAway =
                 (p.wallDir === 1 && isPressingLeft) ||
                 (p.wallDir === -1 && isPressingRight);

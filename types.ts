@@ -96,6 +96,8 @@ export interface GameSettings {
   favoriteTrails?: string[];
   playerName?: string;
   opponentOpacity?: number;
+  invertXOnGravityReverse?: boolean;
+  invertYOnGravityReverse?: boolean;
   keybindingsP1?: Keybindings;
   keybindingsP2?: Keybindings;
 }
