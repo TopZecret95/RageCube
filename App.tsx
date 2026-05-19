@@ -839,7 +839,7 @@ const CharacterPreview = React.memo(
         animationId = requestAnimationFrame(render);
         if (!isVisibleRef.current) return;
         const now = Date.now();
-        if (now - lastRender < 33) return; // Throttle to ~30 FPS
+        if (now - lastRender < 16) return; // Smooth 60 FPS preview
         lastRender = now;
 
         const frame = (now - animationStartTime) / 16.666; // Normalize to equivalent of 60 FPS for existing formulas
@@ -9337,7 +9337,7 @@ const App: React.FC = () => {
               initial={{ opacity: 0, x: 50, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="fixed bottom-6 right-6 bg-neutral-900 border border-neutral-800 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[250] flex items-center gap-3 backdrop-blur-xl"
+              className="fixed bottom-6 right-6 bg-neutral-950/95 border border-neutral-800 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[250] flex items-center gap-3"
             >
               <div className="w-2 h-2 rounded-full bg-rage-red animate-pulse" />
               <span className="font-medium text-sm tracking-tight">{toastMessage}</span>

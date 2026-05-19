@@ -5987,7 +5987,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const loop = (timestamp: number) => {
       animationFrameId = requestAnimationFrame(loop);
       const frameTime = timestamp - lastTime;
-      if (fpsCap > 0 && frameTime < 1000 / fpsCap) return;
+      if (fpsCap > 0 && frameTime < (1000 / fpsCap) - 1) return;
       lastTime = timestamp;
       accumulator += frameTime;
       if (accumulator > 200) accumulator = 200;
