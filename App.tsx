@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { secureSave, secureLoad, signData, verifyData } from "./utils/storage";
 import GameCanvas from "./components/GameCanvas";
 import LevelEditor from "./components/LevelEditor";
 import CustomLevelSelect from "./components/CustomLevelSelect";
@@ -813,6 +814,7 @@ const CharacterPreview = React.memo(
   }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const triggerDeathRef = useRef<boolean>(false);
+    const isVisibleRef = useRef<boolean>(true);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -820,12 +822,26 @@ const CharacterPreview = React.memo(
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
+      const observer = new IntersectionObserver(
+        (entries) => {
+          isVisibleRef.current = entries[0].isIntersecting;
+        },
+        { threshold: 0 }
+      );
+      observer.observe(canvas);
+
       const animationStartTime = Date.now();
       let animationId: number;
       let deathStartTime = 0;
+      let lastRender = 0;
 
       const render = () => {
+        animationId = requestAnimationFrame(render);
+        if (!isVisibleRef.current) return;
         const now = Date.now();
+        if (now - lastRender < 33) return; // Throttle to ~30 FPS
+        lastRender = now;
+
         const frame = (now - animationStartTime) / 16.666; // Normalize to equivalent of 60 FPS for existing formulas
         
         // Clear background
@@ -884,8 +900,10 @@ const CharacterPreview = React.memo(
              }
           } else if (anim === "firework") {
             ctx.fillStyle = "yellow";
-            ctx.shadowBlur = 10 * scale;
-            ctx.shadowColor = "yellow";
+            if (scale > 2) {
+              ctx.shadowBlur = 10 * scale;
+              ctx.shadowColor = "yellow";
+            }
             for(let i=0; i<8; i++) {
                ctx.beginPath();
                ctx.arc(CX + Math.cos(i*Math.PI/4) * 12 * scale * progress/10, CY + Math.sin(i*Math.PI/4) * 12 * scale * progress/10 - 5 * scale, 1.5*scale, 0, Math.PI*2);
@@ -940,7 +958,6 @@ const CharacterPreview = React.memo(
             }
           }
           
-          animationId = requestAnimationFrame(render);
           return;
         }
 
@@ -1013,8 +1030,10 @@ const CharacterPreview = React.memo(
           } else if (customization.trailType === "neon-trail") {
             ctx.strokeStyle = "#00ff00";
             ctx.lineWidth = 2*scale;
-            ctx.shadowBlur = 5*scale;
-            ctx.shadowColor = "#00ff00";
+            if (scale > 2) {
+              ctx.shadowBlur = 5*scale;
+              ctx.shadowColor = "#00ff00";
+            }
             ctx.strokeRect(CX - offset - size/2, CY - size/2, size, size);
             ctx.shadowBlur = 0;
           } else if (customization.trailType === "matrix_trail") {
@@ -1163,8 +1182,10 @@ const CharacterPreview = React.memo(
           case "glowing":
           case "laser":
             ctx.fillStyle = eyes === "laser" ? "#ff0000" : "#00ffff";
-            ctx.shadowBlur = 10 * scale;
-            ctx.shadowColor = ctx.fillStyle;
+            if (scale > 2) {
+              ctx.shadowBlur = 10 * scale;
+              ctx.shadowColor = ctx.fillStyle;
+            }
             ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
             ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
             ctx.shadowBlur = 0;
@@ -1216,8 +1237,10 @@ const CharacterPreview = React.memo(
           case "evil":
             const evilPulse = 10 + Math.sin(frame / 5) * 5;
             ctx.fillStyle = "#ff0000"; 
-            ctx.shadowBlur = evilPulse * scale;
-            ctx.shadowColor = "#ff0000";
+            if (scale > 2) {
+              ctx.shadowBlur = evilPulse * scale;
+              ctx.shadowColor = "#ff0000";
+            }
             // Left eye - slanted
             ctx.beginPath();
             ctx.moveTo(px + 3 * scale, py + 3 * scale);
@@ -1457,11 +1480,12 @@ const CharacterPreview = React.memo(
         }
         
         ctx.restore();
-
-        animationId = requestAnimationFrame(render);
       };
       render();
-      return () => cancelAnimationFrame(animationId);
+      return () => {
+         cancelAnimationFrame(animationId);
+         observer.disconnect();
+      };
     }, [customization, scale]);
 
     return (
@@ -1809,14 +1833,138 @@ const App: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [onlineError, setOnlineError] = useState("");
 
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const showToast = (msg: string) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 5000);
   };
 
   // Debouncing refs
   const lastDeathTime = useRef(0);
   const processedCoins = useRef<Set<string>>(new Set());
+  const saveInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExportSave = useCallback(() => {
+    const saveData = {
+      ragecube_settings: JSON.parse(localStorage.getItem("ragecube_settings") || "{}"),
+      ragecube_customization: secureLoad("ragecube_customization"),
+      ragecube_achievements: secureLoad("ragecube_achievements"),
+      ragecube_stats: secureLoad("ragecube_stats"),
+      ragecube_highscores_v2: secureLoad("ragecube_highscores_v2"),
+      ragecube_custom_levels: secureLoad("ragecube_custom_levels"),
+    };
+    
+    // Sign the whole saveData object
+    const signedData = signData(saveData);
+    
+    const blob = new Blob([JSON.stringify(signedData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ragecube_save_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleImportSave = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        let parsedObject;
+        try {
+          parsedObject = JSON.parse(content);
+        } catch (e) {
+          alert(lang === Language.DE ? "Fehler: Die Datei ist kein gültiges Speicherstand-Format (Ungültiges JSON)." : "Error: The file is not a valid save format (Invalid JSON).");
+          return;
+        }
+        
+        // Verify signature
+        const data = verifyData(parsedObject);
+        if (data === null) {
+          showToast(lang === Language.DE ? "Der Import hat wegen Dateimanipulation nicht funktioniert." : "The import failed due to file manipulation.");
+          return;
+        }
+
+        // Basic validation
+        if (!data || typeof data !== 'object') {
+          alert(lang === Language.DE ? "Fehler: Die Datei enthält keine gültigen Daten." : "Error: The file does not contain valid data.");
+          return;
+        }
+
+        if (data.ragecube_settings) {
+          localStorage.setItem("ragecube_settings", JSON.stringify(data.ragecube_settings));
+          setSettings(data.ragecube_settings);
+        }
+        if (data.ragecube_customization) {
+          secureSave("ragecube_customization", data.ragecube_customization);
+          setCustomization(data.ragecube_customization);
+        }
+        if (data.ragecube_achievements) {
+          secureSave("ragecube_achievements", data.ragecube_achievements);
+          setGameState(p => ({ ...p, unlockedAchievements: data.ragecube_achievements }));
+        }
+        if (data.ragecube_stats) {
+          secureSave("ragecube_stats", data.ragecube_stats);
+          setGameState(p => ({ 
+            ...p, 
+            totalBlocksPlaced: data.ragecube_stats.totalBlocksPlaced || 0,
+            totalCoinsCollected: data.ragecube_stats.totalCoinsCollected || 0,
+            flawlessLevelsCount: data.ragecube_stats.flawlessLevelsCount || 0,
+            pacifistLevelsCount: data.ragecube_stats.pacifistLevelsCount || 0,
+            totalJumps: data.ragecube_stats.totalJumps || 0,
+            totalDeaths: data.ragecube_stats.totalDeaths || 0,
+            totalPlayTime: data.ragecube_stats.totalPlayTime || 0,
+            distanceWalked: data.ragecube_stats.distanceWalked || 0,
+            powerupsCollected: data.ragecube_stats.powerupsCollected || 0,
+            totalScore: data.ragecube_stats.totalScore || 0,
+            speedrunUnder30Count: data.ragecube_stats.speedrunUnder30Count || 0,
+            wallJumpsCount: data.ragecube_stats.wallJumpsCount || 0,
+            multiplayerWins: data.ragecube_stats.multiplayerWins || 0,
+            brawlerLevelsPlayedCount: data.ragecube_stats.brawlerLevelsPlayedCount || 0,
+            editorTime: data.ragecube_stats.editorTime || 0,
+           }));
+        }
+        if (data.ragecube_highscores_v2) {
+          secureSave("ragecube_highscores_v2", data.ragecube_highscores_v2);
+          setHighScores(data.ragecube_highscores_v2);
+        }
+        if (data.ragecube_custom_levels) {
+          secureSave("ragecube_custom_levels", data.ragecube_custom_levels);
+          setCustomLevels(data.ragecube_custom_levels);
+        }
+        
+        showToast(lang === Language.DE 
+          ? "Speicherstand erfolgreich importiert! Das Spiel wird nun neu gestartet..." 
+          : "Save loaded successfully! The game will now restart...");
+        
+        // Wait for the user to be able to read the toast before reloading
+        setTimeout(() => {
+          window.location.reload();
+        }, 2500);
+      } catch (err) {
+        console.error("Failed to parse save file", err);
+        alert(lang === Language.DE ? "Fehler beim Importieren!" : "Error importing save data!");
+      }
+    };
+    reader.readAsText(file);
+    if (saveInputRef.current) saveInputRef.current.value = "";
+  }, [lang]);
+
+  const triggerImport = useCallback(() => {
+    if (saveInputRef.current) {
+      saveInputRef.current.click();
+    }
+  }, []);
 
   // --- STATE REF PATTERN FOR PERFORMANCE ---
   const stateRef = useRef({
@@ -1859,10 +2007,7 @@ const App: React.FC = () => {
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "ragecube_customization",
-      JSON.stringify(customization),
-    );
+    secureSave("ragecube_customization", customization);
     if (onlineService.lobbyCode) {
       updateOnlineCustomization(customization);
     }
@@ -1870,25 +2015,24 @@ const App: React.FC = () => {
 
   // Load Highscores & Custom Levels & Achievements
   useEffect(() => {
-    const storedScores = localStorage.getItem("ragecube_highscores_v2");
-    if (storedScores) setHighScores(JSON.parse(storedScores));
+    const storedScores = secureLoad("ragecube_highscores_v2");
+    if (storedScores) setHighScores(storedScores);
 
-    const storedCustomization = localStorage.getItem("ragecube_customization");
-    if (storedCustomization) setCustomization(JSON.parse(storedCustomization));
+    const storedCustomization = secureLoad("ragecube_customization");
+    if (storedCustomization) setCustomization(storedCustomization);
 
-    const storedLevels = localStorage.getItem("ragecube_custom_levels");
-    if (storedLevels) setCustomLevels(JSON.parse(storedLevels));
+    const storedLevels = secureLoad("ragecube_custom_levels");
+    if (storedLevels) setCustomLevels(storedLevels);
 
-    const storedAch = localStorage.getItem("ragecube_achievements");
+    const storedAch = secureLoad("ragecube_achievements");
     if (storedAch)
       setGameState((p) => ({
         ...p,
-        unlockedAchievements: JSON.parse(storedAch),
+        unlockedAchievements: storedAch,
       }));
 
-    const storedStats = localStorage.getItem("ragecube_stats");
-    if (storedStats) {
-      const stats = JSON.parse(storedStats);
+    const stats = secureLoad("ragecube_stats");
+    if (stats) {
       setGameState((p) => ({
         ...p,
         totalBlocksPlaced: stats.totalBlocksPlaced || 0,
@@ -1927,10 +2071,7 @@ const App: React.FC = () => {
 
       if (added) {
         setGameState((p) => ({ ...p, unlockedAchievements: newUnlocked }));
-        localStorage.setItem(
-          "ragecube_achievements",
-          JSON.stringify(newUnlocked),
-        );
+        secureSave("ragecube_achievements", newUnlocked);
       }
 
       // Persist stats whenever they change (or just here for simplicity if stats are passed)
@@ -1950,7 +2091,7 @@ const App: React.FC = () => {
         brawlerLevelsPlayedCount: stats.brawlerLevelsPlayedCount || gameState.brawlerLevelsPlayedCount,
         editorTime: stats.editorTime || gameState.editorTime,
       };
-      localStorage.setItem("ragecube_stats", JSON.stringify(statsToSave));
+      secureSave("ragecube_stats", statsToSave);
     },
     [
       gameState.unlockedAchievements,
@@ -2144,7 +2285,7 @@ const App: React.FC = () => {
     }
 
     setCustomLevels(updated);
-    localStorage.setItem("ragecube_custom_levels", JSON.stringify(updated));
+    secureSave("ragecube_custom_levels", updated);
     setEditorData(null);
     setEditorHistory(null);
     setEditorVerified(false);
@@ -2158,7 +2299,7 @@ const App: React.FC = () => {
   const handleImportLevel = (newLevels: LevelData[]) => {
     setCustomLevels((prev) => {
       const updated = [...prev, ...newLevels];
-      localStorage.setItem("ragecube_custom_levels", JSON.stringify(updated));
+      secureSave("ragecube_custom_levels", updated);
       return updated;
     });
   };
@@ -2166,7 +2307,7 @@ const App: React.FC = () => {
   const handleDeleteLevel = (id: string) => {
     setCustomLevels((prev) => {
       const updated = prev.filter((l) => l.id !== id);
-      localStorage.setItem("ragecube_custom_levels", JSON.stringify(updated));
+      secureSave("ragecube_custom_levels", updated);
 
       // If deleted the last item, or the selection is now out of bounds
       if (updated.length === 0) {
@@ -2211,7 +2352,7 @@ const App: React.FC = () => {
     );
 
     setCustomLevels(newLevels);
-    localStorage.setItem("ragecube_custom_levels", JSON.stringify(newLevels));
+    secureSave("ragecube_custom_levels", newLevels);
 
     setLevel(updatedLevel);
     processedCoins.current.clear();
@@ -3298,7 +3439,7 @@ const App: React.FC = () => {
         }));
     } else if (status === "settings") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(12);
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(13);
       if (e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "KeyA" || e.code === "KeyD") {
         const diff = e.code === "ArrowRight" || e.code === "KeyD" ? 0.1 : -0.1;
         if (sel === 2)
@@ -3352,6 +3493,12 @@ const App: React.FC = () => {
           setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
         }
         if (sel === 11) {
+          triggerImport();
+        }
+        if (sel === 12) {
+          handleExportSave();
+        }
+        if (sel === 13) {
           setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
         }
       }
@@ -4753,7 +4900,7 @@ const App: React.FC = () => {
 
     const updated = [...highScores, newScore];
     setHighScores(updated);
-    localStorage.setItem("ragecube_highscores_v2", JSON.stringify(updated));
+    secureSave("ragecube_highscores_v2", updated);
 
     // Redirect to the correct highscore view
     if (isStory) {
@@ -8537,20 +8684,21 @@ const App: React.FC = () => {
 
             {/* Settings Menu */}
             {gameState.status === "settings" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-12">
-                <h2 className="text-3xl mb-8 text-rage-red uppercase tracking-widest">{t.settings}</h2>
-                <div className="flex gap-12 w-full max-w-4xl px-8 items-start justify-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-hidden">
+                <div className="w-full max-w-5xl aspect-video bg-black/80 flex flex-col items-center justify-between py-6 px-8">
+                <h2 className="text-2xl text-rage-red uppercase tracking-widest shrink-0">{t.settings}</h2>
+                <div className="flex gap-12 w-full justify-center flex-1 min-h-0">
                   
                   {/* LEFT COLUMN: Player & Audio */}
-                  <div className="flex flex-col gap-6 w-80">
-                    <h3 className="text-xl text-neutral-400 font-arcade mb-2">Player & Audio</h3>
+                  <div className="flex flex-col gap-2 w-80 h-full justify-center">
+                    <h3 className="text-lg text-neutral-400 font-arcade">Player & Audio</h3>
                     
                     <div
-                      className={`p-4 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(0)}
                     >
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="uppercase text-[10px] font-arcade text-neutral-400 w-full text-left ml-2">
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="uppercase text-[8px] font-arcade text-neutral-400 w-full text-left ml-2">
                           {t.playerNameLabel || "PLAYER NAME"}
                         </span>
                         <div className="w-full bg-black border border-neutral-700 p-1">
@@ -8563,16 +8711,17 @@ const App: React.FC = () => {
                               setSettings((p) => ({ ...p, playerName: val }));
                               setPlayerName(val);
                             }}
-                            className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800"
+                            className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800 text-sm"
                             placeholder="???"
                           />
                         </div>
                       </div>
-                      <div className="text-[7px] text-neutral-600 mt-2 text-center uppercase tracking-widest">
+                      <div className="text-[7px] text-neutral-600 mt-1 text-center uppercase tracking-widest">
                         Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
                       </div>
                     </div>
 
+                    <div className="h-10">
                     <MenuButton
                       index={1}
                       label={t.keybindings}
@@ -8583,7 +8732,9 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 1}
                       onHover={setMenuSelection}
                     />
+                    </div>
 
+                    <div className="scale-90 origin-left">
                     <SettingsSlider
                       label={t.sfx}
                       value={settings.sfxVolume}
@@ -8595,7 +8746,9 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 2}
                       onHover={setMenuSelection}
                     />
+                    </div>
 
+                    <div className="scale-90 origin-left">
                     <SettingsSlider
                       label={t.deathSounds || "DEATH SOUNDS"}
                       value={settings.deathVolume ?? 0.5}
@@ -8607,7 +8760,9 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 3}
                       onHover={setMenuSelection}
                     />
+                    </div>
 
+                    <div className="scale-90 origin-left">
                     <SettingsSlider
                       label={t.opponentOpacity || "OPPONENT OPACITY"}
                       value={settings.opponentOpacity ?? 0.5}
@@ -8619,14 +8774,15 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 4}
                       onHover={setMenuSelection}
                     />
+                    </div>
                   </div>
 
                   {/* RIGHT COLUMN: Graphics & Gameplay */}
-                  <div className="flex flex-col gap-6 w-80">
-                    <h3 className="text-xl text-neutral-400 font-arcade mb-2">Graphics & Gameplay</h3>
+                  <div className="flex flex-col gap-2 w-80 h-full justify-center">
+                    <h3 className="text-lg text-neutral-400 font-arcade">Graphics & Gameplay</h3>
 
                     <div
-                      className={`p-4 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(5)}
                       onClick={() => {
                         setSettings((p) => {
@@ -8637,19 +8793,16 @@ const App: React.FC = () => {
                         });
                       }}
                     >
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center text-xs">
                         <span>MAX FPS</span>
                         <span className="text-blue-400 font-bold">
                           {settings.fpsCap === 0 ? "UNLIMITED" : settings.fpsCap}
                         </span>
                       </div>
-                      <div className="text-[10px] text-neutral-500 mt-1">
-                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
-                      </div>
                     </div>
 
                     <div
-                      className={`p-4 border cursor-pointer ${menuSelection === 6 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border cursor-pointer ${menuSelection === 6 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(6)}
                       onClick={() => {
                         setSettings((p) => {
@@ -8661,19 +8814,16 @@ const App: React.FC = () => {
                         });
                       }}
                     >
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center text-xs">
                         <span>{t.uiSize || "UI SIZE"}</span>
                         <span className="text-blue-400 font-bold">
                           {Math.round((settings.uiScale || 1) * 100)}%
                         </span>
                       </div>
-                      <div className="text-[10px] text-neutral-500 mt-1">
-                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
-                      </div>
                     </div>
 
                      <div
-                      className={`p-4 border cursor-pointer ${menuSelection === 7 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border cursor-pointer ${menuSelection === 7 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(7)}
                       onClick={() => {
                         setSettings((p) => {
@@ -8685,17 +8835,15 @@ const App: React.FC = () => {
                         });
                       }}
                     >
-                      <div className="flex justify-between items-center">
-                        <span>AUFLÖSUNG / RESOLUTION</span>
+                      <div className="flex justify-between items-center text-xs">
+                        <span>AUFLÖSUNG</span>
                         <span className="text-blue-400 font-bold">
-                          {settings.resolutionScale === 720 ? "720p (HD)" : settings.resolutionScale === 1080 ? "1080p (FHD)" : settings.resolutionScale === 1440 ? "1440p (WQHD)" : "2160p (4K)"}
+                          {settings.resolutionScale === 720 ? "720p" : settings.resolutionScale === 1080 ? "1080p" : settings.resolutionScale === 1440 ? "1440p" : "2160p"}
                         </span>
-                      </div>
-                      <div className="text-[10px] text-neutral-500 mt-1">
-                        {t.clickOrArrowsToChange || "CLICK OR ARROWS TO CHANGE"}
                       </div>
                     </div>
 
+                    <div className="scale-90 origin-left mt-[-8px]">
                     <SettingsSlider
                       label="SCREEN SHAKE"
                       value={settings.screenShake ?? 1}
@@ -8707,43 +8855,38 @@ const App: React.FC = () => {
                       isSelected={menuSelection === 8}
                       onHover={setMenuSelection}
                     />
+                    </div>
 
                     <div
-                      className={`p-4 border cursor-pointer ${menuSelection === 9 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border cursor-pointer mt-[-8px] ${menuSelection === 9 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(9)}
                       onClick={() => {
                         setSettings((p) => ({ ...p, invertXOnGravityReverse: !p.invertXOnGravityReverse }));
                       }}
                     >
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1 text-xs">
                         <div className="flex justify-between items-center">
                           <span>{lang === Language.DE ? "INVERTIERE L/R" : "INVERT L/R"}</span>
-                          <span className="text-blue-400 font-bold text-xl">
+                          <span className="text-blue-400 font-bold">
                             {settings.invertXOnGravityReverse ? "ON" : "OFF"}
                           </span>
-                        </div>
-                        <div className="text-[10px] text-neutral-500">
-                          {lang === Language.DE ? "(BEI GRAVITATIONS-UMKEHR)" : "(ON GRAVITY REVERSE)"}
                         </div>
                       </div>
                     </div>
 
                     <div
-                      className={`p-4 border cursor-pointer ${menuSelection === 10 ? "border-white bg-neutral-800" : "border-transparent"}`}
+                      className={`p-2 border cursor-pointer ${menuSelection === 10 ? "border-white bg-neutral-800" : "border-transparent"}`}
                       onMouseEnter={() => setMenuSelection(10)}
                       onClick={() => {
                         setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
                       }}
                     >
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1 text-xs">
                         <div className="flex justify-between items-center">
-                          <span>{lang === Language.DE ? "INVERTIERE HOCH/RUNTER" : "INVERT UP/DOWN"}</span>
-                          <span className="text-blue-400 font-bold text-xl">
+                          <span>{lang === Language.DE ? "INVERTIERE O/U" : "INVERT U/D"}</span>
+                          <span className="text-blue-400 font-bold">
                             {settings.invertYOnGravityReverse ? "ON" : "OFF"}
                           </span>
-                        </div>
-                        <div className="text-[10px] text-neutral-500">
-                          {lang === Language.DE ? "(BEI GRAVITATIONS-UMKEHR)" : "(ON GRAVITY REVERSE)"}
                         </div>
                       </div>
                     </div>
@@ -8751,24 +8894,57 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-12 w-80">
-                  <MenuButton
-                    index={11}
-                    label={t.back}
-                    onClick={() => {
-                      const nextStatus = gameState.previousStatus || "menu";
-                      setGameState((p) => ({ 
-                        ...p, 
-                        status: nextStatus,
-                        previousStatus: undefined 
-                      }));
-                      if (nextStatus === "paused") {
-                        setMenuSelection(0);
-                      }
-                    }}
-                    isSelected={menuSelection === 11}
-                    onHover={setMenuSelection}
-                  />
+                {/* Bottom Row */}
+                <div className="flex justify-between items-end w-full px-8 shrink-0 pb-4 h-20">
+                  <div className="flex gap-4">
+                    <div className="w-56 h-12">
+                      <MenuButton
+                        index={11}
+                        label={lang === Language.DE ? "💾 IMPORT" : "💾 IMPORT"}
+                        onClick={triggerImport}
+                        isSelected={menuSelection === 11}
+                        onHover={setMenuSelection}
+                      />
+                    </div>
+                    <div className="w-56 h-12">
+                      <MenuButton
+                        index={12}
+                        label={lang === Language.DE ? "📤 EXPORT" : "📤 EXPORT"}
+                        onClick={handleExportSave}
+                        isSelected={menuSelection === 12}
+                        onHover={setMenuSelection}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="w-56 h-12">
+                    <MenuButton
+                      index={13}
+                      label={t.back}
+                      onClick={() => {
+                        const nextStatus = gameState.previousStatus || "menu";
+                        setGameState((p) => ({ 
+                          ...p, 
+                          status: nextStatus,
+                          previousStatus: undefined 
+                        }));
+                        if (nextStatus === "menu") {
+                          setMenuSelection(0);
+                        }
+                      }}
+                      isSelected={menuSelection === 13}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </div>
+
+                <input
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  ref={saveInputRef}
+                  onChange={handleImportSave}
+                />
                 </div>
               </div>
             )}
@@ -9155,11 +9331,19 @@ const App: React.FC = () => {
         </div>
 
         {/* Global Toast */}
-        {toastMessage && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-white px-6 py-3 rounded-xl shadow-2xl border border-neutral-700 z-50 animate-bounce">
-            {toastMessage}
-          </div>
-        )}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="fixed bottom-6 right-6 bg-neutral-900 border border-neutral-800 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[250] flex items-center gap-3 backdrop-blur-xl"
+            >
+              <div className="w-2 h-2 rounded-full bg-rage-red animate-pulse" />
+              <span className="font-medium text-sm tracking-tight">{toastMessage}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Achievement Toast */}
         {achievementToast && (

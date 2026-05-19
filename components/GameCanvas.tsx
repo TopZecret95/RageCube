@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   Vector2,
   LevelData,
@@ -41,179 +47,20 @@ import {
 import { audio } from "../services/audioService";
 
 import { onlineService, OnlinePlayer } from "../services/onlineService";
+import { drawPlayerEyes } from "./renderers/playerEyesRender";
+import { drawPlayerAccessories } from "./renderers/playerAccessoriesRender";
+import { drawProjectiles, drawBombs, drawExplosions } from "./renderers/projectilesRender";
+import { getBrawlerStats, getBrawlerLives } from "../utils/brawlerStats";
 
-interface GameCanvasProps {
-  level: LevelData;
-  customization: PlayerCustomization;
-  customizationP2?: PlayerCustomization; // New Prop for VS Mode
-  onDie: () => void;
-  onWin: (winner?: string, lives?: Record<string, number>) => void;
-  onCoin: (id: string) => void;
-  onBlockPlace: () => void;
-  onJump?: () => void;
-  onHook?: () => void;
-  collectedCoins: string[];
-  paused: boolean;
-  respawnTrigger: number;
-  resetTrigger: number;
-  gameMode: "story" | "vs" | "brawler";
-  fpsCap: number;
-  settings: GameSettings;
-  brawlerPowerups?: Record<string, number>;
-  brawlerTeamMode?: BrawlerTeamMode;
-  brawlerTeam1?: number;
-  brawlerTeam2?: number;
-  brawlerHazardMode?: BrawlerHazardMode;
-  brawlerSuddenDeath?: boolean;
-  vsCollision?: boolean;
-  isOnline?: boolean;
-  onlinePing?: number;
-  onlinePlayers?: OnlinePlayer[];
-  lang: Language;
-  isSpectating?: boolean;
-  spectateTargetId?: string;
-  opponentOpacity?: number;
-  status?: string;
-}
-
-interface TempBlock extends Entity {
-  expires: number;
-  ownerIndex?: number;
-}
-
-interface Projectile {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  velX: number;
-  velY: number;
-  owner: string;
-  active: boolean;
-}
-
-interface Bomb {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  timer: number;
-  owner: string;
-  active: boolean;
-}
-
-interface Explosion {
-  x: number;
-  y: number;
-  radius: number;
-  timer: number;
-  maxTimer: number;
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  size: number;
-  color: string;
-  type: string;
-  isDeathAnim?: boolean;
-  startTime?: number;
-}
-
-interface PlayerState {
-  pos: Vector2;
-  vel: Vector2;
-  w: number;
-  h: number;
-  facing: number;
-  isGrounded: boolean;
-  wasGrounded: boolean;
-  isWallSliding: boolean;
-  wallDir: number;
-  canJump: boolean;
-  trail: { x: number; y: number; w: number; h: number }[];
-  controls: {
-    up: string[];
-    left: string[];
-    right: string[];
-    down: string[];
-    action?: string[];
-  };
-  color: string;
-  trailColor: string;
-  eyes: string;
-  accessory: string;
-  deathAnim: string;
-  deathSound: string;
-  trailType: string;
-  brawlerClass?: string;
-  name: string;
-  playerIndex: number;
-  team?: number;
-  lives?: number;
-  deaths?: number;
-  inventory?: EntityType | null;
-  collectedCoinIds: string[];
-  finished: boolean;
-  gravity: number;
-  teleportCooldown: number;
-  teleportMaxCooldown: number;
-  surfaceType: EntityType | "none";
-  wallSurfaceType: EntityType | "none"; // Separate tracker for wall interactions
-  wallStickTimer: number; // For sticky wall mechanics
-  wallCoyoteTimer: number; // Grace period for wall jumps
-  lastWallDir: number; // Remember last wall direction for coyote jump
-  // Ability States
-  jumpCount: number; // For Double Jump
-  hookActive: boolean;
-  hookPos: Vector2 | null;
-  hookCooldown: number;
-  hookDuration: number; // Track how long hook is held
-
-  // One-Time Abilities
-  oneTimeBuild: boolean;
-  oneTimeHook: boolean;
-  oneTimeDoubleJump: boolean;
-  oneTimeTripleJump: boolean;
-  tripleJumpActive: boolean;
-
-  // New Brawler Powerups
-  shieldTimer: number;
-  slowTimer: number;
-  iceTimer: number;
-  slimeTimer: number;
-  fireballActive: boolean;
-  bombActive: boolean;
-  meleeActive: boolean;
-  meleeTimer: number;
-  onlineId?: string;
-  targetPos?: Vector2; // For interpolation
-  lastSyncTime?: number;
-  platformDelta: Vector2;
-  lastPlatformVel: Vector2;
-  collectedPowerupIds: string[];
-  hasStartedMove: boolean;
-  moveStartTime: number;
-  // New Abilities
-  dashCooldown: number;
-  dashTimer: number;
-  dashDirection: Vector2;
-  isShrunk: boolean;
-  isPermanentlyShrunk: boolean;
-  shrinkTimer: number;
-  isGrown: boolean;
-  isPermanentlyGrown: boolean;
-  growTimer: number;
-  gravityFlipped: boolean;
-  ghostOverlapIndices?: number[];
-  respawnTimer?: number;
-  coyoteTimer: number;
-  jumpBufferTimer: number;
-  isLocal?: boolean;
-}
+import {
+  GameCanvasProps,
+  TempBlock,
+  Projectile,
+  Bomb,
+  Explosion,
+  Particle,
+  PlayerState,
+} from "./GameCanvasTypes";
 
 const SLOW_MO_FACTOR = 0.4; // 40% speed
 const SLOW_MO_DURATION = 300; // 5 seconds at 60fps
@@ -267,18 +114,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     const handleSpectatorKeys = (e: KeyboardEvent) => {
-      const liveLocalPlayer = players.current.find(p => p.isLocal);
-      const isSpectatingNowLocal = isOnline && (liveLocalPlayer ? liveLocalPlayer.finished : (isSpectating || (players.current.length > 0 && status.includes("playing"))));
+      const liveLocalPlayer = players.current.find((p) => p.isLocal);
+      const isSpectatingNowLocal =
+        isOnline &&
+        (liveLocalPlayer
+          ? liveLocalPlayer.finished
+          : isSpectating ||
+            (players.current.length > 0 && status.includes("playing")));
       if (!isSpectatingNowLocal) return;
 
       const activePlayers = players.current.filter((p) => !p.finished);
       if (activePlayers.length === 0) return;
 
       const keys = [
-        "KeyA", "ArrowLeft", "KeyD", "ArrowRight",
-        "KeyW", "ArrowUp", "KeyS", "ArrowDown"
+        "KeyA",
+        "ArrowLeft",
+        "KeyD",
+        "ArrowRight",
+        "KeyW",
+        "ArrowUp",
+        "KeyS",
+        "ArrowDown",
       ];
-      
+
       if (!keys.includes(e.code)) return;
 
       if (
@@ -299,115 +157,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => window.removeEventListener("keydown", handleSpectatorKeys);
   }, [isSpectating, isOnline]);
   const collectedPowerups = useRef<string[]>([]); // Track collected powerup IDs to hide them
-  const getBrawlerStats = (bClass?: string) => {
-    // Wenn nicht im Brawler Modus, verwende immer die "standard" Werte
-    const c = gameMode === "brawler" ? (bClass || "standard") : "standard";
-    switch (c) {
-      case "standard":
-        return {
-          lives: 10,
-          speedMul: 1,
-          jumpMul: 1,
-          dashCooldownBase: 60,
-          kbDealt: 1,
-          kbTaken: 1,
-          dashDamage: 1,
-          gravityMul: 1,
-        };
-      case "fighter": // + Stronger Stats & KB | - Much longer Dash CD
-        return {
-          lives: 12,
-          speedMul: 1.1,
-          jumpMul: 0.7,
-          dashCooldownBase: 90,
-          kbDealt: 1.5,
-          kbTaken: 0.85,
-          dashDamage: 1,
-          gravityMul: 1.1,
-        };
-      case "tank": // + Mehr Leben & Resistenz | - Sehr langsam
-        return {
-          lives: 15,
-          speedMul: 0.7,
-          jumpMul: 0.8,
-          dashCooldownBase: 70,
-          kbDealt: 1.1,
-          kbTaken: 0.6,
-          dashDamage: 1,
-          gravityMul: 1.2,
-        };
-      case "dasher": // + Sehr kurzer Dash CD | - Weniger Leben
-        return {
-          lives: 8,
-          speedMul: 1.2,
-          jumpMul: 1,
-          dashCooldownBase: 25,
-          kbDealt: 0.9,
-          kbTaken: 1.2,
-          dashDamage: 1,
-          gravityMul: 1,
-        };
-      case "jumper": // + Dreifachsprung & Höher | - Weniger Leben
-        return {
-          lives: 8,
-          speedMul: 1,
-          jumpMul: 1.2,
-          dashCooldownBase: 60,
-          kbDealt: 1,
-          kbTaken: 1.1,
-          dashDamage: 1,
-          gravityMul: 0.9,
-        };
-      case "ninja": // + Sehr schnell & hoch | - Sehr wenig Leben
-        return {
-          lives: 7,
-          speedMul: 1.15,
-          jumpMul: 1.15,
-          dashCooldownBase: 50,
-          kbDealt: 0.6,
-          kbTaken: 1.4,
-          dashDamage: 1,
-          gravityMul: 0.8,
-        };
-      case "heavy": // + Gewaltiger Knockback | - Langsam & Massiv
-        return {
-          lives: 13,
-          speedMul: 0.8,
-          jumpMul: 0.9,
-          dashCooldownBase: 100,
-          kbDealt: 2.2,
-          kbTaken: 0.8,
-          dashDamage: 2,
-          gravityMul: 1.5,
-        };
-      case "vampire": // + Heilt bei Treffer | - Extrem wenig Leben
-        return {
-          lives: 6,
-          speedMul: 1.2,
-          jumpMul: 1.2,
-          dashCooldownBase: 55,
-          kbDealt: 1,
-          kbTaken: 1,
-          dashDamage: 1,
-          gravityMul: 1,
-        };
-      default:
-        return {
-          lives: 10,
-          speedMul: 1,
-          jumpMul: 1,
-          dashCooldownBase: 60,
-          kbDealt: 1,
-          kbTaken: 1,
-          dashDamage: 1,
-          gravityMul: 1,
-        };
-    }
-  };
-
-  const getBrawlerLives = (bClass?: string) => {
-    return getBrawlerStats(bClass).lives;
-  };
 
   const currentRespawnPos = useRef<Vector2>(
     level?.start ? { ...level.start } : { x: 0, y: 0 },
@@ -425,7 +174,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const collapsingStates = useRef<Record<string, { touchedAt: number }>>({});
   const lastHazardTriggerTime = useRef(0);
   const lastPowerupSpawnTime = useRef(0);
-
 
   // Time Manipulation
   const timeScaleRef = useRef(1.0);
@@ -454,7 +202,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       p.gravity = GRAVITY;
     }
     // Clear blocks placed by this player
-    tempBlocks.current = tempBlocks.current.filter(b => b.ownerIndex !== p.playerIndex);
+    tempBlocks.current = tempBlocks.current.filter(
+      (b) => b.ownerIndex !== p.playerIndex,
+    );
   };
 
   const [abilityMessage, setAbilityMessage] = useState<string | null>(null);
@@ -595,14 +345,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }, [collectedCoins]);
 
   const spawnParticles = useCallback(
-    (
-      x: number,
-      y: number,
-      color: string,
-      count: number,
-      type: string,
-    ) => {
-      const isDeath = count === 20 && ["normal", "blood", "confetti", "firework", "electric", "ghost", "freeze", "blackhole", "bubble", "dust"].includes(type);
+    (x: number, y: number, color: string, count: number, type: string) => {
+      const isDeath =
+        count === 20 &&
+        [
+          "normal",
+          "blood",
+          "confetti",
+          "firework",
+          "electric",
+          "ghost",
+          "freeze",
+          "blackhole",
+          "bubble",
+          "dust",
+        ].includes(type);
 
       if (isDeath) {
         if (type === "normal") return;
@@ -715,22 +472,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     [],
   );
 
-  const healVampire = useCallback((killerName?: string) => {
-    if (!killerName || gameMode !== "brawler") return;
-    const killer = players.current.find((p) => p.name === killerName);
-    if (!killer || killer.finished || killer.brawlerClass !== "vampire") return;
-    const stats = getBrawlerStats(killer.brawlerClass);
-    if (killer.lives !== undefined && killer.lives < stats.lives) {
-      killer.lives++;
-      spawnParticles(
-        killer.pos.x + killer.w / 2,
-        killer.pos.y + killer.h / 2,
-        "#ff0000",
-        30,
-        "blood"
-      );
-    }
-  }, [gameMode, spawnParticles]);
+  const healVampire = useCallback(
+    (killerName?: string) => {
+      if (!killerName || gameMode !== "brawler") return;
+      const killer = players.current.find((p) => p.name === killerName);
+      if (!killer || killer.finished || killer.brawlerClass !== "vampire")
+        return;
+      const stats = getBrawlerStats(killer.brawlerClass, gameMode);
+      if (killer.lives !== undefined && killer.lives < stats.lives) {
+        killer.lives++;
+        spawnParticles(
+          killer.pos.x + killer.w / 2,
+          killer.pos.y + killer.h / 2,
+          "#ff0000",
+          30,
+          "blood",
+        );
+      }
+    },
+    [gameMode, spawnParticles],
+  );
 
   const triggerWin = useCallback(
     (winnerName?: string, isLocalFinish: boolean = true) => {
@@ -801,13 +562,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const initPlayers = () => {
     if (level.autoScroll) {
-       if (level.start) currentRespawnPos.current = { ...level.start };
-       cameraRef.current.x = Math.max(0, currentRespawnPos.current.x - GAME_WIDTH / 2 + 15);
-       cameraRef.current.y = 0;
-       scrollWallX.current = cameraRef.current.x;
-       hasStartedMoving.current = false;
+      if (level.start) currentRespawnPos.current = { ...level.start };
+      cameraRef.current.x = Math.max(
+        0,
+        currentRespawnPos.current.x - GAME_WIDTH / 2 + 15,
+      );
+      cameraRef.current.y = 0;
+      scrollWallX.current = cameraRef.current.x;
+      hasStartedMoving.current = false;
     }
-    
+
     const common = {
       pos: { ...currentRespawnPos.current }, // Use dynamic respawn pos
       vel: { x: 0, y: 0 },
@@ -886,17 +650,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       left: ["ArrowLeft", "KeyA"],
       right: ["ArrowRight", "KeyD"],
       down: ["ArrowDown", "KeyS"],
-      action: [
-        "KeyQ",
-        "ControlRight",
-        "ControlLeft",
-        "Numpad0",
-        "Digit0",
-      ],
-      dash: [
-        "KeyE",
-        "ShiftRight"
-      ]
+      action: ["KeyQ", "ControlRight", "ControlLeft", "Numpad0", "Digit0"],
+      dash: ["KeyE", "ShiftRight"],
     };
 
     const p1Controls = settings.keybindingsP1 || defaultP1Controls;
@@ -941,7 +696,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           team: team,
           lives:
             gameMode === "brawler"
-              ? getBrawlerLives(op.customization.brawlerClass)
+              ? getBrawlerLives(op.customization.brawlerClass, gameMode)
               : undefined,
           deaths: 0,
           inventory: null,
@@ -979,7 +734,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           team: getTeam(0),
           lives:
             gameMode === "brawler"
-              ? getBrawlerLives(customization?.brawlerClass)
+              ? getBrawlerLives(customization?.brawlerClass, gameMode)
               : undefined,
           deaths: 0,
           inventory: null,
@@ -1003,7 +758,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           team: getTeam(1),
           lives:
             gameMode === "brawler"
-              ? getBrawlerLives((p2Config as any).brawlerClass)
+              ? getBrawlerLives((p2Config as any).brawlerClass, gameMode)
               : undefined,
           deaths: 0,
           inventory: null,
@@ -1083,7 +838,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (state.isWallSliding !== undefined)
           p.isWallSliding = state.isWallSliding;
         if (state.wallDir !== undefined) p.wallDir = state.wallDir;
-        if (state.moveStartTime !== undefined) p.moveStartTime = state.moveStartTime;
+        if (state.moveStartTime !== undefined)
+          p.moveStartTime = state.moveStartTime;
 
         if (state.health !== undefined) p.lives = state.health;
         if (state.finished !== undefined) p.finished = state.finished;
@@ -1329,8 +1085,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 target.team === undefined ||
                 p.team !== target.team)
             ) {
-              const pStats = getBrawlerStats(p.brawlerClass);
-              const oStats = getBrawlerStats(target.brawlerClass);
+              const pStats = getBrawlerStats(p.brawlerClass, gameMode);
+              const oStats = getBrawlerStats(target.brawlerClass, gameMode);
 
               const targetMultiplier = oStats.kbTaken * pStats.kbDealt;
               target.vel.x =
@@ -1392,20 +1148,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     onlinePlayers.forEach((op, idx) => {
       const p = players.current.find((pl) => pl.onlineId === op.id);
       const isLocal = op.id === onlineService.localPlayer?.id;
-      
+
       if (p) {
         // Update isLocal status for existing players to handle race conditions
         p.isLocal = isLocal;
         p.name = op.name;
         p.customization = op.customization;
-        if (isLocal) p.controls = settings.keybindingsP1 || {
-          up: ["ArrowUp", "KeyW", "Space"],
-          left: ["ArrowLeft", "KeyA"],
-          right: ["ArrowRight", "KeyD"],
-          down: ["ArrowDown", "KeyS"],
-          action: ["KeyQ", "KeyE", "ControlRight", "ControlLeft", "Numpad0", "Digit0"],
-          dash: ["KeyF", "ShiftRight"],
-        };
+        if (isLocal)
+          p.controls = settings.keybindingsP1 || {
+            up: ["ArrowUp", "KeyW", "Space"],
+            left: ["ArrowLeft", "KeyA"],
+            right: ["ArrowRight", "KeyD"],
+            down: ["ArrowDown", "KeyS"],
+            action: [
+              "KeyQ",
+              "KeyE",
+              "ControlRight",
+              "ControlLeft",
+              "Numpad0",
+              "Digit0",
+            ],
+            dash: ["KeyF", "ShiftRight"],
+          };
       } else {
         const defaultSingleControls: Keybindings = {
           up: ["ArrowUp", "KeyW", "Space"],
@@ -1536,7 +1300,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     tempBlocks.current = [];
     collectedPowerups.current = [];
     dynamicPowerups.current = [];
-    const nowSync = isOnline ? (Date.now() % 10000000) : 0;
+    const nowSync = isOnline ? Date.now() % 10000000 : 0;
     lastPowerupSpawnTime.current = nowSync;
     blockDims.current = { w: TILE_SIZE, h: TILE_SIZE };
     slowMoTimerRef.current = 0;
@@ -1574,7 +1338,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       xrayTimerRef.current = 0;
       timeScaleRef.current = 1.0;
       collapsingStates.current = {};
-      const nowSync = isOnline ? (Date.now() % 10000000) : 0;
+      const nowSync = isOnline ? Date.now() % 10000000 : 0;
       lastHazardTriggerTime.current = nowSync;
     }
   }, [respawnTrigger]);
@@ -1636,25 +1400,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const triggerDash = (p: PlayerState) => {
     if (!p || p.finished || gameMode !== "brawler") return;
-    
+
     // Check if the class explicitly has dash capability.
     // "Dash soll explizit für die einzelnen Klassen die Dash benutzen verfügbar sein"
     // Standard class shouldn't have dash.
     if (p.dashCooldown > 0) return;
     if (p.brawlerClass === "standard") return; // explicitly disabling for standard if desired. Or we could disable powerup_dash across the board, but the stats determine dash ability.
 
-    const stats = getBrawlerStats(p.brawlerClass);
+    const stats = getBrawlerStats(p.brawlerClass, gameMode);
     p.dashTimer = 10;
     p.dashCooldown = stats.dashCooldownBase;
     p.dashDirection = { x: p.facing, y: 0 };
     audio.playJump();
-    spawnParticles(
-      p.pos.x + p.w / 2,
-      p.pos.y + p.h / 2,
-      p.color,
-      10,
-      "spark",
-    );
+    spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, p.color, 10, "spark");
     if (isOnline) {
       onlineService.sendEvent("player_dashed", { id: p.onlineId });
     }
@@ -1905,7 +1663,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const isLocal =
           !isOnline || p.onlineId === onlineService.localPlayer?.id;
         if (!isLocal) return;
-        
+
         // Track movement start
         if (!p.hasStartedMove) {
           const controlKeys = [
@@ -1919,7 +1677,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (controlKeys.includes(e.code)) {
             p.hasStartedMove = true;
             const scrollSpeed = level.autoScrollSpeed || 150;
-            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            const startWallX = level.autoScroll
+              ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15)
+              : 0;
             p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
           }
         }
@@ -2017,7 +1777,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const screenY = (e.clientY - rect.top) * scaleY;
 
     // Determine raw pos for hook, snapped for build
-    mouseRef.current = { x: screenX + cameraRef.current.x, y: screenY + cameraRef.current.y }; // Raw for hook
+    mouseRef.current = {
+      x: screenX + cameraRef.current.x,
+      y: screenY + cameraRef.current.y,
+    }; // Raw for hook
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -2030,7 +1793,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (pLocal && !pLocal.hasStartedMove) {
       pLocal.hasStartedMove = true;
       const scrollSpeed = level.autoScrollSpeed || 150;
-      const startWallX = level.autoScroll ? Math.max(0, pLocal.pos.x - GAME_WIDTH / 2 + 15) : 0;
+      const startWallX = level.autoScroll
+        ? Math.max(0, pLocal.pos.x - GAME_WIDTH / 2 + 15)
+        : 0;
       pLocal.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
     }
 
@@ -2128,7 +1893,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // Raycast
       const dx = mx - (p.pos.x + 10);
       const dy = my - (p.pos.y + 10);
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy));
       const dirX = dx / dist;
       const dirY = dy / dist;
 
@@ -2268,12 +2033,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
+
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     ctx.scale(dpr, dpr);
     ctx.imageSmoothingEnabled = false;
 
     let animationFrameId: number;
+
+    const levelCoinIds = level.entities
+      .filter((e) => e.type === "coin")
+      .map((e) => e.id!);
+    const teleporters = level.entities.filter((e) => e.type === "teleport");
 
     // Game Loop Logic
     let lastTime = performance.now();
@@ -2281,6 +2051,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const PHYSICS_STEP = 1000 / 60;
 
     const getDynamicEntity = (e: Entity, time: number, dt: number) => {
+      // Only copy if it's dynamic
+      const isDynamic = e.type === "moving_platform_h" || 
+                        e.movingH || 
+                        e.type === "moving_platform_v" || 
+                        e.movingV || 
+                        e.type === "fragile" || 
+                        e.fragile ||
+                        collapsingStates.current[e.id || `${e.x}_${e.y}`];
+
+      if (!isDynamic) return e;
+
       const speed = e.moveSpeed ?? 0.002;
       const range = e.moveRange ?? 100;
       let updated = { ...e, baseX: e.x, baseY: e.y };
@@ -2362,7 +2143,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       particles.current.forEach((p) => {
         if (p.isDeathAnim) {
           const deathElapsed = Date.now() - (p.startTime || Date.now());
-          p.life = 1 - (deathElapsed / 500);
+          p.life = 1 - deathElapsed / 500;
           return;
         }
         const pdt = timeScaleRef.current;
@@ -2463,9 +2244,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (shakeIntensity.current < 0.5) shakeIntensity.current = 0;
       }
 
-      const levelCoinIds = level.entities
-        .filter((e) => e.type === "coin")
-        .map((e) => e.id!);
       const collectedInLevelCount = levelCoinIds.filter((id) =>
         collectedCoinsRef.current.includes(id),
       ).length;
@@ -2473,7 +2251,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         gameMode === "brawler"
           ? true
           : collectedInLevelCount === levelCoinIds.length;
-      const teleporters = level.entities.filter((e) => e.type === "teleport");
 
       // Spawn dynamic powerups in Brawler mode
       const isHost = !isOnline || onlineService.isHost;
@@ -2591,25 +2368,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // --- Powerup Timer Decrements (Always run for all players to sync visuals) ---
         if (p.finished) {
-           p.vel = { x: 0, y: 0 }; // Zero velocity to stop visual rendering jitter
-           // For finished players, we still want to interpolate their positions if they are remote
-           const isLocal = !isOnline || p.onlineId === onlineService.localPlayer?.id;
-           if (!isLocal && p.targetPos) {
-              const dist = Math.sqrt(
-                Math.pow(p.targetPos.x - p.pos.x, 2) +
-                Math.pow(p.targetPos.y - p.pos.y, 2)
-              );
-              if (dist > 100) {
-                p.pos.x = p.targetPos.x;
-                p.pos.y = p.targetPos.y;
-              } else {
-                const dtInSeconds = (16.66 / 1000) * dt;
-                const lerpFactor = 1.0 - Math.exp(-20 * dtInSeconds);
-                p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
-                p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
-              }
-           }
-           return;
+          p.vel = { x: 0, y: 0 }; // Zero velocity to stop visual rendering jitter
+          // For finished players, we still want to interpolate their positions if they are remote
+          const isLocal =
+            !isOnline || p.onlineId === onlineService.localPlayer?.id;
+          if (!isLocal && p.targetPos) {
+            const dist = Math.sqrt(
+              Math.pow(p.targetPos.x - p.pos.x, 2) +
+                Math.pow(p.targetPos.y - p.pos.y, 2),
+            );
+            if (dist > 100) {
+              p.pos.x = p.targetPos.x;
+              p.pos.y = p.targetPos.y;
+            } else {
+              const dtInSeconds = (16.66 / 1000) * dt;
+              const lerpFactor = 1.0 - Math.exp(-20 * dtInSeconds);
+              p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
+              p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
+            }
+          }
+          return;
         }
 
         if (p.shieldTimer > 0) p.shieldTimer--;
@@ -2674,12 +2452,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ) {
             p.hasStartedMove = true;
             const scrollSpeed = level.autoScrollSpeed || 150;
-            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            const startWallX = level.autoScroll
+              ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15)
+              : 0;
             p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
           }
         }
-
-
 
         // --- Remote Player Interpolation ---
         if (!isLocal) {
@@ -2764,7 +2542,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
             if (p.isGrounded || p.isWallSliding) {
               p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
-              p.canJump = true; 
+              p.canJump = true;
             }
           }
         }
@@ -2915,7 +2693,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         });
 
-        const stats = getBrawlerStats(p.brawlerClass);
+        const stats = getBrawlerStats(p.brawlerClass, gameMode);
 
         if (p.hookActive && p.hookPos) {
           // Check hook duration (1 second limit)
@@ -2926,7 +2704,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           } else {
             const dx = p.hookPos.x - (p.pos.x + 10);
             const dy = p.hookPos.y - (p.pos.y + 10);
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            const dist = Math.max(0.0001, Math.sqrt(dx * dx + dy * dy));
             const dirX = dx / dist;
             const dirY = dy / dist;
 
@@ -3242,7 +3020,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.vel = { x: 0, y: 0 };
                 p.respawnTimer = Date.now();
                 resetPlayerSize(p);
-                shakeIntensity.current = 10; audio.playDie(p.deathSound);
+                shakeIntensity.current = 10;
+                audio.playDie(p.deathSound);
                 if (isOnline) onlineService.sendEvent("die", null);
               } else if (gameMode === "brawler") {
                 if (p.lives !== undefined) {
@@ -3266,7 +3045,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     p.vel = { x: 0, y: 0 };
                     p.respawnTimer = Date.now();
                     resetPlayerSize(p);
-                    shakeIntensity.current = 10; audio.playDie(p.deathSound);
+                    shakeIntensity.current = 10;
+                    audio.playDie(p.deathSound);
                     if (isOnline) onlineService.sendEvent("die", null);
                   }
                 }
@@ -3304,7 +3084,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (idx === 0 && gameMode === "story") {
                   const currentTime =
                     recordedFrames.current.length * (16.67 / 1000);
-                  const existingGhost = localStorage.getItem(`ghost_${level.id}`);
+                  const existingGhost = localStorage.getItem(
+                    `ghost_${level.id}`,
+                  );
                   let shouldSave = true;
                   if (existingGhost) {
                     try {
@@ -3398,8 +3180,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
               // Check if player is pressing away from wall
               let isPressingLeft = p.controls.left.some((k) => keys.current[k]);
-              let isPressingRight = p.controls.right.some((k) => keys.current[k]);
-              
+              let isPressingRight = p.controls.right.some(
+                (k) => keys.current[k],
+              );
+
               if (p.gravity < 0 && settings?.invertXOnGravityReverse) {
                 const temp = isPressingLeft;
                 isPressingLeft = isPressingRight;
@@ -3665,7 +3449,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.vel = { x: 0, y: 0 };
                 p.respawnTimer = Date.now();
                 resetPlayerSize(p);
-                shakeIntensity.current = 10; audio.playDie(p.deathSound);
+                shakeIntensity.current = 10;
+                audio.playDie(p.deathSound);
                 if (isOnline) onlineService.sendEvent("die", null);
               } else if (gameMode === "brawler") {
                 if (p.lives !== undefined) {
@@ -3689,7 +3474,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     p.vel = { x: 0, y: 0 };
                     p.respawnTimer = Date.now();
                     resetPlayerSize(p);
-                    shakeIntensity.current = 10; audio.playDie(p.deathSound);
+                    shakeIntensity.current = 10;
+                    audio.playDie(p.deathSound);
                     if (isOnline) onlineService.sendEvent("die", null);
                   }
                 }
@@ -3727,7 +3513,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (idx === 0 && gameMode === "story") {
                   const currentTime =
                     recordedFrames.current.length * (16.67 / 1000);
-                  const existingGhost = localStorage.getItem(`ghost_${level.id}`);
+                  const existingGhost = localStorage.getItem(
+                    `ghost_${level.id}`,
+                  );
                   let shouldSave = true;
                   if (existingGhost) {
                     try {
@@ -3939,8 +3727,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
               if (checkCollision(playerRect, otherRect)) {
                 const now = Date.now();
-                const pIsActive = p.hasStartedMove && (now - p.moveStartTime >= 2000);
-                const otherIsActive = otherP.hasStartedMove && (now - otherP.moveStartTime >= 2000);
+                const pIsActive =
+                  p.hasStartedMove && now - p.moveStartTime >= 2000;
+                const otherIsActive =
+                  otherP.hasStartedMove && now - otherP.moveStartTime >= 2000;
 
                 const isGhost =
                   !pIsActive ||
@@ -3959,8 +3749,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   p.dashTimer = 0;
                   p.vel.x = 0;
                   p.vel.y = 0;
-                  const pStats = getBrawlerStats(p.brawlerClass);
-                  const oStats = getBrawlerStats(otherP.brawlerClass);
+                  const pStats = getBrawlerStats(p.brawlerClass, gameMode);
+                  const oStats = getBrawlerStats(otherP.brawlerClass, gameMode);
 
                   if (!isOnline) {
                     const targetMultiplier = oStats.kbTaken * pStats.kbDealt;
@@ -4064,9 +3854,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
 
-        const pWallX = (level.autoScroll && p.hasStartedMove) 
-          ? ((Date.now() - p.moveStartTime) / 1000) * (level.autoScrollSpeed || 150)
-          : 0;
+        const pWallX =
+          level.autoScroll && p.hasStartedMove
+            ? ((Date.now() - p.moveStartTime) / 1000) *
+              (level.autoScrollSpeed || 150)
+            : 0;
 
         const dieTop =
           (p.gravityFlipped && p.pos.y + p.h < 0) ||
@@ -4079,21 +3871,22 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           (gameMode === "brawler" &&
             brawlerSuddenDeath &&
             p.pos.y + p.h > lavaY) ||
-          (level.autoScroll && p.pos.y > cameraRef.current.y + GAME_HEIGHT + 50);
-            
-        const dieLeftRight = level.autoScroll && p.hasStartedMove &&
-          (p.pos.x < pWallX + 10);
+          (level.autoScroll &&
+            p.pos.y > cameraRef.current.y + GAME_HEIGHT + 50);
+
+        const dieLeftRight =
+          level.autoScroll && p.hasStartedMove && p.pos.x < pWallX + 10;
 
         if (dieTop || dieBottom || dieLeftRight) {
           if (isOnline && p.onlineId !== onlineService.localPlayer?.id) return;
-          
+
           if (level.autoScroll) {
-             if (level.start) currentRespawnPos.current = { ...level.start };
-             // On death, reset this player's wall
-             p.hasStartedMove = false;
-             p.moveStartTime = Date.now();
+            if (level.start) currentRespawnPos.current = { ...level.start };
+            // On death, reset this player's wall
+            p.hasStartedMove = false;
+            p.moveStartTime = Date.now();
           }
-          
+
           if (
             level?.id === "tutorial" &&
             gameMode !== "vs" &&
@@ -4201,7 +3994,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (p.lives <= 0) {
                 p.finished = true;
                 checkBrawlerWinCondition();
-                if (isOnline) onlineService.sendEvent("lose", { killerName: proj.owner });
+                if (isOnline)
+                  onlineService.sendEvent("lose", { killerName: proj.owner });
                 else healVampire(proj.owner);
               } else {
                 p.pos = getSpawnPos(p.playerIndex, p.team || 0);
@@ -4212,7 +4006,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 resetPlayerSize(p);
                 shakeIntensity.current = 10;
                 audio.playDie(p.deathSound);
-                if (isOnline) onlineService.sendEvent("die", { killerName: proj.owner });
+                if (isOnline)
+                  onlineService.sendEvent("die", { killerName: proj.owner });
                 else healVampire(proj.owner);
               }
             } else {
@@ -4233,7 +4028,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.collectedPowerupIds = [];
               shakeIntensity.current = 10;
               audio.playDie(p.deathSound);
-              if (isOnline) onlineService.sendEvent("die", { killerName: proj.owner });
+              if (isOnline)
+                onlineService.sendEvent("die", { killerName: proj.owner });
             }
           }
         });
@@ -4241,7 +4037,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const levelW = level.width || GAME_WIDTH;
       const levelH = level.height || GAME_HEIGHT;
       projectiles.current = projectiles.current.filter(
-        (p) => p.active && p.x > -100 && p.x < levelW + 100 && p.y > -100 && p.y < levelH + 100,
+        (p) =>
+          p.active &&
+          p.x > -100 &&
+          p.x < levelW + 100 &&
+          p.y > -100 &&
+          p.y < levelH + 100,
       );
 
       // Update Bombs
@@ -4276,18 +4077,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (p.lives <= 0) {
                   p.finished = true;
                   checkBrawlerWinCondition();
-                  if (isOnline) onlineService.sendEvent("lose", { killerName: bomb.owner });
+                  if (isOnline)
+                    onlineService.sendEvent("lose", { killerName: bomb.owner });
                   else healVampire(bomb.owner);
                 } else {
                   p.pos = getSpawnPos(p.playerIndex, p.team);
                   p.vel = { x: 0, y: 0 };
-                  if (isOnline) onlineService.sendEvent("die", { killerName: bomb.owner });
+                  if (isOnline)
+                    onlineService.sendEvent("die", { killerName: bomb.owner });
                   else healVampire(bomb.owner);
                 }
               } else {
                 p.pos = { ...currentRespawnPos.current };
                 p.vel = { x: 0, y: 0 };
-                if (isOnline) onlineService.sendEvent("die", { killerName: bomb.owner });
+                if (isOnline)
+                  onlineService.sendEvent("die", { killerName: bomb.owner });
               }
             }
           });
@@ -4304,31 +4108,46 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // Camera Logic
       let targetCameraX = 0;
       let targetCameraY = 0;
-      
+
       const maxCamX = Math.max(0, (level.width || GAME_WIDTH) - GAME_WIDTH);
       const maxCamY = Math.max(0, (level.height || GAME_HEIGHT) - GAME_HEIGHT);
 
-      const allFinished = players.current.every(p => p.finished);
-      
-      const liveLocalPlayer = players.current.find(p => p.isLocal);
-      const isSpectatingNowLocal = isOnline && (liveLocalPlayer ? liveLocalPlayer.finished : (isSpectating || (players.current.length > 0 && status.includes("playing"))));
-      
+      const allFinished = players.current.every((p) => p.finished);
+
+      const liveLocalPlayer = players.current.find((p) => p.isLocal);
+      const isSpectatingNowLocal =
+        isOnline &&
+        (liveLocalPlayer
+          ? liveLocalPlayer.finished
+          : isSpectating ||
+            (players.current.length > 0 && status.includes("playing")));
+
       // Calculate scrollWallX for the followed player so it can be used for drawing
       let followedPlayer: PlayerState | undefined = liveLocalPlayer;
       if (isSpectatingNowLocal) {
         const activePlayers = players.current.filter((p) => !p.finished);
         if (activePlayers.length > 0) {
-          followedPlayer = activePlayers[spectateTargetIdx % activePlayers.length];
+          followedPlayer =
+            activePlayers[spectateTargetIdx % activePlayers.length];
         }
       }
-      
-      if (level.autoScroll && followedPlayer && followedPlayer.hasStartedMove && !followedPlayer.finished) {
+
+      if (
+        level.autoScroll &&
+        followedPlayer &&
+        followedPlayer.hasStartedMove &&
+        !followedPlayer.finished
+      ) {
         const scrollSpeed = level.autoScrollSpeed || 150;
-        scrollWallX.current = ((Date.now() - followedPlayer.moveStartTime) / 1000) * scrollSpeed;
-      } else if (level.autoScroll && (!followedPlayer || !followedPlayer.hasStartedMove)) {
+        scrollWallX.current =
+          ((Date.now() - followedPlayer.moveStartTime) / 1000) * scrollSpeed;
+      } else if (
+        level.autoScroll &&
+        (!followedPlayer || !followedPlayer.hasStartedMove)
+      ) {
         scrollWallX.current = 0;
       }
-      
+
       if (isSpectatingNowLocal) {
         if (followedPlayer) {
           targetCameraX = followedPlayer.pos.x - GAME_WIDTH / 2 + 15;
@@ -4358,17 +4177,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
         }
       }
-      
+
       targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
       targetCameraY = Math.max(0, Math.min(targetCameraY, maxCamY));
-      
+
       // In auto-scroll mode, camera normally sits at the wall (left bound) for the player.
       // However, spectators should follow their target smoothly.
       if (level.autoScroll && !isSpectatingNowLocal) {
-         cameraRef.current.x = scrollWallX.current;
+        cameraRef.current.x = scrollWallX.current;
       } else {
-         // Smoothly transition both in normal levels and when spectating auto-scroll levels
-         cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
+        // Smoothly transition both in normal levels and when spectating auto-scroll levels
+        cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
       }
       cameraRef.current.y += (targetCameraY - cameraRef.current.y) * 0.1;
 
@@ -4407,21 +4226,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
       ctx.save();
-      
+
       let finalTranslateX = -cameraRef.current.x;
       let finalTranslateY = -cameraRef.current.y;
 
       if (shakeIntensity.current > 0) {
         const shakeMult = settings.screenShake ?? 1;
-        finalTranslateX += (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
-        finalTranslateY += (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
+        finalTranslateX +=
+          (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
+        finalTranslateY +=
+          (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
       }
-      
+
       ctx.translate(Math.round(finalTranslateX), Math.round(finalTranslateY));
 
-      const levelCoinIds = level.entities
-        .filter((e) => e.type === "coin")
-        .map((e) => e.id!);
       const collectedInLevelCount = levelCoinIds.filter((id) =>
         collectedCoinsRef.current.includes(id),
       ).length;
@@ -4429,9 +4247,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         gameMode === "brawler"
           ? true
           : collectedInLevelCount === levelCoinIds.length;
-
-      // Calculate Teleporters for visualization
-      const teleporters = level.entities.filter((e) => e.type === "teleport");
 
       // Draw Teleport Connections (Lines) first so they are behind blocks
       if (teleporters.length > 1) {
@@ -4473,10 +4288,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ent.type === "moving_platform_h" ||
           ent.type === "moving_platform_v" ||
           ent.type === "fragile";
-          
+
         if (isSolid) {
-            // Draw a subtle drop shadow
-            ctx.rect(ent.x + 6, ent.y + 6, ent.w, ent.h);
+          // Draw a subtle drop shadow
+          ctx.rect(ent.x + 6, ent.y + 6, ent.w, ent.h);
         }
       });
       ctx.fill();
@@ -4505,10 +4320,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             (p) => !isOnline || p.onlineId === onlineService.localPlayer?.id,
           );
           // If we have multiple local players (local VS/Brawler), check if ALL local players collected it
-          const allLocalCollected = isOnline 
+          const allLocalCollected = isOnline
             ? (localPlayer?.collectedPowerupIds.includes(powerupId) ?? false)
-            : players.current.every(p => p.collectedPowerupIds.includes(powerupId));
-          
+            : players.current.every((p) =>
+                p.collectedPowerupIds.includes(powerupId),
+              );
+
           if (allLocalCollected) return;
         }
 
@@ -4700,7 +4517,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // 1. Das Zentrum: quadratischer Kern (tiefrot/schwarz)
           const coreSize = r * 1.0;
-          ctx.fillStyle = "#110000"; 
+          ctx.fillStyle = "#110000";
           ctx.fillRect(-coreSize / 2, -coreSize / 2, coreSize, coreSize);
 
           // Hellrotes pulsierendes Licht
@@ -4712,22 +4529,22 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const numTeeth = 16;
           const bladeColor = "#FF2400";
           ctx.fillStyle = bladeColor;
-          
+
           const animPhase = Date.now() / 250;
 
           for (let i = 0; i < numTeeth; i++) {
             ctx.rotate((Math.PI * 2) / numTeeth);
-            
+
             const isMain = i % 2 === 0;
             // Pulsierende Werte sanft mit Sinus interpolieren
             const toothPulse = Math.sin(animPhase + (isMain ? 0 : Math.PI));
             // Wert von 0 bis 1 für einfachere Berechnungen
             const normalizedPulse = (toothPulse + 1) / 2;
-            
-            const tipExt = isMain 
-              ? r + 2 + toothPulse * 1.5 
+
+            const tipExt = isMain
+              ? r + 2 + toothPulse * 1.5
               : coreSize / 2 + normalizedPulse * (r + 4 - coreSize / 2);
-              
+
             const toothHalfWidth = isMain
               ? r * 0.15 + toothPulse * r * 0.05
               : r * 0.12 * normalizedPulse;
@@ -4969,61 +4786,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       });
 
       // Draw Projectiles
-      projectiles.current.forEach((proj) => {
-        if (!proj.active) return;
-        ctx.fillStyle = "#ff4500";
-        ctx.beginPath();
-        ctx.arc(
-          proj.x + proj.w / 2,
-          proj.y + proj.h / 2,
-          proj.w / 2,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-        ctx.strokeStyle = "#ffff00";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
+      drawProjectiles(ctx, projectiles.current);
 
       // Draw Bombs
-      bombs.current.forEach((bomb) => {
-        if (!bomb.active) return;
-        ctx.fillStyle = "#333";
-        ctx.beginPath();
-        ctx.arc(
-          bomb.x + bomb.w / 2,
-          bomb.y + bomb.h / 2,
-          bomb.w / 2,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-        // Fuse
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(bomb.x + bomb.w / 2, bomb.y);
-        ctx.lineTo(bomb.x + bomb.w / 2, bomb.y - 5);
-        ctx.stroke();
-        // Spark
-        if (Math.random() > 0.5) {
-          ctx.fillStyle = "#ff0";
-          ctx.fillRect(bomb.x + bomb.w / 2 - 2, bomb.y - 7, 4, 4);
-        }
-      });
+      drawBombs(ctx, bombs.current);
 
       // Draw Explosions
-      explosions.current.forEach((exp) => {
-        const alpha = exp.timer / exp.maxTimer;
-        ctx.fillStyle = `rgba(255, 69, 0, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(exp.x, exp.y, exp.radius * (1 - alpha * 0.5), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
-      });
+      drawExplosions(ctx, explosions.current);
 
       // Draw Temp Blocks
       tempBlocks.current.forEach((block) => {
@@ -5211,23 +4980,38 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       if (level.autoScroll) {
-        const h = level.height ? Math.max(level.height, GAME_HEIGHT) : GAME_HEIGHT;
+        const h = level.height
+          ? Math.max(level.height, GAME_HEIGHT)
+          : GAME_HEIGHT;
         ctx.fillStyle = "rgba(255, 0, 0, 0.8)"; // Red wall of death
         ctx.fillRect(Math.round(scrollWallX.current), -1000, 10, h + 2000);
       }
 
       // Draw Players
-      const liveLocalPlayer = players.current.find(pl => pl.isLocal);
-      const isSpectatingNowLocal = isOnline && (liveLocalPlayer ? liveLocalPlayer.finished : (isSpectating || (players.current.length > 0 && status.includes("playing"))));
-      const activePlayers = players.current.filter(pl => !pl.finished);
+      const liveLocalPlayer = players.current.find((pl) => pl.isLocal);
+      const isSpectatingNowLocal =
+        isOnline &&
+        (liveLocalPlayer
+          ? liveLocalPlayer.finished
+          : isSpectating ||
+            (players.current.length > 0 && status.includes("playing")));
+      const activePlayers = players.current.filter((pl) => !pl.finished);
 
       players.current.forEach((p, i) => {
         if (!p) return;
 
         const isLocalPlayer =
-          !isOnline || p.onlineId === onlineService.localPlayer?.id || p.isLocal;
-        const isBeingSpectated = isSpectatingNowLocal && spectateTargetIdx < activePlayers.length && activePlayers[spectateTargetIdx] === p;
-        const shouldBeTransparent = (gameMode === "vs" || isOnline) && !isLocalPlayer && !isBeingSpectated;
+          !isOnline ||
+          p.onlineId === onlineService.localPlayer?.id ||
+          p.isLocal;
+        const isBeingSpectated =
+          isSpectatingNowLocal &&
+          spectateTargetIdx < activePlayers.length &&
+          activePlayers[spectateTargetIdx] === p;
+        const shouldBeTransparent =
+          (gameMode === "vs" || isOnline) &&
+          !isLocalPlayer &&
+          !isBeingSpectated;
 
         ctx.save();
         if (shouldBeTransparent) {
@@ -5262,8 +5046,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             return; // No trail for ghost mode
           }
           if (p.color === "#130009") {
-            ctx.fillStyle = (Math.floor(Date.now() / 100) + i) % 2 === 0 ? "#ffff00" : "#000000";
-          } else if (p.slowTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0) {
+            ctx.fillStyle =
+              (Math.floor(Date.now() / 100) + i) % 2 === 0
+                ? "#ffff00"
+                : "#000000";
+          } else if (
+            p.slowTimer > 0 &&
+            Math.floor(Date.now() / 150) % 2 === 0
+          ) {
             ctx.fillStyle = "#00ffff";
           } else if (p.trailColor === "rainbow") {
             ctx.fillStyle = `hsl(${Date.now() / 5 + i * 20}, 100%, 50%)`;
@@ -5383,6 +5173,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               sizeW,
               sizeH,
             );
+          } else if (p.trailType === "matrix_trail") {
+            ctx.fillStyle = "#00ff00";
+            ctx.font = `8px monospace`;
+            ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), pos.x + pos.w / 2 - sizeW/2, pos.y + pos.h / 2 + sizeH/2);
           } else {
             ctx.fillRect(
               pos.x + (pos.w - sizeW) / 2,
@@ -5433,13 +5227,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         const visualAlpha = typeof alpha === "number" ? alpha : 0;
-        const px = p.pos.x + offX + (p.vel.x * visualAlpha);
-        const py = p.pos.y + offY + (p.vel.y * visualAlpha);
+        const px = p.pos.x + offX + p.vel.x * visualAlpha;
+        const py = p.pos.y + offY + p.vel.y * visualAlpha;
 
         // Spectator Highlight
         if (isSpectatingNowLocal) {
           if (activePlayers.length > 0) {
-            const currentTarget = activePlayers[spectateTargetIdx % activePlayers.length];
+            const currentTarget =
+              activePlayers[spectateTargetIdx % activePlayers.length];
             if (currentTarget && currentTarget.onlineId === p.onlineId) {
               ctx.save();
               const pulse = Math.sin(Date.now() / 300) * 5;
@@ -5462,15 +5257,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             px + Math.cos(time) * w,
             py + Math.sin(time) * h,
             px + w + Math.cos(time + Math.PI) * w,
-            py + h + Math.sin(time + Math.PI) * h
+            py + h + Math.sin(time + Math.PI) * h,
           );
           grad.addColorStop(0, "#ffff00"); // Yellow
           grad.addColorStop(0.5, "#000000"); // Black
           grad.addColorStop(1, "#ffff00"); // Yellow
           ctx.fillStyle = grad;
         } else if (p.color && p.color.toLowerCase() === "#ff0080") {
-           // Rainbow special
-           ctx.fillStyle = `hsl(${(Date.now() / 5) % 360}, 100%, 50%)`;
+          // Rainbow special
+          ctx.fillStyle = `hsl(${(Date.now() / 5) % 360}, 100%, 50%)`;
         } else if (p.slowTimer > 0) {
           ctx.fillStyle =
             Math.floor(Date.now() / 150) % 2 === 0
@@ -5652,414 +5447,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.font = '8px "Press Start 2P", monospace';
           const nameOffset =
             gameMode !== "brawler" && (p.inventory || hasOneTime) ? 22 : 8;
-          const displayName = p.color === "#130009" ? "ADMIN" : (p.color && p.color.toLowerCase() === "#ff0080" ? "MAGIC" : (p.color && p.color.toLowerCase() === "#ffffff" ? "GHOST" : p.name));
-          
+          const displayName =
+            p.color === "#130009"
+              ? "ADMIN"
+              : p.color && p.color.toLowerCase() === "#ff0080"
+                ? "MAGIC"
+                : p.color && p.color.toLowerCase() === "#ffffff"
+                  ? "GHOST"
+                  : p.name;
+
           if (gameMode === "brawler") {
-             const tCol = getTeamColor(p.team || 0);
-             ctx.fillStyle = tCol || "white";
+            const tCol = getTeamColor(p.team || 0);
+            ctx.fillStyle = tCol || "white";
           }
-          
+
           ctx.fillText(displayName, px, py - nameOffset);
         }
 
-        ctx.save();
-        if (p.gravityFlipped) {
-          ctx.translate(px + w / 2, py + h / 2);
-          ctx.scale(1, -1);
-          ctx.translate(-(px + w / 2), -(py + h / 2));
-        }
+        drawPlayerEyes(ctx, px, py, w, h, p);
 
-        ctx.fillStyle = "white";
-        if (p.eyes === "cyclops") {
-          ctx.fillRect(px + w / 2 - 4, py + 4, 8, 8);
-          ctx.fillStyle = "black";
-          ctx.fillRect(px + w / 2 - 1, py + 6, 2, 2);
-        } else if (p.eyes === "anime") {
-          ctx.fillRect(px + 1, py + 3, 6, 8);
-          ctx.fillRect(px + w - 7, py + 3, 6, 8);
-          ctx.fillStyle = "black";
-          ctx.fillRect(px + 2, py + 4, 2, 4);
-          ctx.fillRect(px + w - 6, py + 4, 2, 4);
-        } else if (p.eyes === "dead") {
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          // Left X
-          ctx.moveTo(px + 2, py + 4);
-          ctx.lineTo(px + 6, py + 8);
-          ctx.moveTo(px + 6, py + 4);
-          ctx.lineTo(px + 2, py + 8);
-          // Right X
-          ctx.moveTo(px + w - 6, py + 4);
-          ctx.lineTo(px + w - 2, py + 8);
-          ctx.moveTo(px + w - 2, py + 4);
-          ctx.lineTo(px + w - 6, py + 8);
-          ctx.stroke();
-        } else if (p.eyes === "sunglasses") {
-          ctx.fillStyle = "black";
-          ctx.fillRect(px, py + 4, w, 4);
-        } else if (p.eyes === "alien") {
-          ctx.fillStyle = "black";
-          ctx.beginPath();
-          ctx.ellipse(px + 4, py + 5, 3, 5, -Math.PI / 6, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(px + w - 4, py + 5, 3, 5, Math.PI / 6, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (p.eyes === "cyborg") {
-          ctx.fillStyle = "white";
-          ctx.fillRect(px + 4, py + 4, 4, 4);
-          ctx.fillStyle = "red";
-          ctx.fillRect(px + w - 8, py + 4, 4, 4);
-          ctx.fillStyle = "darkred";
-          ctx.fillRect(px + w - 7, py + 5, 2, 2);
-        } else if (
-          p.eyes === "stars" ||
-          p.eyes === "hearts" ||
-          p.eyes === "hypno"
-        ) {
-          ctx.fillStyle =
-            p.eyes === "stars"
-              ? "yellow"
-              : p.eyes === "hearts"
-                ? "red"
-                : "magenta";
-          ctx.font = '12px "Press Start 2P", monospace';
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          const sym =
-            p.eyes === "stars" ? "★" : p.eyes === "hearts" ? "♥" : "🌀";
-          ctx.fillText(sym, px + 6, py + 6);
-          ctx.fillText(sym, px + w - 6, py + 6);
-          ctx.textAlign = "left";
-          ctx.textBaseline = "alphabetic";
-        } else if (p.eyes === "googly") {
-          ctx.fillStyle = "white";
-          ctx.beginPath();
-          ctx.arc(px + 6, py + 6, 4, 0, Math.PI * 2);
-          ctx.arc(px + w - 6, py + 6, 4, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "black";
-          ctx.beginPath();
-          const ox = Math.sin(Date.now() / 100) * 1.5;
-          const oy = Math.cos(Date.now() / 100) * 1.5;
-          ctx.arc(px + 6 + ox, py + 6 + oy, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          const ox2 = Math.sin(Date.now() / 150) * 1.5;
-          const oy2 = Math.cos(Date.now() / 150) * 1.5;
-          ctx.arc(px + w - 6 + ox2, py + 6 + oy2, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (p.eyes === "pirate") {
-          ctx.fillRect(px + 4, py + 4, 4, 4);
-          ctx.fillStyle = "black";
-          ctx.fillRect(px + w - 10, py + 2, 8, 8);
-          ctx.strokeStyle = "black";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(px, py + 2);
-          ctx.lineTo(px + w, py + 10);
-          ctx.stroke();
-        } else if (p.eyes === "rich") {
-          ctx.fillStyle = "#22c55e";
-          ctx.font = '14px "Press Start 2P", monospace';
-          ctx.textAlign = "center";
-          ctx.fillText("$", px + 6, py + 11);
-          ctx.fillText("$", px + w - 6, py + 11);
-          ctx.textAlign = "left";
-        } else if (p.eyes === "glowing" || p.eyes === "laser") {
-          ctx.fillStyle = p.eyes === "laser" ? "#ff0000" : "#00ffff";
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = ctx.fillStyle;
-          ctx.fillRect(px + 4, py + 4, 4, 4);
-          ctx.fillRect(px + w - 8, py + 4, 4, 4);
-          ctx.shadowBlur = 0;
-        } else if (p.eyes === "ninja") {
-          ctx.fillStyle = "#111";
-          ctx.fillRect(px, py + 2, w, 10);
-          ctx.fillStyle = "white";
-          ctx.fillRect(px + 2, py + 4, 6, 6);
-          ctx.fillRect(px + w - 8, py + 4, 6, 6);
-          ctx.fillStyle = "black";
-          ctx.fillRect(px + 4, py + 6, 2, 2);
-          ctx.fillRect(px + w - 6, py + 6, 2, 2);
-        } else if (p.eyes === "tired") {
-          ctx.fillStyle = "#aaa";
-          ctx.fillRect(px + 4, py + 4, 4, 4);
-          ctx.fillRect(px + w - 8, py + 4, 4, 4);
-          ctx.fillStyle = "#444";
-          ctx.fillRect(px + 2, py + 8, 8, 2);
-          ctx.fillRect(px + w - 10, py + 8, 8, 2);
-        } else if (p.eyes === "kawaii") {
-          ctx.fillStyle = "white";
-          ctx.fillRect(px + 1, py + 3, 6, 8);
-          ctx.fillRect(px + w - 7, py + 3, 6, 8);
-          ctx.fillStyle = "pink";
-          ctx.fillRect(px + 2, py + 5, 2, 2);
-          ctx.fillRect(px + w - 4, py + 5, 2, 2);
-        } else if (p.eyes === "monocle") {
-          ctx.fillRect(px + 4, py + 4, 4, 4);
-          ctx.strokeStyle = "gold";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(px + w - 10, py + 2, 8, 8);
-          ctx.beginPath();
-          ctx.moveTo(px + w - 2, py + 10);
-          ctx.lineTo(px + w + 4, py + 14);
-          ctx.stroke();
-        } else if (p.eyes === "masked") {
-          ctx.fillStyle = "#333";
-          ctx.fillRect(px - 2, py + 2, w + 4, 8);
-          ctx.fillStyle = "white";
-          ctx.fillRect(px + 2, py + 4, 6, 4);
-          ctx.fillRect(px + w - 8, py + 4, 6, 4);
-        } else {
-          let ly = 4,
-            ry = 4;
-          if (p.eyes === "derp") ry = 8;
-          ctx.fillRect(px + 4, py + ly, 4, 4);
-          ctx.fillRect(px + w - 8, py + ry, 4, 4);
-          if (p.eyes === "angry") {
-            ctx.fillStyle =
-              p.slowTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0
-                ? "#00ffff"
-                : p.color || "#ffffff";
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(px + w, py + 6);
-            ctx.lineTo(px + w, py);
-            ctx.fill();
-          }
-        }
-        ctx.restore();
-
-        ctx.save();
-        if (p.gravityFlipped) {
-          ctx.translate(px + w / 2, py + h / 2);
-          ctx.scale(1, -1);
-          ctx.translate(-(px + w / 2), -(py + h / 2));
-        }
-
-        if (p.color && p.color.toLowerCase() !== "#ffffff") {
-          // Accessories
-          if (p.accessory === "crown") {
-            ctx.fillStyle = "gold";
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(px, py - 10);
-            ctx.lineTo(px + 5, py - 5);
-            ctx.lineTo(px + 10, py - 12);
-            ctx.lineTo(px + 15, py - 5);
-            ctx.lineTo(px + w, py - 10);
-            ctx.lineTo(px + w, py);
-            ctx.fill();
-          } else if (p.accessory === "horns") {
-          ctx.fillStyle = "#a00";
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py);
-          ctx.lineTo(px - 2, py - 8);
-          ctx.lineTo(px + 6, py);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(px + w - 6, py);
-          ctx.lineTo(px + w + 2, py - 8);
-          ctx.lineTo(px + w - 2, py);
-          ctx.fill();
-        } else if (p.accessory === "headband") {
-          ctx.fillStyle = "#ef4444";
-          ctx.fillRect(px, py + 2, w, 4);
-          // Knots
-          ctx.fillRect(px - 2, py + 3, 2, 2);
-          ctx.fillRect(px + w, py + 3, 2, 2);
-        } else if (p.accessory === "cowboy") {
-          ctx.fillStyle = "#8B4513";
-          ctx.fillRect(px - 4, py - 4, w + 8, 4); // Brim
-          ctx.fillRect(px + 2, py - 12, w - 4, 8); // Top
-        } else if (p.accessory === "viking") {
-          ctx.fillStyle = "#aaa";
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py, w / 2, Math.PI, 0);
-          ctx.fill();
-          ctx.fillStyle = "white"; // Horns
-          ctx.beginPath();
-          ctx.moveTo(px, py - 4);
-          ctx.lineTo(px - 4, py - 10);
-          ctx.lineTo(px + 2, py - 6);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(px + w, py - 4);
-          ctx.lineTo(px + w + 4, py - 10);
-          ctx.lineTo(px + w - 2, py - 6);
-          ctx.fill();
-        } else if (p.accessory === "halo") {
-          ctx.strokeStyle = "gold";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(px + w / 2, py - 8, 8, 3, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (p.accessory === "headphones") {
-          ctx.fillStyle = "#333";
-          ctx.fillRect(px - 2, py + 4, 4, 10);
-          ctx.fillRect(px + w - 2, py + 4, 4, 10);
-          ctx.strokeStyle = "#333";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py + 4, w / 2 + 2, Math.PI, 0);
-          ctx.stroke();
-        } else if (p.accessory === "tophat") {
-          ctx.fillStyle = "#111";
-          ctx.fillRect(px - 4, py - 4, w + 8, 4);
-          ctx.fillRect(px + 2, py - 18, w - 4, 14);
-          ctx.fillStyle = "#f00";
-          ctx.fillRect(px + 2, py - 6, w - 4, 3);
-        } else if (p.accessory === "cap") {
-          ctx.fillStyle = "#3b82f6";
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py, w / 2, Math.PI, 0);
-          ctx.fill();
-          ctx.fillRect(px + w / 2, py - 4, w / 2 + 6, 4);
-        } else if (p.accessory === "propeller") {
-          ctx.fillStyle = "#facc15";
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py, w / 2, Math.PI, 0);
-          ctx.fill();
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(px + w / 2, py - 10);
-          ctx.lineTo(px + w / 2, py - 16);
-          ctx.stroke();
-          ctx.fillStyle = "silver";
-          const propX = Math.cos(Date.now() / 50) * 8;
-          ctx.fillRect(px + w / 2 - propX, py - 18, propX * 2, 2);
-        } else if (p.accessory === "cat_ears") {
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.moveTo(px, py);
-          ctx.lineTo(px + 6, py);
-          ctx.lineTo(px, py - 8);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(px + w, py);
-          ctx.lineTo(px + w - 6, py);
-          ctx.lineTo(px + w, py - 8);
-          ctx.fill();
-        } else if (p.accessory === "demon_horns") {
-          ctx.fillStyle = "#000";
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py);
-          ctx.quadraticCurveTo(px - 10, py - 15, px - 2, py - 20);
-          ctx.quadraticCurveTo(px - 2, py - 10, px + 6, py);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(px + w - 2, py);
-          ctx.quadraticCurveTo(px + w + 10, py - 15, px + w + 2, py - 20);
-          ctx.quadraticCurveTo(px + w + 2, py - 10, px + w - 6, py);
-          ctx.fill();
-        } else if (p.accessory === "builder_hat") {
-          ctx.fillStyle = "#fbbf24";
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py, w / 2 + 2, Math.PI, 0);
-          ctx.fill();
-          ctx.fillRect(px - 2, py - 2, w + 4, 3);
-        } else if (p.accessory === "wizard_hat") {
-          ctx.fillStyle = "#7c3aed";
-          ctx.beginPath();
-          ctx.moveTo(px - 4, py);
-          ctx.lineTo(px + w / 2, py - 24);
-          ctx.lineTo(px + w + 4, py);
-          ctx.fill();
-        } else if (p.accessory === "bunny_ears") {
-          ctx.fillStyle = "white";
-          ctx.fillRect(px + 2, py - 12, 5, 12);
-          ctx.fillRect(px + w - 7, py - 12, 5, 12);
-          ctx.fillStyle = "pink";
-          ctx.fillRect(px + 3, py - 10, 3, 8);
-          ctx.fillRect(px + w - 6, py - 10, 3, 8);
-        } else if (p.accessory === "pirate_hat") {
-          ctx.fillStyle = "black";
-          ctx.beginPath();
-          ctx.moveTo(px - 6, py);
-          ctx.quadraticCurveTo(px + w / 2, py - 15, px + w + 6, py);
-          ctx.fill();
-          ctx.fillStyle = "white";
-          ctx.font = "bold 6px sans-serif";
-          ctx.fillText("X", px + w / 2 - 3, py - 4);
-        } else if (p.accessory === "party_hat") {
-          ctx.fillStyle = `hsl(${(Date.now() / 10) % 360}, 70%, 60%)`;
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py);
-          ctx.lineTo(px + w / 2, py - 16);
-          ctx.lineTo(px + w - 2, py);
-          ctx.fill();
-          ctx.fillStyle = "red";
-          ctx.beginPath();
-          ctx.arc(px + w / 2, py - 16, 3, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (p.accessory === "sombrero") {
-          ctx.fillStyle = "#eab308";
-          ctx.fillRect(px - 8, py - 4, w + 16, 4);
-          ctx.fillRect(px + 2, py - 12, w - 4, 8);
-          ctx.fillStyle = "#ef4444";
-          ctx.fillRect(px + 2, py - 6, w - 4, 2);
-        } else if (p.accessory === "ushanka") {
-          ctx.fillStyle = "#52525b";
-          ctx.fillRect(px, py - 8, w, 8);
-          ctx.fillRect(px - 2, py - 2, 4, 10);
-          ctx.fillRect(px + w - 2, py - 2, 4, 10);
-          ctx.fillStyle = "#3f3f46";
-          ctx.fillRect(px + 2, py - 6, w - 4, 4);
-        } else if (p.accessory === "fedora") {
-          ctx.fillStyle = "#27272a";
-          ctx.fillRect(px - 4, py - 2, w + 8, 2);
-          ctx.fillRect(px + 2, py - 10, w - 4, 8);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(px + 2, py - 4, w - 4, 2);
-        } else if (p.accessory === "chef") {
-          ctx.fillStyle = "white";
-          ctx.beginPath();
-          ctx.arc(px + 5, py - 10, 6, 0, Math.PI * 2);
-          ctx.arc(px + w - 5, py - 10, 6, 0, Math.PI * 2);
-          ctx.arc(px + w / 2, py - 14, 8, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillRect(px + 2, py - 6, w - 4, 6);
-        } else if (p.accessory === "police") {
-          ctx.fillStyle = "#1e3a8a";
-          ctx.fillRect(px, py - 8, w, 8);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(px - 2, py - 2, w + 4, 2);
-          ctx.fillStyle = "gold";
-          ctx.fillRect(px + w / 2 - 2, py - 6, 4, 4);
-        } else if (p.accessory === "pumpkin") {
-          ctx.fillStyle = "#f97316";
-          ctx.fillRect(px, py - 12, w, 12);
-          ctx.fillStyle = "#22c55e";
-          ctx.fillRect(px + w / 2 - 2, py - 16, 4, 4);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(px + 4, py - 8, 3, 3);
-          ctx.fillRect(px + w - 7, py - 8, 3, 3);
-          ctx.fillRect(px + 4, py - 4, w - 8, 2);
-        } else if (p.accessory === "unicorn") {
-          // The Rainbow Secret Hat (Unicorn)
-          ctx.fillStyle = "white";
-          ctx.beginPath();
-          ctx.moveTo(px + w / 2 - 4, py);
-          ctx.lineTo(px + w / 2, py - 20);
-          ctx.lineTo(px + w / 2 + 4, py);
-          ctx.fill();
-          // Spirals
-          ctx.strokeStyle = `hsl(${(Date.now() / 2) % 360}, 100%, 70%)`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(px + w / 2 - 2, py - 5);
-          ctx.lineTo(px + w / 2 + 2, py - 5);
-          ctx.moveTo(px + w / 2 - 1.5, py - 10);
-          ctx.lineTo(px + w / 2 + 1.5, py - 10);
-          ctx.moveTo(px + w / 2 - 1, py - 15);
-          ctx.lineTo(px + w / 2 + 1, py - 15);
-          ctx.stroke();
-        }
-        }
-        ctx.restore(); // Matches accessories ctx.save()
+        drawPlayerAccessories(ctx, px, py, w, h, p);
         ctx.restore(); // Matches player entry ctx.save()
       });
 
@@ -6072,7 +5479,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const camX = cameraRef.current.x;
         const camY = cameraRef.current.y;
-        
+
         const isOffLeft = p.pos.x + p.w < camX;
         const isOffRight = p.pos.x > camX + GAME_WIDTH;
         const isOffTop = p.pos.y + p.h < camY;
@@ -6083,18 +5490,24 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const screenY = p.pos.y + p.h / 2 - camY;
 
           const margin = 30;
-          let targetX = Math.max(margin, Math.min(GAME_WIDTH - margin, screenX));
-          let targetY = Math.max(margin, Math.min(GAME_HEIGHT - margin, screenY));
+          let targetX = Math.max(
+            margin,
+            Math.min(GAME_WIDTH - margin, screenX),
+          );
+          let targetY = Math.max(
+            margin,
+            Math.min(GAME_HEIGHT - margin, screenY),
+          );
 
           const dx = screenX - targetX;
           const dy = screenY - targetY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          
+
           const scale = Math.min(2.5, 0.5 + dist / 400);
 
           ctx.save();
           ctx.translate(targetX, targetY);
-          
+
           const angle = Math.atan2(dy, dx);
           ctx.rotate(angle);
 
@@ -6103,7 +5516,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.lineTo(-6 * scale, 8 * scale);
           ctx.lineTo(-6 * scale, -8 * scale);
           ctx.closePath();
-          
+
           ctx.fillStyle = p.color || "#ffffff";
           ctx.fill();
           ctx.lineWidth = 2;
@@ -6140,13 +5553,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         const hudT = TRANSLATIONS[lang];
-        const totalCoinsAtLevel = (gameMode === "vs" || gameMode === "story") ? level.entities.filter(
-          (e) => e.type === "coin",
-        ).length : 0;
+        const totalCoinsAtLevel =
+          gameMode === "vs" || gameMode === "story"
+            ? level.entities.filter((e) => e.type === "coin").length
+            : 0;
 
         const hudPadding = 10;
         const availableWidth = GAME_WIDTH - hudPadding * 2;
-        const playerSlotWidth = availableWidth / Math.max(1, players.current.length);
+        const playerSlotWidth =
+          availableWidth / Math.max(1, players.current.length);
 
         players.current.forEach((p, i) => {
           const isLocal2P = !isOnline && players.current.length === 2;
@@ -6159,10 +5574,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           } else {
             ctx.textAlign = "left";
           }
-          
+
           // Use player color for name (Character color)
           ctx.fillStyle = p.color;
-          
+
           ctx.font = '10px "Press Start 2P", monospace';
 
           if (gameMode === "brawler") {
@@ -6180,7 +5595,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           let nextY = 24;
 
-          if (totalCoinsAtLevel > 0 && (gameMode === "vs" || gameMode === "story")) {
+          if (
+            totalCoinsAtLevel > 0 &&
+            (gameMode === "vs" || gameMode === "story")
+          ) {
             ctx.fillStyle =
               p.collectedCoinIds.length === totalCoinsAtLevel
                 ? "#4ade80"
@@ -6215,8 +5633,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (p.inventory === "powerup_slow_mo") puName = hudT.puSlowMo;
                 if (p.inventory === "powerup_xray") puName = hudT.puXray;
                 if (p.inventory === "powerup_ice_block") puName = hudT.puIce;
-                if (p.inventory === "powerup_slime_block") puName = hudT.puSlime;
-                if (p.inventory === "powerup_fireball") puName = hudT.puFireball;
+                if (p.inventory === "powerup_slime_block")
+                  puName = hudT.puSlime;
+                if (p.inventory === "powerup_fireball")
+                  puName = hudT.puFireball;
                 if (p.inventory === "powerup_bomb") puName = hudT.puBomb;
                 if (p.inventory === "powerup_shield") puName = hudT.puShield;
                 if (p.inventory === "powerup_steal") puName = hudT.puSteal;
@@ -6225,8 +5645,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 if (p.inventory === "powerup_shrink") puName = hudT.puShrink;
                 if (p.inventory === "powerup_grow") puName = hudT.puGrow;
                 if (p.inventory === "powerup_dash") puName = hudT.puDash;
-                if (p.inventory === "powerup_teleport") puName = hudT.puTeleport;
-                if (p.inventory === "powerup_triple_jump") puName = hudT.puTripleJump;
+                if (p.inventory === "powerup_teleport")
+                  puName = hudT.puTeleport;
+                if (p.inventory === "powerup_triple_jump")
+                  puName = hudT.puTripleJump;
               } else {
                 if (p.oneTimeBuild) puName = hudT.puBuild;
                 else if (p.oneTimeHook) puName = hudT.puHook;
@@ -6270,7 +5692,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             : onlinePing < 150
               ? "#facc15"
               : "#ef4444";
-        ctx.fillText(`Ping: ${onlinePing}ms`, GAME_WIDTH - 10, GAME_HEIGHT - 10);
+        ctx.fillText(
+          `Ping: ${onlinePing}ms`,
+          GAME_WIDTH - 10,
+          GAME_HEIGHT - 10,
+        );
         ctx.restore();
       }
 
@@ -6306,76 +5732,120 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.globalAlpha = 1.0;
 
           if (anim === "normal") {
-             ctx.fillStyle = "red";
-             for(let i=0; i<10; i++) {
-                const r = 5 * scale;
-                ctx.beginPath();
-                ctx.arc(CX + Math.cos(i) * r * progress/10, CY + Math.sin(i) * r * progress/10 - 5 * scale, 2*scale, 0, Math.PI*2);
-                ctx.fill();
-             }
+            ctx.fillStyle = "red";
+            for (let i = 0; i < 10; i++) {
+              const r = 5 * scale;
+              ctx.beginPath();
+              ctx.arc(
+                CX + (Math.cos(i) * r * progress) / 10,
+                CY + (Math.sin(i) * r * progress) / 10 - 5 * scale,
+                2 * scale,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            }
           } else if (anim === "blood") {
-             ctx.fillStyle = "#aa0000";
-             const baseAngle = -Math.PI / 3; // up-right
-             for(let i=0; i<15; i++) {
-                // simple pseudo randomness based on index
-                const angleOffset = Math.sin(i * 12.34) * 0.5;
-                const speedMult = 0.5 + Math.abs(Math.cos(i * 43.21)) * 1.5;
-                const dist = progress * 1.5 * speedMult * scale;
-                const gravity = (progress * progress) * 0.1 * scale;
+            ctx.fillStyle = "#aa0000";
+            const baseAngle = -Math.PI / 3; // up-right
+            for (let i = 0; i < 15; i++) {
+              // simple pseudo randomness based on index
+              const angleOffset = Math.sin(i * 12.34) * 0.5;
+              const speedMult = 0.5 + Math.abs(Math.cos(i * 43.21)) * 1.5;
+              const dist = progress * 1.5 * speedMult * scale;
+              const gravity = progress * progress * 0.1 * scale;
 
-                ctx.beginPath();
-                ctx.arc(
-                  CX + Math.cos(baseAngle + angleOffset) * dist,
-                  CY + Math.sin(baseAngle + angleOffset) * dist + gravity - 5 * scale,
-                  (1.5 + Math.abs(Math.sin(i)) * 1.5) * scale,
-                  0,
-                  Math.PI*2
-                );
-                ctx.fill();
-             }
+              ctx.beginPath();
+              ctx.arc(
+                CX + Math.cos(baseAngle + angleOffset) * dist,
+                CY +
+                  Math.sin(baseAngle + angleOffset) * dist +
+                  gravity -
+                  5 * scale,
+                (1.5 + Math.abs(Math.sin(i)) * 1.5) * scale,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            }
           } else if (anim === "confetti") {
-             for(let i=0; i<10; i++) {
-                ctx.fillStyle = `hsl(${i * 40}, 80%, 60%)`;
-                ctx.fillRect(CX + Math.cos(i) * 10 * scale * progress/10, CY + Math.sin(i) * 10 * scale * progress/10 - 5 * scale, 3*scale, 3*scale);
-             }
+            for (let i = 0; i < 10; i++) {
+              ctx.fillStyle = `hsl(${i * 40}, 80%, 60%)`;
+              ctx.fillRect(
+                CX + (Math.cos(i) * 10 * scale * progress) / 10,
+                CY + (Math.sin(i) * 10 * scale * progress) / 10 - 5 * scale,
+                3 * scale,
+                3 * scale,
+              );
+            }
           } else if (anim === "firework") {
             ctx.fillStyle = "yellow";
             ctx.shadowBlur = 10 * scale;
             ctx.shadowColor = "yellow";
-            for(let i=0; i<8; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + Math.cos(i*Math.PI/4) * 12 * scale * progress/10, CY + Math.sin(i*Math.PI/4) * 12 * scale * progress/10 - 5 * scale, 1.5*scale, 0, Math.PI*2);
-               ctx.fill();
+            for (let i = 0; i < 8; i++) {
+              ctx.beginPath();
+              ctx.arc(
+                CX + (Math.cos((i * Math.PI) / 4) * 12 * scale * progress) / 10,
+                CY +
+                  (Math.sin((i * Math.PI) / 4) * 12 * scale * progress) / 10 -
+                  5 * scale,
+                1.5 * scale,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
             }
             ctx.shadowBlur = 0;
           } else if (anim === "dust") {
             ctx.fillStyle = "#aaa";
-            for(let i=0; i<6; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + (i-3) * 4 * scale, CY - 5 * scale - progress * scale, 3*scale, 0, Math.PI*2);
-               ctx.fill();
+            for (let i = 0; i < 6; i++) {
+              ctx.beginPath();
+              ctx.arc(
+                CX + (i - 3) * 4 * scale,
+                CY - 5 * scale - progress * scale,
+                3 * scale,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
             }
           } else if (anim === "electric") {
             ctx.strokeStyle = "#00ffff";
             ctx.lineWidth = 2 * scale;
-            for(let i=0; i<5; i++) {
-               ctx.beginPath();
-               ctx.moveTo(CX + (Math.random()-0.5)*20*scale, CY + (Math.random()-0.5)*20*scale - 5*scale);
-               ctx.lineTo(CX + (Math.random()-0.5)*20*scale, CY + (Math.random()-0.5)*20*scale - 5*scale);
-               ctx.stroke();
+            for (let i = 0; i < 5; i++) {
+              ctx.beginPath();
+              ctx.moveTo(
+                CX + (Math.random() - 0.5) * 20 * scale,
+                CY + (Math.random() - 0.5) * 20 * scale - 5 * scale,
+              );
+              ctx.lineTo(
+                CX + (Math.random() - 0.5) * 20 * scale,
+                CY + (Math.random() - 0.5) * 20 * scale - 5 * scale,
+              );
+              ctx.stroke();
             }
           } else if (anim === "ghost") {
             ctx.fillStyle = "rgba(255, 255, 255, " + (1 - progress / 30) + ")";
-            ctx.fillRect(CX - P_SIZE/2, CY - P_SIZE/2 - progress * scale, P_SIZE, P_SIZE);
+            ctx.fillRect(
+              CX - P_SIZE / 2,
+              CY - P_SIZE / 2 - progress * scale,
+              P_SIZE,
+              P_SIZE,
+            );
           } else if (anim === "freeze") {
             ctx.fillStyle = "#88ccff";
-            for(let i=0; i<8; i++) {
-               const rot = (i * Math.PI) / 4;
-               ctx.save();
-               ctx.translate(CX, CY - 5*scale);
-               ctx.rotate(rot);
-               ctx.fillRect(5 * scale * progress/10, -1*scale, 5*scale, 2*scale);
-               ctx.restore();
+            for (let i = 0; i < 8; i++) {
+              const rot = (i * Math.PI) / 4;
+              ctx.save();
+              ctx.translate(CX, CY - 5 * scale);
+              ctx.rotate(rot);
+              ctx.fillRect(
+                (5 * scale * progress) / 10,
+                -1 * scale,
+                5 * scale,
+                2 * scale,
+              );
+              ctx.restore();
             }
           } else if (anim === "blackhole") {
             ctx.fillStyle = "black";
@@ -6383,16 +5853,22 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.lineWidth = 2 * scale;
             const radius = Math.max(0, 15 * scale - progress * scale);
             ctx.beginPath();
-            ctx.arc(CX, CY - 5*scale, radius, 0, Math.PI*2);
+            ctx.arc(CX, CY - 5 * scale, radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
           } else if (anim === "bubble") {
             ctx.strokeStyle = "rgba(100, 200, 255, 0.8)";
             ctx.lineWidth = 1 * scale;
-            for(let i=0; i<5; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + Math.sin(i+progress*0.5)*10*scale, CY - 5*scale - (i*5 + progress*2)*scale, 4*scale, 0, Math.PI*2);
-               ctx.stroke();
+            for (let i = 0; i < 5; i++) {
+              ctx.beginPath();
+              ctx.arc(
+                CX + Math.sin(i + progress * 0.5) * 10 * scale,
+                CY - 5 * scale - (i * 5 + progress * 2) * scale,
+                4 * scale,
+                0,
+                Math.PI * 2,
+              );
+              ctx.stroke();
             }
           }
           return;
@@ -6446,7 +5922,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.save();
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, 0, GAME_WIDTH, 70);
-        
+
         ctx.fillStyle = "#22d3ee"; // Cyan
         ctx.font = '32px "Press Start 2P", monospace';
         ctx.textAlign = "center";
@@ -6454,19 +5930,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.shadowBlur = 10;
         ctx.fillText(t.spectatorMode, GAME_WIDTH / 2, 30);
         ctx.shadowBlur = 0;
-        
+
         const activePlayers = players.current.filter((p) => !p.finished);
         ctx.fillStyle = "white";
         if (activePlayers.length > 0) {
-          const target = activePlayers[spectateTargetIdx % activePlayers.length];
+          const target =
+            activePlayers[spectateTargetIdx % activePlayers.length];
           ctx.font = '20px "Press Start 2P", monospace';
-          ctx.fillText(t.watching + target.name.toUpperCase(), GAME_WIDTH / 2, 50);
+          ctx.fillText(
+            t.watching + target.name.toUpperCase(),
+            GAME_WIDTH / 2,
+            50,
+          );
           ctx.font = '12px "Press Start 2P", monospace';
           ctx.fillStyle = "rgba(255,255,255,0.6)";
           ctx.fillText(t.switchSpectatorHint, GAME_WIDTH / 2, 62);
         } else {
           ctx.font = '20px "Press Start 2P", monospace';
-          ctx.fillText(lang === 'de' ? "ALLE SPIELER IM ZIEL" : "ALL PLAYERS FINISHED", GAME_WIDTH / 2, 50);
+          ctx.fillText(
+            lang === "de" ? "ALLE SPIELER IM ZIEL" : "ALL PLAYERS FINISHED",
+            GAME_WIDTH / 2,
+            50,
+          );
         }
         ctx.restore();
       }
@@ -6544,7 +6029,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     spectateTargetIdx,
     status,
     isOnline,
-    lang
+    lang,
   ]);
 
   return (

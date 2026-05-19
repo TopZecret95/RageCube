@@ -1,4 +1,5 @@
 import { LevelData, Entity, EntityType, Vector2, LevelAbility } from "../types";
+import { signData, verifyData } from "../utils/storage";
 
 const ENTITY_TYPE_MAP: EntityType[] = [
   'wall', 'hazard', 'goal', 'fake', 'bounce', 'coin', 'fake_goal', 'invisible_hazard', 
@@ -59,7 +60,7 @@ export const compressLevel = (level: LevelData): string => {
     ib: level.isBrawler ? 1 : 0
   };
 
-  return JSON.stringify(compactData);
+  return JSON.stringify(signData(compactData));
 };
 
 const mapSingleLevel = (data: any): LevelData => {
@@ -110,8 +111,18 @@ const mapSingleLevel = (data: any): LevelData => {
   };
 };
 
-export const decompressLevel = (compressedJson: string): LevelData | LevelData[] => {
-  const data = JSON.parse(compressedJson);
+export const decompressLevel = (compressedJson: string, strictSignature: boolean = true): LevelData | LevelData[] => {
+  let data = JSON.parse(compressedJson);
+  
+  if (data && typeof data === 'object' && ('hash' in data)) {
+      const verified = verifyData(data);
+      if (verified === null) {
+          throw new Error("Tampering detected in level export.");
+      }
+      data = verified;
+  } else if (strictSignature) {
+     throw new Error("Invalid or unsigned level data.");
+  }
   
   if (Array.isArray(data)) {
     return data.map(item => mapSingleLevel(item));

@@ -100,8 +100,23 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                         importedLevels.push(newLevel);
                     }
                 });
-            } catch (err) {
-                console.warn(`Could not parse ${file.name}`);
+            } catch (err: any) {
+                console.warn(`Could not parse ${file.name}`, err);
+                let msg = err.message;
+                if (msg === "Tampering detected in level export.") {
+                    msg = lang === 'DE' ? "Der Import hat wegen Dateimanipulation nicht funktioniert." : "The import failed due to file manipulation.";
+                } else if (msg === "Invalid or unsigned level data.") {
+                    msg = lang === 'DE' ? "Ungültiges oder nicht signiertes Level-Format." : "Invalid or unsigned level format.";
+                }
+                if (showToast) {
+                    showToast(lang === 'DE' 
+                        ? `Fehler beim Importieren von ${file.name}:\n${msg}`
+                        : `Error importing ${file.name}:\n${msg}`);
+                } else {
+                    alert(lang === 'DE' 
+                        ? `Fehler beim Importieren von ${file.name}:\n${msg}`
+                        : `Error importing ${file.name}:\n${msg}`);
+                }
             } finally {
                 filesProcessed++;
                 if (filesProcessed === files.length) {
