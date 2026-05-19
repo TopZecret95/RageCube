@@ -6,10 +6,16 @@ import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import fs from "fs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Derivation of __dirname and __filename that works in both ESM (dev) and CJS (bundled production)
+const _filename = (typeof import.meta !== 'undefined' && import.meta.url)
+  ? fileURLToPath(import.meta.url)
+  : (typeof __filename !== 'undefined' ? __filename : '');
 
-const DATA_DIR = path.join(__dirname, "data");
+const _dirname = _filename 
+  ? path.dirname(_filename) 
+  : (typeof __dirname !== 'undefined' ? __dirname : process.cwd());
+
+const DATA_DIR = path.join(_dirname, "data");
 const SCORES_FILE = path.join(DATA_DIR, "highscores.json");
 
 // Ensure data directory exists
