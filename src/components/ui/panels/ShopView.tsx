@@ -5,7 +5,7 @@ import {
   EYE_OPTIONS, 
   ACC_OPTIONS,
   hexToRgb
-} from '../../../types';
+} from '../../../../types';
 
 interface ShopViewProps {
   t: any;
@@ -146,7 +146,7 @@ const ShopView: React.FC<ShopViewProps> = ({
                     >
                       <div 
                         className="w-full h-12 rounded-lg relative overflow-hidden shadow-xl"
-                        style={{ background: preset.gradient }}
+                        style={{ background: preset.val === 'rainbow' ? 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)' : preset.val }}
                       >
                          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)] animate-shine" />
                       </div>

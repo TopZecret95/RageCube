@@ -23,6 +23,10 @@ import {
   BrawlerHazardMode,
   Achievement,
   Status,
+  EYE_OPTIONS,
+  ACC_OPTIONS,
+  TRAIL_PRESETS,
+  hexToRgb,
 } from "./types";
 import {
   INITIAL_LEVELS,
@@ -115,58 +119,6 @@ const StatBar = ({ label, value, max, color }: { label: string, value: number, m
 );
 
 // Available Customization Options
-const EYE_OPTIONS: EyeType[] = [
-  "normal",
-  "angry",
-  "cyclops",
-  "derp",
-  "anime",
-  "dead",
-  "sunglasses",
-  "pirate",
-  "rich",
-  "glowing",
-  "ninja",
-  "tired",
-  "laser",
-  "kawaii",
-  "monocle",
-  "masked",
-  "alien",
-  "cyborg",
-  "stars",
-  "hearts",
-  "hypno",
-  "googly",
-  "evil",
-];
-const ACC_OPTIONS: AccessoryType[] = [
-  "none",
-  "crown",
-  "horns",
-  "headband",
-  "cowboy",
-  "viking",
-  "halo",
-  "headphones",
-  "tophat",
-  "cap",
-  "propeller",
-  "cat_ears",
-  "demon_horns",
-  "builder_hat",
-  "wizard_hat",
-  "bunny_ears",
-  "pirate_hat",
-  "party_hat",
-  "sombrero",
-  "ushanka",
-  "fedora",
-  "chef",
-  "police",
-  "pumpkin",
-  "unicorn",
-];
 
 const SHOP_ITEMS = [
   // Death Animations (10 total)
@@ -410,29 +362,9 @@ const LevelMenu = ({
 };
 
 // Trail Presets
-const TRAIL_PRESETS = [
-  { name: "RAGE RED", val: "#ff0044" },
-  { name: "TOXIC GREEN", val: "#00ff88" },
-  { name: "ICE BLUE", val: "#00ccff" },
-  { name: "GOLD", val: "#fbbf24" },
-  { name: "VOID PURPLE", val: "#9c27b0" },
-  { name: "FIRE", val: "#ff4400" },
-  { name: "RAINBOW", val: "rainbow" },
-];
 
 // Helper to handle colors
 const GLOBAL_LEVEL_TIME_LIMIT = 300; // 5 minutes per level before forced end
-
-const hexToRgb = (hex: string) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 255, g: 0, b: 68 };
-};
 
 const rgbToHex = (r: number, g: number, b: number) => {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);

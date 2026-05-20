@@ -55,6 +55,26 @@ export interface LevelData {
 export type EyeType = 'normal' | 'angry' | 'cyclops' | 'derp' | 'anime' | 'dead' | 'sunglasses' | 'pirate' | 'rich' | 'glowing' | 'ninja' | 'tired' | 'laser' | 'kawaii' | 'monocle' | 'masked' | 'alien' | 'cyborg' | 'stars' | 'hearts' | 'hypno' | 'googly' | 'void_eyes' | 'evil';
 export type AccessoryType = 'none' | 'crown' | 'horns' | 'headband' | 'cowboy' | 'viking' | 'halo' | 'headphones' | 'tophat' | 'cap' | 'propeller' | 'cat_ears' | 'demon_horns' | 'builder_hat' | 'wizard_hat' | 'bunny_ears' | 'pirate_hat' | 'party_hat' | 'sombrero' | 'ushanka' | 'fedora' | 'chef' | 'police' | 'pumpkin' | 'unicorn' | 'secret_crown' | 'rainbow_horn' | 'ghost_sheet' | 'coffee_cup';
 
+export const EYE_OPTIONS: EyeType[] = [
+  "normal", "angry", "cyclops", "derp", "anime", "dead", "sunglasses", "pirate", "rich", "glowing", "ninja", "tired", "laser", "kawaii", "monocle", "masked", "alien", "cyborg", "stars", "hearts", "hypno", "googly", "void_eyes", "evil",
+];
+export const ACC_OPTIONS: AccessoryType[] = [
+  "none", "crown", "horns", "headband", "cowboy", "viking", "halo", "headphones", "tophat", "cap", "propeller", "cat_ears", "demon_horns", "builder_hat", "wizard_hat", "bunny_ears", "pirate_hat", "party_hat", "sombrero", "ushanka", "fedora", "chef", "police", "pumpkin", "unicorn", "secret_crown", "rainbow_horn", "ghost_sheet", "coffee_cup",
+];
+export const TRAIL_PRESETS = [
+  { name: "RAGE RED", val: "#ff0044" },
+  { name: "TOXIC GREEN", val: "#00ff88" },
+  { name: "ICE BLUE", val: "#00ccff" },
+  { name: "GOLD", val: "#fbbf24" },
+  { name: "VOID PURPLE", val: "#9c27b0" },
+  { name: "FIRE", val: "#ff4400" },
+  { name: "RAINBOW", val: "rainbow" },
+];
+export const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 255, g: 0, b: 68 };
+};
+
 export interface PlayerCustomization {
   color: string;
   eyes: EyeType;

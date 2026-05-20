@@ -110,6 +110,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const explosions = useRef<Explosion[]>([]);
   const particles = useRef<Particle[]>([]);
   const cameraRef = useRef({ x: 0, y: 0 });
+  const cameraVel = useRef({ x: 0, y: 0 });
   const [spectateTargetIdx, setSpectateTargetIdx] = useState(0);
 
   useEffect(() => {
@@ -177,6 +178,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   // Time Manipulation
   const timeScaleRef = useRef(1.0);
+  const lastDrawTime = useRef(0);
   const slowMoTimerRef = useRef(0);
   const xrayTimerRef = useRef(0);
 
@@ -225,26 +227,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     // Only initialize worker if enabled in settings or if we want to offload anyway
-    // Here we offload by default to meet the 240fps goal
-    const worker = new Worker(new URL("../src/game/physicsWorker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    worker.onmessage = (e) => {
-      if (e.data.type === "ready") {
-        workerReady.current = true;
-      } else if (e.data.type === "physicsUpdate") {
-        const { player1: p1Data, player2: p2Data } = e.data.data;
-        if (p1Data && players.current[0]) Object.assign(players.current[0], p1Data);
-        if (p2Data && players.current[1]) Object.assign(players.current[1], p2Data);
-      }
-    };
-
-    physicsWorker.current = worker;
-
-    return () => {
-      worker.terminate();
-    };
+    // Removed because physics is processed locally, avoiding dual execution latency
   }, []);
 
   useEffect(() => {
@@ -280,17 +263,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     brawlerSpawnPoints.current = [];
-    if (physicsWorker.current && workerReady.current) {
-      physicsWorker.current.postMessage({
-        type: "init",
-        data: {
-          entities: level.entities,
-          player1: players.current[0],
-          player2: players.current[1],
-          dt: 1, // Will be updated in tick
-        },
-      });
-    }
   }, [level.id, gameMode]);
 
   const getBrawlerSpawnPoints = () => {
@@ -2070,7 +2042,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (canvas.width !== canvasWidth) canvas.width = canvasWidth;
     if (canvas.height !== canvasHeight) canvas.height = canvasHeight;
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) return;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
@@ -4222,6 +4194,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // In auto-scroll mode, camera normally sits at the wall (left bound) for the player.
       // However, spectators should follow their target smoothly.
+      const oldCamX = cameraRef.current.x;
+      const oldCamY = cameraRef.current.y;
+      
       if (level.autoScroll && !isSpectatingNowLocal) {
         cameraRef.current.x = scrollWallX.current;
       } else {
@@ -4229,6 +4204,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
       }
       cameraRef.current.y += (targetCameraY - cameraRef.current.y) * 0.1;
+      
+      cameraVel.current.x = cameraRef.current.x - oldCamX;
+      cameraVel.current.y = cameraRef.current.y - oldCamY;
 
       // Online Sync
       if (isOnline) {
@@ -4265,9 +4243,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
       ctx.save();
+      
+      const visualAlpha = typeof alpha === "number" ? alpha : 0;
 
-      let finalTranslateX = -cameraRef.current.x;
-      let finalTranslateY = -cameraRef.current.y;
+      let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * visualAlpha);
+      let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * visualAlpha);
 
       if (shakeIntensity.current > 0) {
         const shakeMult = settings.screenShake ?? 1;
@@ -5009,8 +4989,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillStyle = `rgba(255, 0, 0, ${fade})`;
         ctx.font = '64px "Press Start 2P", monospace';
         ctx.textAlign = "center";
-        const textX = cameraRef.current.x + GAME_WIDTH / 2;
-        const textY = cameraRef.current.y + 80 + Math.sin(time) * 5;
+        const textX = -finalTranslateX + GAME_WIDTH / 2;
+        const textY = -finalTranslateY + 80 + Math.sin(time) * 5;
         ctx.fillText("SUDDEN DEATH", textX, textY);
         ctx.strokeStyle = `rgba(0, 0, 0, ${fade})`;
         ctx.lineWidth = 4;
@@ -5516,8 +5496,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       players.current.forEach((p) => {
         if (!p.isLocal || !p.pos) return;
 
-        const camX = cameraRef.current.x;
-        const camY = cameraRef.current.y;
+        const camX = -finalTranslateX;
+        const camY = -finalTranslateY;
 
         const isOffLeft = p.pos.x + p.w < camX;
         const isOffRight = p.pos.x > camX + GAME_WIDTH;
@@ -5757,7 +5737,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Draw Particles
       ctx.save();
-      ctx.translate(-cameraRef.current.x, -cameraRef.current.y);
+      ctx.translate(finalTranslateX, finalTranslateY);
 
       particles.current.forEach((p) => {
         if (p.isDeathAnim) {
@@ -6026,34 +6006,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const loop = (timestamp: number) => {
       animationFrameId = requestAnimationFrame(loop);
       const frameTime = timestamp - lastTime;
-      if (fpsCap > 0 && frameTime < (1000 / fpsCap) - 1) return;
       lastTime = timestamp;
       accumulator += frameTime;
       if (accumulator > 200) accumulator = 200;
       while (accumulator >= PHYSICS_STEP) {
         if (!paused || (isOnline && isSpectating)) {
-          if (physicsWorker.current && workerReady.current) {
-            physicsWorker.current.postMessage({
-              type: "updateInputs",
-              data: {
-                p1Keys: players.current[0] ? {
-                  left: players.current[0].controls.left.some(k => keys.current[k]),
-                  right: players.current[0].controls.right.some(k => keys.current[k]),
-                  up: players.current[0].controls.up.some(k => keys.current[k]),
-                  down: players.current[0].controls.down.some(k => keys.current[k]),
-                  action: players.current[0].controls.action?.some(k => keys.current[k]),
-                } : {},
-                p2Keys: players.current[1] ? {
-                  left: players.current[1].controls.left.some(k => keys.current[k]),
-                  right: players.current[1].controls.right.some(k => keys.current[k]),
-                  up: players.current[1].controls.up.some(k => keys.current[k]),
-                  down: players.current[1].controls.down.some(k => keys.current[k]),
-                  action: players.current[1].controls.action?.some(k => keys.current[k]),
-                } : {},
-              }
-            });
-          }
-
           updatePhysics();
           // Advance Ghost inside physics loop to match recording frequency
           if (
@@ -6068,6 +6025,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         accumulator -= PHYSICS_STEP;
       }
+      
+      if (fpsCap > 0 && timestamp - lastDrawTime.current < (1000 / fpsCap) - 1.5) {
+        return;
+      }
+      lastDrawTime.current = timestamp;
 
       draw(accumulator / PHYSICS_STEP);
     };
