@@ -3275,7 +3275,7 @@ const App: React.FC = () => {
   }, [handleKeyboardNavigation]);
 
   // --- ONLINE LOBBY LOGIC ---
-  const createOnlineLobby = async (mode: "brawler" | "vs") => {
+  const createOnlineLobby = async (mode: "brawler" | "vs" | "editor") => {
     if (!playerName.trim()) {
       setOnlineError(t.nameRequired || "NAME IS REQUIRED TO JOIN OR CREATE A LOBBY");
       return;
@@ -3290,9 +3290,24 @@ const App: React.FC = () => {
         ready: true,
         team: 0, // Team 1
       };
+      
       const list = mode === "brawler" ? BRAWLER_LEVELS : INITIAL_LEVELS;
-      const initialLevel = list[0];
-      const initialQueue = mode === "brawler" ? BRAWLER_LEVELS : filterVSLevels(INITIAL_LEVELS);
+      let initialLevel = list[0];
+      if (mode === "editor") {
+        initialLevel = {
+          id: `custom_${Date.now()}`,
+          name: "Coop Level",
+          start: { x: 50, y: 450 },
+          width: 800, // GAME_WIDTH
+          height: 600, // GAME_HEIGHT
+          entities: [],
+          isCustom: true,
+          isBrawler: false,
+          isVerified: false,
+          allowedAbility: "none"
+        };
+      }
+      const initialQueue = mode === "brawler" ? BRAWLER_LEVELS : (mode === "editor" ? [] : filterVSLevels(INITIAL_LEVELS));
       
       const code = await onlineService.createLobby(localPlayer, mode, {
         level: initialLevel,
@@ -3426,6 +3441,10 @@ const App: React.FC = () => {
       if (newLevel && stateRef.current.level?.id !== newLevel.id) {
         setLevel(newLevel);
       }
+      
+      if (mode === "editor" && newLevel && !onlineService.isHost) {
+        setEditorData(newLevel);
+      }
 
       if (teamMode && !onlineService.isHost) {
         setBrawlerTeamMode(teamMode as BrawlerTeamMode);
@@ -3481,9 +3500,15 @@ const App: React.FC = () => {
         setGameState(p => ({ ...p, collisionEnabled: updatedVsCollision }));
       }
 
+      if (gameMode === "editor" && level) {
+        setEditorData(level);
+        setEditorHistory(null);
+        setEditorVerified(false);
+      }
+
       setGameState((p) => ({
         ...p,
-        status: gameMode === "brawler" ? "brawler_playing" : "vs_playing",
+        status: gameMode === "editor" ? "editor" : gameMode === "brawler" ? "brawler_playing" : "vs_playing",
         levelTime: 0,
         levelDeaths: 0,
         collectedCoins: [],
@@ -3573,6 +3598,17 @@ const App: React.FC = () => {
       }
       if (event === "cast_vote") {
         onlineService.handleCastVote(id, data.choice);
+      }
+      if (event === "editor-sync" && onlineService.lobbyCode) {
+         if (onlineService.isHost) {
+             // Host receives change from a client, broadcasts to all
+             setEditorData(data);
+             setLevel(data);
+             onlineService.broadcastLobbyState("editor", data);
+         } else {
+             // Clients receive update via onLobbyUpdate which already updates level, but if they receive it via app event instead, we can process it here.
+             // Actually, the host broadcasts via broadcastLobbyState, so clients get it via onLobbyUpdate. We just need this for host receiving from clients.
+         }
       }
       if (event === "request_vote") {
         if (onlineService.isHost && !onlineService.currentVote) {
@@ -4495,7 +4531,7 @@ const App: React.FC = () => {
                   <div className="h-1 w-24 bg-cyan-500 rounded-full" />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
                   {/* Normal Level Option */}
                   <button
                     onClick={() => startNewEditor(false)}
@@ -4539,6 +4575,50 @@ const App: React.FC = () => {
                       Select
                     </div>
                   </button>
+
+                  {/* Coop Editor Level Option */}
+                  <button
+                    onClick={() => createOnlineLobby("editor")}
+                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-purple-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-purple-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                      🤝
+                    </div>
+                    <div>
+                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-purple-400">
+                        COOP EDITOR
+                      </h3>
+                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                        CREATE A LOBBY TO BUILD A LEVEL TOGETHER
+                      </p>
+                    </div>
+                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-purple-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                      HOST
+                    </div>
+                  </button>
+                </div>
+
+                <div className="flex flex-col items-center gap-4 w-full max-w-md mt-4">
+                   <div className="flex w-full gap-2">
+                     <input
+                       type="text"
+                       value={onlineLobbyInput}
+                       onChange={(e) => setOnlineLobbyInput(e.target.value.toUpperCase())}
+                       placeholder="ENTER ANY LOBBY CODE"
+                       className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
+                     />
+                     <button
+                       onClick={() => {
+                         if (onlineLobbyInput.trim()) {
+                            joinOnlineLobby(onlineLobbyInput.trim());
+                         }
+                       }}
+                       className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-arcade rounded-lg border-b-4 border-purple-800 hover:border-purple-600 active:border-b-0 active:translate-y-4 transition-all"
+                     >
+                       JOIN
+                     </button>
+                   </div>
                 </div>
 
                 <button
@@ -4578,6 +4658,19 @@ const App: React.FC = () => {
                 showToast={showToast}
                 settings={settings}
                 onSettingsChange={setSettings}
+                externalLevelSync={gameState.onlineMode === "editor" ? editorData : undefined}
+                onLevelChange={(levelData) => {
+                  if (gameState.onlineMode === "editor" && onlineService.lobbyCode) {
+                    if (onlineService.isHost) {
+                      setEditorData(levelData);
+                      setLevel(levelData);
+                      onlineService.broadcastLobbyState("editor", levelData);
+                    } else {
+                      setEditorData(levelData);
+                      onlineService.sendEvent('editor-sync', levelData);
+                    }
+                  }
+                }}
               />
             )}
 
@@ -6029,7 +6122,7 @@ const App: React.FC = () => {
                     <div>
                       <h2 className="text-3xl font-black text-white flex items-center gap-3">
                         <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        {onlineService.currentMode === 'vs' ? t.vsTitle : t.brawlerMode}
+                        {onlineService.currentMode === 'editor' ? "COOP EDITOR" : (onlineService.currentMode === 'vs' ? t.vsTitle : t.brawlerMode)}
                       </h2>
                       <p className="text-neutral-500 font-bold uppercase tracking-tighter text-sm mt-1">
                         {t.lobby}: <span className="text-rage-red font-arcade">{onlineService.lobbyCode}</span>

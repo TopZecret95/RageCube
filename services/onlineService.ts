@@ -55,7 +55,7 @@ class OnlineService {
   public lobbyCode: string = '';
   public localPlayer: OnlinePlayer | null = null;
   public players: Map<string, OnlinePlayer> = new Map();
-  public currentMode: 'brawler' | 'vs' = 'brawler';
+  public currentMode: 'brawler' | 'vs' | 'editor' = 'brawler';
   public currentLevel: LevelData | undefined;
   public levelQueue: LevelData[] = [];
   public suggestions: any[] = []; // New: Store suggestions
@@ -83,8 +83,8 @@ class OnlineService {
   private reconnectCount: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
   
-  public onLobbyUpdate?: (players: OnlinePlayer[], level?: LevelData, mode?: 'brawler' | 'vs', levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean, powerups?: Record<string, number>, suddenDeath?: boolean, suggestions?: any[], finishTimerEnabled?: boolean) => void;
-  public onGameStart?: (mode?: 'brawler' | 'vs', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean) => void;
+  public onLobbyUpdate?: (players: OnlinePlayer[], level?: LevelData, mode?: 'brawler' | 'vs' | 'editor', levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean, powerups?: Record<string, number>, suddenDeath?: boolean, suggestions?: any[], finishTimerEnabled?: boolean) => void;
+  public onGameStart?: (mode?: 'brawler' | 'vs' | 'editor', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean) => void;
   public onStatusChange?: (status: string) => void;
   public onSync?: (id: string, state: SyncState) => void;
   public onEvent?: (id: string, event: string, data?: any) => void;
@@ -185,7 +185,7 @@ class OnlineService {
     });
   }
 
-  public async createLobby(localPlayer: OnlinePlayer, mode: 'brawler' | 'vs', initialSettings?: { level?: any, levelQueue?: any[], teamMode?: string, hazardMode?: string, vsCollision?: boolean, powerups?: any }): Promise<string> {
+  public async createLobby(localPlayer: OnlinePlayer, mode: 'brawler' | 'vs' | 'editor', initialSettings?: { level?: any, levelQueue?: any[], teamMode?: string, hazardMode?: string, vsCollision?: boolean, powerups?: any }): Promise<string> {
     this.joinTime = Date.now();
     this.isHost = true;
     this.localPlayer = localPlayer;
@@ -542,7 +542,7 @@ class OnlineService {
     }
   }
 
-  public async broadcastLobbyState(mode?: 'brawler' | 'vs', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, status?: string, levelIndex?: number, vsCollision?: boolean, vote?: VoteData | null, powerups?: Record<string, number>, suddenDeath?: boolean, finishTimerEnabled?: boolean, isPaused?: boolean) {
+  public async broadcastLobbyState(mode?: 'brawler' | 'vs' | 'editor', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, status?: string, levelIndex?: number, vsCollision?: boolean, vote?: VoteData | null, powerups?: Record<string, number>, suddenDeath?: boolean, finishTimerEnabled?: boolean, isPaused?: boolean) {
     if (this.isHost && this.lobbyCode) {
       const updates: any = {};
       if (mode) updates.mode = mode;

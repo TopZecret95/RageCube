@@ -31,6 +31,8 @@ interface LevelEditorProps {
   showToast?: (msg: string) => void;
   settings?: GameSettings;
   onSettingsChange?: (settings: GameSettings) => void;
+  externalLevelSync?: LevelData;
+  onLevelChange?: (level: LevelData) => void;
 }
 
 const allTools = [
@@ -571,6 +573,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
   showToast,
   settings,
   onSettingsChange,
+  externalLevelSync,
+  onLevelChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -729,6 +733,20 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
   }, [selectedEntityIndices]);
   // Active Property for Keyboard Control ('w', 'h', 'x', 'y')
   const [activeProperty, setActiveProperty] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (externalLevelSync) { // skip replacing if identical to current data if needed, but doing so blindly is okay since it only changes when external updates hit
+      setEntities(externalLevelSync.entities);
+      setStartPos(externalLevelSync.start);
+      if (externalLevelSync.startP2) setStartPosP2(externalLevelSync.startP2);
+      setLevelWidth(externalLevelSync.width || GAME_WIDTH);
+      setLevelHeight(externalLevelSync.height || GAME_HEIGHT);
+      setIsBrawler(externalLevelSync.isBrawler || false);
+      setAllowedAbility(externalLevelSync.allowedAbility || "none");
+      setAutoScroll(externalLevelSync.autoScroll || false);
+      setAutoScrollSpeed(externalLevelSync.autoScrollSpeed || 2);
+    }
+  }, [externalLevelSync]);
 
   // Popup Position State
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(
@@ -1877,7 +1895,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     setActiveProperty(null);
   };
 
-  const getCurrentLevelData = (): LevelData => ({
+  const getCurrentLevelData = useCallback((): LevelData => ({
     id: initialLevel?.id || `custom_${Date.now()}`,
     name: levelName,
     start: startPos,
@@ -1890,7 +1908,37 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
     allowedAbility: allowedAbility,
     autoScroll: autoScroll,
     autoScrollSpeed: autoScrollSpeed,
-  });
+  }), [initialLevel?.id, levelName, startPos, isBrawler, startPosP2, levelWidth, levelHeight, entities, allowedAbility, autoScroll, autoScrollSpeed]);
+
+  const lastExternalSyncString = useRef("");
+  useEffect(() => {
+    if (externalLevelSync) {
+      lastExternalSyncString.current = JSON.stringify({
+        entities: externalLevelSync.entities,
+        start: externalLevelSync.start,
+        startP2: externalLevelSync.startP2,
+        width: externalLevelSync.width || GAME_WIDTH,
+        height: externalLevelSync.height || GAME_HEIGHT,
+        isBrawler: externalLevelSync.isBrawler || false,
+        allowedAbility: externalLevelSync.allowedAbility || "none",
+        autoScroll: externalLevelSync.autoScroll || false,
+        autoScrollSpeed: externalLevelSync.autoScrollSpeed || 2,
+        name: externalLevelSync.name
+      });
+    }
+  }, [externalLevelSync]);
+
+  useEffect(() => {
+    if (onLevelChange) {
+       const currentDataString = JSON.stringify({
+         entities, start: startPos, startP2: startPosP2, width: levelWidth, height: levelHeight, isBrawler, allowedAbility, autoScroll, autoScrollSpeed, name: levelName
+       });
+       if (currentDataString !== lastExternalSyncString.current) {
+          lastExternalSyncString.current = currentDataString;
+          onLevelChange(getCurrentLevelData());
+       }
+    }
+  }, [entities, startPos, startPosP2, levelWidth, levelHeight, isBrawler, allowedAbility, autoScroll, autoScrollSpeed, levelName, onLevelChange, getCurrentLevelData]);
 
   const handleTest = () => {
     if (!isBrawler && entities.filter((e) => e.type === "goal").length === 0) {
