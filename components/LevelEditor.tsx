@@ -82,7 +82,7 @@ const RADIAL_CATEGORIES = [
   },
   {
     name: "Schein", // 2
-    tools: ["walkthrough_wall", "fake_ice", "fake_slime", "ghost_hazard"],
+    tools: ["walkthrough_wall", "fake_ice", "fake_slime", "ghost_hazard", "fake_goal"],
     color: "#ff00ff",
   },
   {

@@ -6300,151 +6300,153 @@ const App: React.FC = () => {
                       })}
                     </div>
 
-                    <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
-                      <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
-                        {t.selectedLevels || "Selected Level(s)"}
-                      </div>
+                    {gameState.onlineMode !== "editor" && (
+                      <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
+                        <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
+                          {t.selectedLevels || "Selected Level(s)"}
+                        </div>
 
-                      {/* Suggestions notification for Host */}
-                      {onlineService.isHost && onlineSuggestions.length > 0 && (
-                        <div className="w-full bg-blue-900/30 border border-blue-500/50 rounded-lg p-2 mb-4 animate-pulse">
-                          <div className="flex justify-between items-center text-[10px] text-blue-400 font-black uppercase mb-2">
-                             <span>{onlineSuggestions.filter(s => s.status === 'pending').length} NEUE VORSCHLÄGE</span>
+                        {/* Suggestions notification for Host */}
+                        {onlineService.isHost && onlineSuggestions.length > 0 && (
+                          <div className="w-full bg-blue-900/30 border border-blue-500/50 rounded-lg p-2 mb-4 animate-pulse">
+                            <div className="flex justify-between items-center text-[10px] text-blue-400 font-black uppercase mb-2">
+                               <span>{onlineSuggestions.filter(s => s.status === 'pending').length} NEUE VORSCHLÄGE</span>
+                               <button 
+                                 onClick={() => onlineService.clearSuggestions()}
+                                 className="text-neutral-500 hover:text-white"
+                               >
+                                 CLEAR
+                               </button>
+                            </div>
+                            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                              {onlineSuggestions.map((s, idx) => (
+                                <div key={s.id} className="flex items-center justify-between bg-black/40 p-2 rounded border border-white/5">
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-white text-xs font-bold truncate">{s.level.name}</span>
+                                    <span className="text-[8px] text-neutral-500 uppercase">VON {s.playerName}</span>
+                                  </div>
+                                  <div className="flex gap-2 shrink-0">
+                                    {s.status === 'pending' ? (
+                                      <>
+                                        <button 
+                                          onClick={() => onlineService.handleSuggestion(s.id, 'accept')}
+                                          className="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white hover:bg-green-500"
+                                        >
+                                          ✓
+                                        </button>
+                                        <button 
+                                          onClick={() => onlineService.handleSuggestion(s.id, 'decline')}
+                                          className="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white hover:bg-red-500"
+                                        >
+                                          ✕
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <span className={`text-[8px] font-black ${s.status === 'accepted' ? 'text-green-500' : 'text-red-500'}`}>
+                                        {s.status.toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Suggestion button for Players */}
+                        {!onlineService.isHost && (
+                          <div className="w-full mb-4">
                              <button 
-                               onClick={() => onlineService.clearSuggestions()}
-                               className="text-neutral-500 hover:text-white"
+                               onClick={() => setShowSuggestionMenu(!showSuggestionMenu)}
+                               className="w-full py-2 bg-blue-600 text-white rounded-lg font-arcade text-[10px] border-b-4 border-blue-900 active:translate-y-1 active:border-b-0"
                              >
-                               CLEAR
+                               {t.suggestLevel || "LEVEL VORSCHLAGEN"} ({onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length}/5)
                              </button>
-                          </div>
-                          <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                            {onlineSuggestions.map((s, idx) => (
-                              <div key={s.id} className="flex items-center justify-between bg-black/40 p-2 rounded border border-white/5">
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-white text-xs font-bold truncate">{s.level.name}</span>
-                                  <span className="text-[8px] text-neutral-500 uppercase">VON {s.playerName}</span>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                  {s.status === 'pending' ? (
-                                    <>
-                                      <button 
-                                        onClick={() => onlineService.handleSuggestion(s.id, 'accept')}
-                                        className="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white hover:bg-green-500"
-                                      >
-                                        ✓
-                                      </button>
-                                      <button 
-                                        onClick={() => onlineService.handleSuggestion(s.id, 'decline')}
-                                        className="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white hover:bg-red-500"
-                                      >
-                                        ✕
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <span className={`text-[8px] font-black ${s.status === 'accepted' ? 'text-green-500' : 'text-red-500'}`}>
-                                      {s.status.toUpperCase()}
+                             
+                             {showSuggestionMenu && (
+                               <div className="mt-2 p-4 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl">
+                                  <div className="text-white font-bold mb-4 text-center">{t.yourLevels || "DEINE LEVEL"}</div>
+                                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                                     {customLevels.filter(l => l.isVerified).map(l => (
+                                       <button 
+                                         key={l.id}
+                                         onClick={() => {
+                                           onlineService.suggestLevel(l);
+                                           setShowSuggestionMenu(false);
+                                         }}
+                                         className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-600 text-left text-xs text-white truncate"
+                                       >
+                                         {l.name}
+                                       </button>
+                                     ))}
+                                     {customLevels.filter(l => l.isVerified).length === 0 && (
+                                       <div className="col-span-2 text-center text-neutral-500 py-4 text-[10px]">
+                                         Keine veröffentlichten Level gefunden.
+                                       </div>
+                                     )}
+                                  </div>
+                               </div>
+                             )}
+
+                             {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length > 0 && (
+                               <div className="mt-2 text-[8px] text-neutral-500 font-bold uppercase text-center">
+                                  DEINE VORSCHLÄGE: {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).map(s => (
+                                    <span key={s.id} className={`ml-2 ${s.status === 'accepted' ? 'text-green-500' : s.status === 'declined' ? 'text-red-500' : 'text-blue-400'}`}>
+                                      {s.level.name}
                                     </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+                                  ))}
+                               </div>
+                             )}
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Suggestion button for Players */}
-                      {!onlineService.isHost && (
-                        <div className="w-full mb-4">
-                           <button 
-                             onClick={() => setShowSuggestionMenu(!showSuggestionMenu)}
-                             className="w-full py-2 bg-blue-600 text-white rounded-lg font-arcade text-[10px] border-b-4 border-blue-900 active:translate-y-1 active:border-b-0"
-                           >
-                             {t.suggestLevel || "LEVEL VORSCHLAGEN"} ({onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length}/5)
-                           </button>
-                           
-                           {showSuggestionMenu && (
-                             <div className="mt-2 p-4 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl">
-                                <div className="text-white font-bold mb-4 text-center">{t.yourLevels || "DEINE LEVEL"}</div>
-                                <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                                   {customLevels.filter(l => l.isVerified).map(l => (
-                                     <button 
-                                       key={l.id}
-                                       onClick={() => {
-                                         onlineService.suggestLevel(l);
-                                         setShowSuggestionMenu(false);
-                                       }}
-                                       className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-600 text-left text-xs text-white truncate"
-                                     >
-                                       {l.name}
-                                     </button>
-                                   ))}
-                                   {customLevels.filter(l => l.isVerified).length === 0 && (
-                                     <div className="col-span-2 text-center text-neutral-500 py-4 text-[10px]">
-                                       Keine veröffentlichten Level gefunden.
-                                     </div>
-                                   )}
-                                </div>
-                             </div>
-                           )}
-
-                           {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length > 0 && (
-                             <div className="mt-2 text-[8px] text-neutral-500 font-bold uppercase text-center">
-                                DEINE VORSCHLÄGE: {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).map(s => (
-                                  <span key={s.id} className={`ml-2 ${s.status === 'accepted' ? 'text-green-500' : s.status === 'declined' ? 'text-red-500' : 'text-blue-400'}`}>
-                                    {s.level.name}
-                                  </span>
-                                ))}
-                             </div>
-                           )}
-                        </div>
-                      )}
-
-                      <div className="text-white font-bold text-xl flex flex-col items-center gap-2">
-                        <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
-                          {gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0 && (
-                            <LevelPreview
-                              level={gameState.customLevelsQueue[0]}
-                              width={192}
-                              height={108}
-                              className="w-full h-full"
-                            />
-                          )}
-                          {gameState.customLevelsQueue &&
-                            gameState.customLevelsQueue.length > 1 && (
-                              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
-                                <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
-                                  {t.activeQueue || "Active Queue"}
-                                </div>
-                                <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
-                                  {gameState.customLevelsQueue
-                                    .slice(0, 4)
-                                    .map((sl, i) => (
-                                      <div
-                                        key={sl.id || i}
-                                        className="truncate px-1 bg-white/10 rounded"
-                                      >
-                                        {i + 1}. {sl.name}
-                                      </div>
-                                    ))}
-                                  {gameState.customLevelsQueue.length > 4 && (
-                                    <div>
-                                      + {gameState.customLevelsQueue.length - 4}{" "}
-                                      {t.more || "MORE"}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                        <div className="text-white font-bold text-xl flex flex-col items-center gap-2">
+                          <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
+                            {gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0 && (
+                              <LevelPreview
+                                level={gameState.customLevelsQueue[0]}
+                                width={192}
+                                height={108}
+                                className="w-full h-full"
+                              />
                             )}
+                            {gameState.customLevelsQueue &&
+                              gameState.customLevelsQueue.length > 1 && (
+                                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
+                                  <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
+                                    {t.activeQueue || "Active Queue"}
+                                  </div>
+                                  <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
+                                    {gameState.customLevelsQueue
+                                      .slice(0, 4)
+                                      .map((sl, i) => (
+                                        <div
+                                          key={sl.id || i}
+                                          className="truncate px-1 bg-white/10 rounded"
+                                        >
+                                          {i + 1}. {sl.name}
+                                        </div>
+                                      ))}
+                                    {gameState.customLevelsQueue.length > 4 && (
+                                      <div>
+                                        + {gameState.customLevelsQueue.length - 4}{" "}
+                                        {t.more || "MORE"}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                          <span className="text-center text-sm md:text-base">
+                            {!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0
+                              ? (t.noLevelSelected || "NO LEVEL SELECTED")
+                              : gameState.customLevelsQueue.length > 1
+                              ? `${gameState.customLevelsQueue.length} ${t.levels} SELECTED`
+                              : gameState.customLevelsQueue[0].name}
+                          </span>
                         </div>
-                        <span className="text-center text-sm md:text-base">
-                          {!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0
-                            ? (t.noLevelSelected || "NO LEVEL SELECTED")
-                            : gameState.customLevelsQueue.length > 1
-                            ? `${gameState.customLevelsQueue.length} ${t.levels} SELECTED`
-                            : gameState.customLevelsQueue[0].name}
-                        </span>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="w-full md:w-80 flex flex-col gap-4">
@@ -6491,7 +6493,7 @@ const App: React.FC = () => {
                         }
                             onClick={() => {
                               if (gameState.isHost) {
-                                if (!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0) {
+                                if (gameState.onlineMode !== "editor" && (!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0)) {
                                   setOnlineError("PLEASE SELECT LEVEL(S) FIRST!");
                                   setTimeout(() => setOnlineError(""), 3000);
                                   return;
@@ -6506,7 +6508,7 @@ const App: React.FC = () => {
                                 const requiredPlayers =
                                   gameState.onlineMode === "brawler"
                                     ? teamModeRequirements[brawlerTeamMode]
-                                    : 2;
+                                    : (gameState.onlineMode === "editor" ? 1 : 2);
 
                                 if (onlinePlayers.length < requiredPlayers) {
                                   setOnlineError(
@@ -6516,13 +6518,15 @@ const App: React.FC = () => {
                                   return;
                                 }
 
-                                const occupiedTeams = new Set(onlinePlayers.filter(p => p.team !== undefined && p.team !== null).map(p => p.team));
-                                if (gameState.onlineMode === "brawler" && occupiedTeams.size < 2) {
-                                  setOnlineError(
-                                    "ERROR: At least two teams must be occupied!",
-                                  );
-                                  setTimeout(() => setOnlineError(""), 3000);
-                                  return;
+                                if (gameState.onlineMode === "brawler") {
+                                  const occupiedTeams = new Set(onlinePlayers.filter(p => p.team !== undefined && p.team !== null).map(p => p.team));
+                                  if (occupiedTeams.size < 2) {
+                                    setOnlineError(
+                                      "ERROR: At least two teams must be occupied!",
+                                    );
+                                    setTimeout(() => setOnlineError(""), 3000);
+                                    return;
+                                  }
                                 }
 
                                 if (onlinePlayers.every((p) => p.ready)) {
