@@ -98,7 +98,7 @@ class OnlineService {
 
   constructor() {
     // Initialize socket connection
-    this.socket = io(window.location.origin);
+    this.socket = io(window.location.origin, { secure: true });
     this.setupSocketListeners();
   }
 

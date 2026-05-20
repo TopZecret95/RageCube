@@ -219,6 +219,34 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const [startCountdown, setStartCountdown] = useState<number | null>(null);
   const isStartingRef = useRef(false);
 
+  // Web Worker for Physics
+  const physicsWorker = useRef<Worker | null>(null);
+  const workerReady = useRef(false);
+
+  useEffect(() => {
+    // Only initialize worker if enabled in settings or if we want to offload anyway
+    // Here we offload by default to meet the 240fps goal
+    const worker = new Worker(new URL("../src/game/physicsWorker.ts", import.meta.url), {
+      type: "module",
+    });
+
+    worker.onmessage = (e) => {
+      if (e.data.type === "ready") {
+        workerReady.current = true;
+      } else if (e.data.type === "physicsUpdate") {
+        const { player1: p1Data, player2: p2Data } = e.data.data;
+        if (p1Data && players.current[0]) Object.assign(players.current[0], p1Data);
+        if (p2Data && players.current[1]) Object.assign(players.current[1], p2Data);
+      }
+    };
+
+    physicsWorker.current = worker;
+
+    return () => {
+      worker.terminate();
+    };
+  }, []);
+
   useEffect(() => {
     if (gameMode === "vs" || gameMode === "brawler" || isOnline) {
       setStartCountdown(3);
@@ -252,6 +280,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     brawlerSpawnPoints.current = [];
+    if (physicsWorker.current && workerReady.current) {
+      physicsWorker.current.postMessage({
+        type: "init",
+        data: {
+          entities: level.entities,
+          player1: players.current[0],
+          player2: players.current[1],
+          dt: 1, // Will be updated in tick
+        },
+      });
+    }
   }, [level.id, gameMode]);
 
   const getBrawlerSpawnPoints = () => {
@@ -5993,6 +6032,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       if (accumulator > 200) accumulator = 200;
       while (accumulator >= PHYSICS_STEP) {
         if (!paused || (isOnline && isSpectating)) {
+          if (physicsWorker.current && workerReady.current) {
+            physicsWorker.current.postMessage({
+              type: "updateInputs",
+              data: {
+                p1Keys: players.current[0] ? {
+                  left: players.current[0].controls.left.some(k => keys.current[k]),
+                  right: players.current[0].controls.right.some(k => keys.current[k]),
+                  up: players.current[0].controls.up.some(k => keys.current[k]),
+                  down: players.current[0].controls.down.some(k => keys.current[k]),
+                  action: players.current[0].controls.action?.some(k => keys.current[k]),
+                } : {},
+                p2Keys: players.current[1] ? {
+                  left: players.current[1].controls.left.some(k => keys.current[k]),
+                  right: players.current[1].controls.right.some(k => keys.current[k]),
+                  up: players.current[1].controls.up.some(k => keys.current[k]),
+                  down: players.current[1].controls.down.some(k => keys.current[k]),
+                  action: players.current[1].controls.action?.some(k => keys.current[k]),
+                } : {},
+              }
+            });
+          }
+
           updatePhysics();
           // Advance Ghost inside physics loop to match recording frequency
           if (

@@ -17,7 +17,7 @@ class LeaderboardService {
   private socket: Socket;
 
   constructor() {
-    this.socket = io(window.location.origin);
+    this.socket = io(window.location.origin, { secure: true });
   }
 
   public async submitScore(levelId: string, name: string, score: number, time: number, deaths: number, ghostData?: GhostRun) {

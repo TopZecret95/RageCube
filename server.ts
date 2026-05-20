@@ -306,6 +306,19 @@ async function startServer() {
     });
   });
 
+  // API routes go here FIRST
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  // Force HTTPS in production
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+      return res.redirect(`https://${req.get('host')}${req.url}`);
+    }
+    next();
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

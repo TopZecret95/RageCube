@@ -49,7 +49,13 @@ import {
   leaderboardService,
   LeaderboardEntry,
 } from "./services/leaderboardService";
+import { assetLoader } from "./services/assetLoader";
 import { ComicIntro } from "./components/ComicIntro";
+
+import SettingsMenu from "./components/ui/panels/SettingsMenu";
+import ShopView from "./components/ui/panels/ShopView";
+import AchievementsView from "./components/ui/panels/AchievementsView";
+import CharacterPreview from "./components/CharacterPreview";
 
 const DEFAULT_CUSTOMIZATION: PlayerCustomization = {
   color: "#ff0044",
@@ -804,705 +810,6 @@ const SettingsSlider = React.memo(
   },
 );
 
-const CharacterPreview = React.memo(
-  ({
-    customization,
-    scale = 4,
-  }: {
-    customization: PlayerCustomization;
-    scale?: number;
-  }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const triggerDeathRef = useRef<boolean>(false);
-    const isVisibleRef = useRef<boolean>(true);
-
-    useEffect(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          isVisibleRef.current = entries[0].isIntersecting;
-        },
-        { threshold: 0 }
-      );
-      observer.observe(canvas);
-
-      const animationStartTime = Date.now();
-      let animationId: number;
-      let deathStartTime = 0;
-      let lastRender = 0;
-
-      const render = () => {
-        animationId = requestAnimationFrame(render);
-        if (!isVisibleRef.current) return;
-        const now = Date.now();
-        if (now - lastRender < 16) return; // Smooth 60 FPS preview
-        lastRender = now;
-
-        const frame = (now - animationStartTime) / 16.666; // Normalize to equivalent of 60 FPS for existing formulas
-        
-        // Clear background
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const CX = canvas.width / 2;
-        const CY = canvas.height * 0.65;
-        const P_SIZE = 20 * scale;
-
-        if (triggerDeathRef.current) {
-            triggerDeathRef.current = false;
-            deathStartTime = now;
-        }
-
-        // Draw deathAnim preview
-        const deathElapsed = now - deathStartTime;
-        const isDying = deathElapsed <= 500 && deathStartTime > 0;
-        if (isDying) {
-          ctx.globalAlpha = 1.0;
-          const anim = customization.deathAnim || "normal";
-          const particleColor = customization.color;
-          const progress = (deathElapsed / 500) * 30;
-          
-          if (anim === "normal") {
-             ctx.fillStyle = "red";
-             for(let i=0; i<10; i++) {
-                const r = 5 * scale;
-                ctx.beginPath();
-                ctx.arc(CX + Math.cos(i) * r * progress/10, CY + Math.sin(i) * r * progress/10 - 5 * scale, 2*scale, 0, Math.PI*2);
-                ctx.fill();
-             }
-          } else if (anim === "blood") {
-             ctx.fillStyle = "#aa0000";
-             const baseAngle = -Math.PI / 3; // up-right
-             for(let i=0; i<15; i++) {
-                // simple pseudo randomness based on index
-                const angleOffset = Math.sin(i * 12.34) * 0.5;
-                const speedMult = 0.5 + Math.abs(Math.cos(i * 43.21)) * 1.5;
-                const dist = progress * 1.5 * speedMult * scale;
-                const gravity = (progress * progress) * 0.1 * scale;
-
-                ctx.beginPath();
-                ctx.arc(
-                  CX + Math.cos(baseAngle + angleOffset) * dist,
-                  CY + Math.sin(baseAngle + angleOffset) * dist + gravity - 5 * scale,
-                  (1.5 + Math.abs(Math.sin(i)) * 1.5) * scale,
-                  0,
-                  Math.PI*2
-                );
-                ctx.fill();
-             }
-          } else if (anim === "confetti") {
-             for(let i=0; i<10; i++) {
-                ctx.fillStyle = `hsl(${i * 40}, 80%, 60%)`;
-                ctx.fillRect(CX + Math.cos(i) * 10 * scale * progress/10, CY + Math.sin(i) * 10 * scale * progress/10 - 5 * scale, 3*scale, 3*scale);
-             }
-          } else if (anim === "firework") {
-            ctx.fillStyle = "yellow";
-            if (scale > 2) {
-              ctx.shadowBlur = 10 * scale;
-              ctx.shadowColor = "yellow";
-            }
-            for(let i=0; i<8; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + Math.cos(i*Math.PI/4) * 12 * scale * progress/10, CY + Math.sin(i*Math.PI/4) * 12 * scale * progress/10 - 5 * scale, 1.5*scale, 0, Math.PI*2);
-               ctx.fill();
-            }
-            ctx.shadowBlur = 0;
-          } else if (anim === "dust") {
-            ctx.fillStyle = "#aaa";
-            for(let i=0; i<6; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + (i-3) * 4 * scale, CY - 5 * scale - progress * scale, 3*scale, 0, Math.PI*2);
-               ctx.fill();
-            }
-          } else if (anim === "electric") {
-            ctx.strokeStyle = "#00ffff";
-            ctx.lineWidth = 2 * scale;
-            for(let i=0; i<5; i++) {
-               ctx.beginPath();
-               ctx.moveTo(CX + (Math.random()-0.5)*20*scale, CY + (Math.random()-0.5)*20*scale - 5*scale);
-               ctx.lineTo(CX + (Math.random()-0.5)*20*scale, CY + (Math.random()-0.5)*20*scale - 5*scale);
-               ctx.stroke();
-            }
-          } else if (anim === "ghost") {
-            ctx.fillStyle = "rgba(255, 255, 255, " + (1 - progress / 30) + ")";
-            ctx.fillRect(CX - P_SIZE/2, CY - P_SIZE/2 - progress * scale, P_SIZE, P_SIZE);
-          } else if (anim === "freeze") {
-            ctx.fillStyle = "#88ccff";
-            for(let i=0; i<8; i++) {
-               const rot = (i * Math.PI) / 4;
-               ctx.save();
-               ctx.translate(CX, CY - 5*scale);
-               ctx.rotate(rot);
-               ctx.fillRect(5 * scale * progress/10, -1*scale, 5*scale, 2*scale);
-               ctx.restore();
-            }
-          } else if (anim === "blackhole") {
-            ctx.fillStyle = "black";
-            ctx.strokeStyle = "purple";
-            ctx.lineWidth = 2 * scale;
-            const radius = Math.max(0, 15 * scale - progress * scale);
-            ctx.beginPath();
-            ctx.arc(CX, CY - 5*scale, radius, 0, Math.PI*2);
-            ctx.fill();
-            ctx.stroke();
-          } else if (anim === "bubble") {
-            ctx.strokeStyle = "rgba(100, 200, 255, 0.8)";
-            ctx.lineWidth = 1 * scale;
-            for(let i=0; i<5; i++) {
-               ctx.beginPath();
-               ctx.arc(CX + Math.sin(i+frame/5)*10*scale, CY - 5*scale - (i*5 + progress*2)*scale, 4*scale, 0, Math.PI*2);
-               ctx.stroke();
-            }
-          }
-          
-          return;
-        }
-
-        // Draw Trail (with alpha fading)
-        for (let i = 2; i >= 0; i--) {
-          if (customization.color.toLowerCase() === "#ffffff") {
-            continue; // No trail for ghost mode
-          }
-          if (customization.color === "#130009") {
-             ctx.fillStyle = (Math.floor(now / 100) + i) % 2 === 0 ? "#ffff00" : "#000000";
-          } else if (customization.trailColor === "rainbow") {
-            ctx.fillStyle = `hsl(${frame * 5 + i * 40}, 100%, 50%)`;
-          } else {
-            ctx.fillStyle = customization.trailColor;
-          }
-          ctx.globalAlpha = 0.3 - i * 0.1;
-          const offset = (i + 1) * 2 * scale;
-          const size = P_SIZE - i * 1 * scale;
-          
-          const trailBounceOffset = Math.sin((now - (i + 1) * 60) / 200) * 5 * scale;
-          ctx.save();
-          ctx.translate(0, trailBounceOffset);
-          
-          if (customization.trailType === "stardust") {
-            ctx.beginPath();
-            ctx.arc(CX - offset, CY, size / 2, 0, Math.PI * 2);
-            ctx.fill();
-            if (frame % 10 === 0) {
-              ctx.fillStyle = "white";
-              ctx.fillRect(CX - offset + (Math.random()*10 - 5), CY + (Math.random()*10 - 5), 2*scale, 2*scale);
-            }
-          } else if (customization.trailType === "pixel-fire") {
-            ctx.fillRect(CX - offset - size/2, CY - size/2 - (5 - i) * scale, size, size);
-            ctx.fillStyle = "#ffaa00";
-            ctx.globalAlpha *= 0.8;
-            ctx.fillRect(CX - offset - size/4, CY - size/4 - (8 - i) * scale, size/2, size/2);
-          } else if (customization.trailType === "slime") {
-            ctx.beginPath();
-            ctx.arc(CX - offset, CY + (5 - i) * scale, size / 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(CX - offset - 4*scale, CY + (8 - i) * scale, size/3, 0, Math.PI*2);
-            ctx.fill();
-          } else if (customization.trailType === "rainbow-pulse") {
-            ctx.fillStyle = `hsl(${(frame * 10 + i * 60) % 360}, 80%, 60%)`;
-            ctx.globalAlpha = 0.4;
-            ctx.fillRect(CX - offset - size/2, CY - size/2, size, size);
-          } else if (customization.trailType === "ghostly") {
-            ctx.fillStyle = "white";
-            ctx.globalAlpha = (0.2 - i * 0.05) * Math.sin(frame/5);
-            ctx.beginPath();
-            ctx.moveTo(CX - offset - size/2, CY - size/2);
-            ctx.lineTo(CX - offset + size/2, CY - size/2);
-            ctx.lineTo(CX - offset, CY + size);
-            ctx.fill();
-          } else if (customization.trailType === "bubble-trail") {
-            ctx.strokeStyle = "white";
-            ctx.beginPath();
-            ctx.arc(CX - offset, CY + Math.sin(frame/10 + i)*5*scale, size/4, 0, Math.PI*2);
-            ctx.stroke();
-          } else if (customization.trailType === "spark-trail") {
-            ctx.fillStyle = "#ffff00";
-            if (frame % 5 === 0) {
-              ctx.fillRect(CX - offset + (Math.random()-0.5)*10*scale, CY + (Math.random()-0.5)*10*scale, 2*scale, 2*scale);
-            }
-          } else if (customization.trailType === "shadow-trail") {
-            ctx.fillStyle = "black";
-            ctx.globalAlpha = 0.5 - i * 0.1;
-            ctx.fillRect(CX - offset - (size+4*scale)/2, CY - (size+4*scale)/2, size+4*scale, size+4*scale);
-          } else if (customization.trailType === "neon-trail") {
-            ctx.strokeStyle = "#00ff00";
-            ctx.lineWidth = 2*scale;
-            if (scale > 2) {
-              ctx.shadowBlur = 5*scale;
-              ctx.shadowColor = "#00ff00";
-            }
-            ctx.strokeRect(CX - offset - size/2, CY - size/2, size, size);
-            ctx.shadowBlur = 0;
-          } else if (customization.trailType === "matrix_trail") {
-            ctx.fillStyle = "#00ff00";
-            ctx.font = `${8 * scale}px monospace`;
-            ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), CX - offset, CY);
-          } else {
-            ctx.fillRect(CX - size / 2 - offset, CY - size / 2, size, size);
-          }
-          ctx.restore();
-        }
-        ctx.globalAlpha = 1.0;
-
-        // Draw Player Body
-        // Animation factors for dancing
-        const bounceOffset = Math.sin(now / 200) * 5 * scale;
-        const scaleFactor = 1 + Math.sin(now / 150) * 0.05;
-        
-        ctx.save();
-        ctx.translate(CX, CY);
-        ctx.scale(scaleFactor, scaleFactor);
-        ctx.translate(-CX, -CY);
-
-        const px = CX - P_SIZE / 2;
-        const py = CY - P_SIZE / 2 + bounceOffset;
-        const w = P_SIZE;
-
-        if (customization.color.toLowerCase() === "#ffffff") {
-          ctx.fillStyle = "rgba(0,0,0,0)";
-        } else if (customization.color === "#130009") {
-          const time = now / 500;
-          const grad = ctx.createLinearGradient(
-            px + Math.cos(time) * w,
-            py + Math.sin(time) * w,
-            px + w + Math.cos(time + Math.PI) * w,
-            py + w + Math.sin(time + Math.PI) * w
-          );
-          grad.addColorStop(0, "#ffff00");
-          grad.addColorStop(0.5, "#000000");
-          grad.addColorStop(1, "#ffff00");
-          ctx.fillStyle = grad;
-        } else if (customization.color.toLowerCase() === "#ff0080") {
-          ctx.fillStyle = `hsl(${frame * 2 % 360}, 100%, 50%)`;
-        } else {
-          ctx.fillStyle = customization.color;
-        }
-        ctx.fillRect(px, py, w, w);
-
-        // Draw Eyes
-        ctx.fillStyle = "white";
-        const eyes = customization.eyes;
-        switch (eyes) {
-          case "cyclops":
-            ctx.fillRect(px + w / 2 - 4 * scale, py + 4 * scale, 8 * scale, 8 * scale);
-            ctx.fillStyle = "black";
-            ctx.fillRect(px + w / 2 - 1 * scale, py + 6 * scale, 2 * scale, 2 * scale);
-            break;
-          case "anime":
-            ctx.fillRect(px + 1 * scale, py + 3 * scale, 6 * scale, 8 * scale);
-            ctx.fillRect(px + w - 7 * scale, py + 3 * scale, 6 * scale, 8 * scale);
-            ctx.fillStyle = "black";
-            ctx.fillRect(px + 2 * scale, py + 4 * scale, 3 * scale, 4 * scale);
-            ctx.fillRect(px + w - 5 * scale, py + 4 * scale, 3 * scale, 4 * scale);
-            break;
-          case "dead":
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 2 * scale;
-            ctx.beginPath();
-            ctx.moveTo(px + 2 * scale, py + 4 * scale); ctx.lineTo(px + 6 * scale, py + 8 * scale);
-            ctx.moveTo(px + 6 * scale, py + 4 * scale); ctx.lineTo(px + 2 * scale, py + 8 * scale);
-            ctx.moveTo(px + w - 6 * scale, py + 4 * scale); ctx.lineTo(px + w - 2 * scale, py + 8 * scale);
-            ctx.moveTo(px + w - 2 * scale, py + 4 * scale); ctx.lineTo(px + w - 6 * scale, py + 8 * scale);
-            ctx.stroke();
-            break;
-          case "sunglasses":
-            ctx.fillStyle = "black";
-            ctx.fillRect(px, py + 4 * scale, w, 4 * scale);
-            break;
-          case "alien":
-            ctx.fillStyle = "black";
-            ctx.beginPath();
-            ctx.ellipse(px + 6 * scale, py + 6 * scale, 4 * scale, 7 * scale, -Math.PI / 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(px + w - 6 * scale, py + 6 * scale, 4 * scale, 7 * scale, Math.PI / 6, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-          case "cyborg":
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillStyle = "red";
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            break;
-          case "stars":
-          case "hearts":
-          case "hypno":
-            ctx.fillStyle = eyes === "stars" ? "yellow" : eyes === "hearts" ? "red" : "magenta";
-            ctx.font = `${10 * scale}px Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            const sym = eyes === "stars" ? "★" : eyes === "hearts" ? "♥" : "🌀";
-            ctx.fillText(sym, px + 5 * scale, py + 6 * scale);
-            ctx.fillText(sym, px + w - 5 * scale, py + 6 * scale);
-            ctx.textAlign = "left";
-            ctx.textBaseline = "alphabetic";
-            break;
-          case "googly":
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(px + 6 * scale, py + 6 * scale, 4 * scale, 0, Math.PI * 2);
-            ctx.arc(px + w - 6 * scale, py + 6 * scale, 4 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "black";
-            ctx.beginPath();
-            const ox = Math.sin(frame / 10) * 1.5 * scale;
-            const oy = Math.cos(frame / 10) * 1.5 * scale;
-            ctx.arc(px + 6 * scale + ox, py + 6 * scale + oy, 1.5 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(px + w - 6 * scale - ox, py + 6 * scale + oy, 1.5 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            break;
-          case "void_eyes":
-            ctx.fillStyle = "#000";
-            ctx.fillRect(px + 2 * scale, py + 2 * scale, w - 4 * scale, 8 * scale);
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(px + 5 * scale, py + 4 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w - 7 * scale, py + 4 * scale, 2 * scale, 2 * scale);
-            break;
-          case "pirate":
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillStyle = "black";
-            ctx.fillRect(px + w - 10 * scale, py + 2 * scale, 8 * scale, 8 * scale);
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 1 * scale;
-            ctx.beginPath(); ctx.moveTo(px, py + 2 * scale); ctx.lineTo(px + w, py + 10 * scale); ctx.stroke();
-            break;
-          case "rich":
-            ctx.fillStyle = "#22c55e";
-            ctx.font = `${12 * scale}px Arial`;
-            ctx.textAlign = "center";
-            ctx.fillText("$", px + 6 * scale, py + 11 * scale);
-            ctx.fillText("$", px + w - 6 * scale, py + 11 * scale);
-            ctx.textAlign = "left";
-            break;
-          case "glowing":
-          case "laser":
-            ctx.fillStyle = eyes === "laser" ? "#ff0000" : "#00ffff";
-            if (scale > 2) {
-              ctx.shadowBlur = 10 * scale;
-              ctx.shadowColor = ctx.fillStyle;
-            }
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.shadowBlur = 0;
-            break;
-          case "ninja":
-            ctx.fillStyle = "#111";
-            ctx.fillRect(px, py + 2 * scale, w, 10 * scale);
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + 2 * scale, py + 4 * scale, 6 * scale, 6 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 6 * scale, 6 * scale);
-            ctx.fillStyle = "black";
-            ctx.fillRect(px + 4 * scale, py + 6 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w - 6 * scale, py + 6 * scale, 2 * scale, 2 * scale);
-            break;
-          case "tired":
-            ctx.fillStyle = "#aaa";
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillStyle = "#444";
-            ctx.fillRect(px + 2 * scale, py + 8 * scale, 8 * scale, 2 * scale);
-            ctx.fillRect(px + w - 10 * scale, py + 8 * scale, 8 * scale, 2 * scale);
-            break;
-          case "kawaii":
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + 1 * scale, py + 3 * scale, 6 * scale, 8 * scale);
-            ctx.fillRect(px + w - 7 * scale, py + 3 * scale, 6 * scale, 8 * scale);
-            ctx.fillStyle = "pink";
-            ctx.fillRect(px + 2 * scale, py + 5 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w - 4 * scale, py + 5 * scale, 2 * scale, 2 * scale);
-            break;
-          case "monocle":
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.strokeStyle = "gold";
-            ctx.lineWidth = 1 * scale;
-            ctx.strokeRect(px + w - 10 * scale, py + 2 * scale, 8 * scale, 8 * scale);
-            ctx.beginPath(); ctx.moveTo(px + w - 2 * scale, py + 10 * scale); ctx.lineTo(px + w + 4 * scale, py + 14 * scale); ctx.stroke();
-            break;
-          case "masked":
-            ctx.fillStyle = "#333";
-            ctx.fillRect(px - 2 * scale, py + 2 * scale, w + 4 * scale, 8 * scale);
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + 2 * scale, py + 4 * scale, 6 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 6 * scale, 4 * scale);
-            break;
-          case "derp":
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 8 * scale, 4 * scale, 4 * scale);
-            break;
-          case "evil":
-            const evilPulse = 10 + Math.sin(frame / 5) * 5;
-            ctx.fillStyle = "#ff0000"; 
-            if (scale > 2) {
-              ctx.shadowBlur = evilPulse * scale;
-              ctx.shadowColor = "#ff0000";
-            }
-            // Left eye - slanted
-            ctx.beginPath();
-            ctx.moveTo(px + 3 * scale, py + 3 * scale);
-            ctx.lineTo(px + 9 * scale, py + 6 * scale);
-            ctx.lineTo(px + 8 * scale, py + 9 * scale);
-            ctx.lineTo(px + 2 * scale, py + 6 * scale);
-            ctx.closePath();
-            ctx.fill();
-            // Right eye - slanted
-            ctx.beginPath();
-            ctx.moveTo(px + w - 3 * scale, py + 3 * scale);
-            ctx.lineTo(px + w - 9 * scale, py + 6 * scale);
-            ctx.lineTo(px + w - 8 * scale, py + 9 * scale);
-            ctx.lineTo(px + w - 2 * scale, py + 6 * scale);
-            ctx.closePath();
-            ctx.fill();
-            ctx.shadowBlur = 0;
-            // Pupils
-            ctx.fillStyle = "black";
-            ctx.fillRect(px + 5 * scale, py + 6 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w - 7 * scale, py + 6 * scale, 2 * scale, 2 * scale);
-            break;
-          case "angry":
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillStyle = customization.color;
-            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + w, py + 6 * scale); ctx.lineTo(px + w, py); ctx.fill();
-            break;
-          default:
-            ctx.fillRect(px + 4 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            ctx.fillRect(px + w - 8 * scale, py + 4 * scale, 4 * scale, 4 * scale);
-            break;
-        }
-
-        // Draw Accessories
-        const acc = customization.accessory;
-        if (customization.color.toLowerCase() !== "#ffffff") {
-          switch (acc) {
-            case "crown":
-            ctx.fillStyle = "gold";
-            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 10 * scale); ctx.lineTo(px + 5 * scale, py - 5 * scale); ctx.lineTo(px + 10 * scale, py - 12 * scale); ctx.lineTo(px + 15 * scale, py - 5 * scale); ctx.lineTo(px + w, py - 10 * scale); ctx.lineTo(px + w, py); ctx.fill();
-            break;
-          case "horns":
-            ctx.fillStyle = "#a00";
-            ctx.beginPath(); ctx.moveTo(px + 2 * scale, py); ctx.lineTo(px - 2 * scale, py - 8 * scale); ctx.lineTo(px + 6 * scale, py); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(px + w - 6 * scale, py); ctx.lineTo(px + w + 2 * scale, py - 8 * scale); ctx.lineTo(px + w - 2 * scale, py); ctx.fill();
-            break;
-          case "headband":
-            ctx.fillStyle = "#ef4444";
-            ctx.fillRect(px, py + 2 * scale, w, 4 * scale);
-            ctx.fillRect(px - 2 * scale, py + 3 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w, py + 3 * scale, 2 * scale, 2 * scale);
-            break;
-          case "cowboy":
-            ctx.fillStyle = "#8B4513";
-            ctx.fillRect(px - 4 * scale, py - 4 * scale, w + 8 * scale, 4 * scale);
-            ctx.fillRect(px + 2 * scale, py - 12 * scale, w - 4 * scale, 8 * scale);
-            break;
-          case "viking":
-            ctx.fillStyle = "#aaa";
-            ctx.beginPath(); ctx.arc(px + w / 2, py, w / 2, Math.PI, 0); ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.moveTo(px, py - 4 * scale); ctx.lineTo(px - 4 * scale, py - 10 * scale); ctx.lineTo(px + 2 * scale, py - 6 * scale); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(px + w, py - 4 * scale); ctx.lineTo(px + w + 4 * scale, py - 10 * scale); ctx.lineTo(px + w - 2 * scale, py - 6 * scale); ctx.fill();
-            break;
-          case "halo":
-            ctx.strokeStyle = "gold";
-            ctx.lineWidth = 2 * scale;
-            ctx.beginPath(); ctx.ellipse(px + w / 2, py - 12 * scale, 8 * scale, 3 * scale, 0, 0, Math.PI * 2); ctx.stroke();
-            break;
-          case "headphones":
-            ctx.fillStyle = "#333";
-            ctx.fillRect(px - 2 * scale, py + 4 * scale, 2 * scale, 12 * scale);
-            ctx.fillRect(px + w, py + 4 * scale, 2 * scale, 12 * scale);
-            ctx.beginPath(); ctx.arc(px + w / 2, py + 4 * scale, w / 2 + 2 * scale, Math.PI, 0); ctx.stroke();
-            break;
-          case "tophat":
-            ctx.fillStyle = "#111";
-            ctx.fillRect(px - 4 * scale, py - 4 * scale, w + 8 * scale, 4 * scale);
-            ctx.fillRect(px + 2 * scale, py - 18 * scale, w - 4 * scale, 14 * scale);
-            ctx.fillStyle = "#f00";
-            ctx.fillRect(px + 2 * scale, py - 6 * scale, w - 4 * scale, 3 * scale);
-            break;
-          case "cap":
-            ctx.fillStyle = "#3b82f6";
-            ctx.beginPath(); ctx.arc(px + w / 2, py, w / 2, Math.PI, 0); ctx.fill();
-            ctx.fillRect(px + w / 2, py - 4 * scale, w / 2 + 6 * scale, 4 * scale);
-            break;
-          case "propeller":
-            ctx.fillStyle = "#facc15";
-            ctx.beginPath(); ctx.arc(px + w / 2, py, w / 2, Math.PI, 0); ctx.fill();
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 1 * scale;
-            ctx.beginPath(); ctx.moveTo(px + w / 2, py - 10 * scale); ctx.lineTo(px + w / 2, py - 16 * scale); ctx.stroke();
-            ctx.fillStyle = "silver";
-            const propX = Math.cos(frame / 5) * 8 * scale;
-            ctx.fillRect(px + w / 2 - propX, py - 18 * scale, propX * 2, 2 * scale);
-            break;
-          case "cat_ears":
-            ctx.fillStyle = customization.color;
-            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 6 * scale, py); ctx.lineTo(px, py - 8 * scale); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(px + w, py); ctx.lineTo(px + w - 6 * scale, py); ctx.lineTo(px + w, py - 8 * scale); ctx.fill();
-            break;
-          case "demon_horns":
-            ctx.fillStyle = "#000";
-            ctx.beginPath(); ctx.moveTo(px + 2 * scale, py); ctx.quadraticCurveTo(px - 10 * scale, py - 15 * scale, px - 2 * scale, py - 20 * scale); ctx.quadraticCurveTo(px - 2 * scale, py - 10 * scale, px + 6 * scale, py); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(px + w - 2 * scale, py); ctx.quadraticCurveTo(px + w + 10 * scale, py - 15 * scale, px + w + 2 * scale, py - 20 * scale); ctx.quadraticCurveTo(px + w + 2 * scale, py - 10 * scale, px + w - 6 * scale, py); ctx.fill();
-            break;
-          case "builder_hat":
-            ctx.fillStyle = "#fbbf24";
-            ctx.beginPath(); ctx.arc(px + w / 2, py, w / 2 + 2 * scale, Math.PI, 0); ctx.fill();
-            ctx.fillRect(px - 2 * scale, py - 2 * scale, w + 4 * scale, 3 * scale);
-            break;
-          case "wizard_hat":
-            ctx.fillStyle = "#7c3aed";
-            ctx.beginPath(); ctx.moveTo(px - 4 * scale, py); ctx.lineTo(px + w / 2, py - 24 * scale); ctx.lineTo(px + w + 4 * scale, py); ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + w / 2 - 1 * scale, py - 10 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w / 2 + 3 * scale, py - 16 * scale, 2 * scale, 2 * scale);
-            ctx.fillRect(px + w / 2 - 5 * scale, py - 18 * scale, 2 * scale, 2 * scale);
-            break;
-          case "bunny_ears":
-            ctx.fillStyle = "white";
-            ctx.fillRect(px + 2 * scale, py - 12 * scale, 5 * scale, 12 * scale);
-            ctx.fillRect(px + w - 7 * scale, py - 12 * scale, 5 * scale, 12 * scale);
-            ctx.fillStyle = "pink";
-            ctx.fillRect(px + 3 * scale, py - 10 * scale, 3 * scale, 8 * scale);
-            ctx.fillRect(px + w - 6 * scale, py - 10 * scale, 3 * scale, 8 * scale);
-            break;
-          case "pirate_hat":
-            ctx.fillStyle = "black";
-            ctx.beginPath(); ctx.moveTo(px - 6 * scale, py); ctx.quadraticCurveTo(px + w / 2, py - 15 * scale, px + w + 6 * scale, py); ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.font = `bold ${6 * scale}px sans-serif`;
-            ctx.fillText("X", px + w / 2 - 3 * scale, py - 4 * scale);
-            break;
-          case "party_hat":
-            ctx.fillStyle = `hsl(${frame * 2 % 360}, 70%, 60%)`;
-            ctx.beginPath(); ctx.moveTo(px + 2 * scale, py); ctx.lineTo(px + w / 2, py - 16 * scale); ctx.lineTo(px + w - 2 * scale, py); ctx.fill();
-            ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(px + w / 2, py - 16 * scale, 3 * scale, 0, Math.PI * 2); ctx.fill();
-            break;
-          case "sombrero":
-            ctx.fillStyle = "#eab308";
-            ctx.fillRect(px - 8 * scale, py - 4 * scale, w + 16 * scale, 4 * scale);
-            ctx.fillRect(px + 2 * scale, py - 12 * scale, w - 4 * scale, 8 * scale);
-            ctx.fillStyle = "#ef4444";
-            ctx.fillRect(px + 2 * scale, py - 6 * scale, w - 4 * scale, 2 * scale);
-            break;
-          case "ushanka":
-            ctx.fillStyle = "#52525b";
-            ctx.fillRect(px, py - 8 * scale, w, 8 * scale);
-            ctx.fillRect(px - 2 * scale, py - 2 * scale, 4 * scale, 10 * scale);
-            ctx.fillRect(px + w - 2 * scale, py - 2 * scale, 4 * scale, 10 * scale);
-            break;
-          case "fedora":
-            ctx.fillStyle = "#27272a";
-            ctx.fillRect(px - 4 * scale, py - 2 * scale, w + 8 * scale, 2 * scale);
-            ctx.fillRect(px + 2 * scale, py - 10 * scale, w - 4 * scale, 8 * scale);
-            break;
-          case "chef":
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(px + 5 * scale, py - 10 * scale, 6 * scale, 0, Math.PI * 2);
-            ctx.arc(px + w - 5 * scale, py - 10 * scale, 6 * scale, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillRect(px + 2 * scale, py - 6 * scale, w - 4 * scale, 6 * scale);
-            break;
-          case "police":
-            ctx.fillStyle = "#1e3a8a";
-            ctx.fillRect(px, py - 8 * scale, w, 8 * scale);
-            ctx.fillStyle = "gold";
-            ctx.fillRect(px + w / 2 - 2 * scale, py - 6 * scale, 4 * scale, 4 * scale);
-            break;
-          case "pumpkin":
-            ctx.fillStyle = "#f97316";
-            ctx.fillRect(px, py - 12 * scale, w, 12 * scale);
-            ctx.fillStyle = "#22c55e";
-            ctx.fillRect(px + w / 2 - 2 * scale, py - 16 * scale, 4 * scale, 4 * scale);
-            break;
-          case "secret_crown":
-            ctx.fillStyle = "#111"; // Hacker crown
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(px, py - 10 * scale);
-            ctx.lineTo(px + 5 * scale, py - 5 * scale);
-            ctx.lineTo(px + 10 * scale, py - 12 * scale);
-            ctx.lineTo(px + 15 * scale, py - 5 * scale);
-            ctx.lineTo(px + w, py - 10 * scale);
-            ctx.lineTo(px + w, py);
-            ctx.fill();
-            break;
-          case "rainbow_horn":
-            ctx.fillStyle = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
-            ctx.beginPath();
-            ctx.moveTo(px + w / 2 - 4 * scale, py);
-            ctx.lineTo(px + w / 2, py - 20 * scale);
-            ctx.lineTo(px + w / 2 + 4 * scale, py);
-            ctx.fill();
-            break;
-          case "ghost_sheet":
-            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-            ctx.beginPath();
-            ctx.arc(px + w / 2, py + 4 * scale, w / 2 + 2 * scale, Math.PI, 0);
-            ctx.lineTo(px + w + 2 * scale, py + w + 2 * scale);
-            ctx.lineTo(px - 2 * scale, py + w + 2 * scale);
-            ctx.fill();
-            break;
-          case "coffee_cup":
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(px + w / 2 - 6 * scale, py - 14 * scale, 12 * scale, 14 * scale);
-            ctx.strokeStyle = "#fff"; ctx.lineWidth = 2 * scale;
-            ctx.beginPath();
-            ctx.arc(px + w / 2 + 6 * scale, py - 7 * scale, 4 * scale, -Math.PI / 2, Math.PI / 2);
-            ctx.stroke();
-            ctx.fillStyle = "#4a2c0f"; // Coffee brown
-            ctx.fillRect(px + w / 2 - 5 * scale, py - 13 * scale, 10 * scale, 2 * scale);
-            break;
-          case "unicorn":
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.moveTo(px + w / 2 - 4 * scale, py);
-            ctx.lineTo(px + w / 2, py - 20 * scale);
-            ctx.lineTo(px + w / 2 + 4 * scale, py);
-            ctx.fill();
-            ctx.strokeStyle = `hsl(${(Date.now() / 2) % 360}, 100%, 70%)`;
-            ctx.lineWidth = 1 * scale;
-            ctx.beginPath();
-            ctx.moveTo(px + w / 2 - 2 * scale, py - 5 * scale);
-            ctx.lineTo(px + w / 2 + 2 * scale, py - 5 * scale);
-            ctx.moveTo(px + w / 2 - 1.5 * scale, py - 10 * scale);
-            ctx.lineTo(px + w / 2 + 1.5 * scale, py - 10 * scale);
-            ctx.moveTo(px + w / 2 - 1 * scale, py - 15 * scale);
-            ctx.lineTo(px + w / 2 + 1 * scale, py - 15 * scale);
-            ctx.stroke();
-            break;
-          }
-        }
-        
-        ctx.restore();
-      };
-      render();
-      return () => {
-         cancelAnimationFrame(animationId);
-         observer.disconnect();
-      };
-    }, [customization, scale]);
-
-    return (
-      <canvas
-        ref={canvasRef}
-        onClick={() => {
-          triggerDeathRef.current = true;
-          import('./services/audioService').then(m => m.audio.playDie(customization.deathSound));
-        }}
-        width={96 * scale}
-        height={96 * scale}
-        className="w-full h-full object-contain block image-pixelated cursor-pointer"
-      />
-    );
-  },
-);
-
 const ItemPreview = ({ 
   item, 
   customization 
@@ -1809,6 +1116,25 @@ const App: React.FC = () => {
     isSpectating: false,
     spectateTargetId: undefined,
   });
+
+  const [assetLoadProgress, setAssetLoadProgress] = useState(0);
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadAssets = async () => {
+      assetLoader.onProgress((p) => setAssetLoadProgress(p));
+      try {
+        await Promise.all([
+          assetLoader.loadImage("intro", "/intro.png"),
+        ]);
+        setTimeout(() => setIsAssetsLoaded(true), 800);
+      } catch (err) {
+        console.error("Asset loading failed", err);
+        setIsAssetsLoaded(true);
+      }
+    };
+    loadAssets();
+  }, []);
 
   // Track Difficulty for Story Mode flow
   const [selectedDifficultySet, setSelectedDifficultySet] =
@@ -5049,7 +4375,36 @@ const App: React.FC = () => {
   }, [level, gameState.status]);
 
   return (
-    <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
+    <>
+      <AnimatePresence>
+        {!isAssetsLoaded && (
+          <motion.div 
+            key="loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 flex flex-col items-center justify-center bg-black text-white p-8 z-[100] overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rage-red/10 via-black to-black animate-pulse" />
+            <div className="z-10 flex flex-col items-center">
+                <h1 className="text-5xl font-arcade text-rage-red mb-12 tracking-[0.2em] drop-shadow-[0_0_20px_#ff0000] animate-bounce">LOADING</h1>
+                <div className="w-80 bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-lg">
+                    <motion.div 
+                        className="h-full bg-gradient-to-r from-rage-red to-orange-500 shadow-[0_0_15px_#ff0000]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${assetLoadProgress}%` }}
+                        transition={{ duration: 0.1 }}
+                    />
+                </div>
+                <div className="mt-6 text-[10px] font-mono text-neutral-500 tracking-[0.4em] uppercase">
+                    {Math.round(assetLoadProgress)}% INITIALIZED
+                </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
 
       <div className="relative z-10 w-full h-full flex flex-col gap-2">
@@ -6247,103 +5602,15 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Achievements Menu - IMPROVED LIST VIEW */}
+            {/* Achievements Menu */}
             {gameState.status === "achievements" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
-                <div className="flex items-center justify-between w-full max-w-3xl mb-6 px-4">
-                  <h2 className="text-3xl text-yellow-500 font-arcade tracking-widest">
-                    ERRUNGENSCHAFTEN
-                  </h2>
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
-                      UNLOCKED
-                    </div>
-                    <div className="text-2xl text-white font-arcade">
-                      {gameState.unlockedAchievements.length}{" "}
-                      <span className="text-neutral-700">/</span>{" "}
-                      {ACHIEVEMENTS_LIST.length}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full max-w-3xl h-[60vh] overflow-y-auto px-2 custom-scrollbar flex flex-col gap-3 pb-4">
-                  {ACHIEVEMENTS_LIST.map((ach) => {
-                    const isUnlocked = gameState.unlockedAchievements.includes(
-                      ach.id,
-                    );
-                    const achData = (t.achievements_data as any)[ach.id] || {
-                      title: ach.title,
-                      desc: ach.description,
-                    };
-
-                    return (
-                      <div
-                        key={ach.id}
-                        className={`w-full p-4 border-l-4 border-y border-r rounded-r-lg flex items-center gap-4 transition-all duration-300 ${isUnlocked ? "bg-neutral-900 border-l-yellow-500 border-y-neutral-800 border-r-neutral-800 shadow-[0_0_20px_rgba(234,179,8,0.1)]" : "bg-black border-l-neutral-700 border-y-neutral-900 border-r-neutral-900 opacity-70"}`}
-                      >
-                        {/* Icon */}
-                        <div
-                          className={`w-16 h-16 shrink-0 flex items-center justify-center rounded-lg border-2 text-3xl shadow-inner ${isUnlocked ? "bg-neutral-800 border-yellow-900/50 text-white" : "bg-neutral-950 border-neutral-800 text-neutral-700 grayscale"}`}
-                        >
-                          {ach.icon}
-                        </div>
-
-                        {/* Text Info */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <div
-                            className={`font-bold font-arcade text-base md:text-lg mb-1 ${isUnlocked ? "text-yellow-400" : "text-neutral-500"}`}
-                          >
-                            {achData.title}
-                          </div>
-                          <div
-                            className={`text-xs md:text-sm font-mono leading-snug ${isUnlocked ? "text-neutral-300" : "text-neutral-600"}`}
-                          >
-                            {achData.desc}
-                          </div>
-                        </div>
-
-                        {/* Reward Section */}
-                        {ach.reward && (
-                          <div
-                            className={`shrink-0 flex flex-col items-end border-l pl-4 ${isUnlocked ? "border-neutral-700" : "border-neutral-900"}`}
-                          >
-                            <div className="text-[9px] uppercase font-bold tracking-widest text-neutral-500 mb-1">
-                              BELOHNUNG
-                            </div>
-                            <div
-                              className={`text-xs font-bold font-arcade px-2 py-1 rounded ${isUnlocked ? "bg-blue-900/30 text-blue-300 border border-blue-800" : "bg-neutral-900 text-neutral-600 border border-neutral-800"}`}
-                            >
-                              {ach.reward}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Status Icon */}
-                        <div className="shrink-0 w-6 flex justify-center">
-                          {isUnlocked ? (
-                            <span className="text-green-500 text-xl font-bold">
-                              ✓
-                            </span>
-                          ) : (
-                            <span className="text-neutral-800 text-xl">🔒</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="w-72 mt-6">
-                  <MenuButton
-                    index={0}
-                    label={t.back}
-                    onClick={() =>
-                      setGameState((p) => ({ ...p, status: "menu" }))
-                    }
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-              </div>
+              <AchievementsView 
+                 t={t}
+                 gameState={gameState}
+                 onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                 ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+                 MenuButton={MenuButton}
+              />
             )}
 
             {/* Comic Intro & Menu Transition */}
@@ -8236,445 +7503,20 @@ const App: React.FC = () => {
 
             {/* Shop UI */}
             {gameState.status === "shop" && (
-              <div className="absolute inset-0 flex flex-col items-center bg-black/95 text-white z-30 pt-10">
-                <div className="flex items-center justify-between w-full max-w-6xl px-8 mb-6">
-                  <h2 className="text-4xl text-yellow-500 font-arcade tracking-widest">{t.shop || "SHOP"}</h2>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => setShopTab("effects")} 
-                      className={`px-4 py-2 font-bold tracking-widest uppercase transition-all border-b-2 ${shopTab === "effects" ? "border-yellow-500 text-yellow-500" : "border-transparent text-neutral-500 hover:text-white"}`}
-                    >
-                      EFFECTS
-                    </button>
-                    <button 
-                      onClick={() => setShopTab("cosmetics")} 
-                      className={`px-4 py-2 font-bold tracking-widest uppercase transition-all border-b-2 ${shopTab === "cosmetics" ? "border-yellow-500 text-yellow-500" : "border-transparent text-neutral-500 hover:text-white"}`}
-                    >
-                      COSMETICS
-                    </button>
-                    <button 
-                      onClick={() => setShopTab("sounds")} 
-                      className={`px-4 py-2 font-bold tracking-widest uppercase transition-all border-b-2 ${shopTab === "sounds" ? "border-yellow-500 text-yellow-500" : "border-transparent text-neutral-500 hover:text-white"}`}
-                    >
-                      {t.soundsTab || "SOUNDS"}
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">{t.totalCoins || "TOTAL COINS"}</span>
-                    <span className="text-3xl text-yellow-400 font-arcade drop-shadow-[0_0_10px_#eab308]">{customization.coins || 0}</span>
-                  </div>
-                </div>
-
-                <div className="flex w-full max-w-6xl px-8 gap-8 h-[60vh]">
-                  {/* Big Character Preview */}
-                  <div className="w-1/3 flex flex-col items-center justify-center bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden shadow-inner p-4 relative">
-                    <div className="absolute top-4 left-4 text-xs font-black text-neutral-500 tracking-widest uppercase">
-                      PREVIEW
-                    </div>
-                    <CharacterPreview 
-                      customization={hoveredShopItem ? { ...customization, [hoveredShopItem.type]: hoveredShopItem.id } : customization} 
-                      scale={6} 
-                    />
-                    {hoveredShopItem && (
-                      <div className="absolute bottom-4 text-center w-full flex justify-center">
-                        <span className="bg-black/80 px-3 py-1 rounded text-yellow-500 font-bold text-sm tracking-widest uppercase shadow-lg">
-                          {hoveredShopItem.name.toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Shop Lists */}
-                  <div className="flex-1 flex gap-8 h-full">
-                  {shopTab === "effects" && (
-                    <>
-                      {/* Death Animations Tab */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 border-r border-neutral-800 pr-4">
-                        <h3 className="text-xl text-neutral-400 font-black tracking-widest border-b border-neutral-800 pb-2">{t.deathAnims || "DEATH ANIMATIONS"}</h3>
-                        {SHOP_ITEMS.filter((i) => i.type === "deathAnim")
-                          .sort((a, b) => {
-                            const aUnlocked = a.price === 0 || (customization.unlockedDeathAnims || []).includes(a.id);
-                            const bUnlocked = b.price === 0 || (customization.unlockedDeathAnims || []).includes(b.id);
-                            if (aUnlocked && !bUnlocked) return -1;
-                            if (!aUnlocked && bUnlocked) return 1;
-                            if (!aUnlocked && !bUnlocked) return a.price - b.price;
-                            return 0;
-                          })
-                          .map((item) => {
-                          const isItemUnlocked = item.price === 0 || (customization.unlockedDeathAnims || []).includes(item.id);
-                          const isEquipped = customization.deathAnim === item.id;
-                          const canAfford = (customization.coins || 0) >= item.price;
-                          
-                          return (
-                            <div 
-                              key={item.id} 
-                              className={`p-4 border-2 flex items-center gap-4 transition-all ${isEquipped ? "border-yellow-500 bg-yellow-900/20" : isItemUnlocked ? "border-green-600 bg-neutral-900 hover:border-green-400" : "border-neutral-800 bg-black"}`}
-                              onMouseEnter={() => setHoveredShopItem(item)}
-                              onMouseLeave={() => setHoveredShopItem(null)}
-                            >
-                               <div className="flex-1">
-                                 <div className={`font-arcade text-lg ${isItemUnlocked ? 'text-white' : 'text-neutral-500'}`}>{(t.shopItemNames?.[item.id] || item.name).toUpperCase()}</div>
-                                 {!isItemUnlocked && <div className="text-yellow-500 text-xs font-bold pt-1">{item.price} {t.coins || 'COINS'}</div>}
-                                 <button 
-                                   onClick={() => {
-                                     if (isItemUnlocked) {
-                                       setCustomization(p => ({ ...p, deathAnim: item.id }));
-                                     } else if (canAfford) {
-                                       setCustomization(p => ({
-                                         ...p,
-                                         coins: (p.coins || 0) - item.price,
-                                         unlockedDeathAnims: [...(p.unlockedDeathAnims || []), item.id],
-                                         deathAnim: item.id
-                                       }));
-                                     }
-                                   }}
-                                   disabled={!isItemUnlocked && !canAfford}
-                                   className={`mt-2 px-4 py-2 font-bold text-xs w-full transition-colors ${isEquipped ? 'bg-yellow-500 text-black' : isItemUnlocked ? 'bg-green-600 text-white hover:bg-green-500' : canAfford ? 'bg-yellow-600 text-black hover:bg-yellow-500' : 'bg-neutral-800 text-neutral-600'}`}
-                                 >
-                                   {isEquipped ? (t.equipped || "EQUIPPED") : isItemUnlocked ? (t.equip || "EQUIP") : (t.buy || "BUY")}
-                                 </button>
-                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Trails Tab */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 pl-4 border-l border-neutral-800">
-                        <h3 className="text-xl text-neutral-400 font-black tracking-widest border-b border-neutral-800 pb-2">{t.trails || "TRAILS"}</h3>
-                        {SHOP_ITEMS.filter((i) => i.type === "trailType")
-                          .sort((a, b) => {
-                            const aAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "trail" && ach.rewardId === a.id);
-                            const bAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "trail" && ach.rewardId === b.id);
-                            const aUnlocked = !!aAch ? gameState.unlockedAchievements.includes(aAch.id) : (a.price === 0 || (customization.unlockedTrails || []).includes(a.id));
-                            const bUnlocked = !!bAch ? gameState.unlockedAchievements.includes(bAch.id) : (b.price === 0 || (customization.unlockedTrails || []).includes(b.id));
-
-                            if (aUnlocked && !bUnlocked) return -1;
-                            if (!aUnlocked && bUnlocked) return 1;
-                            if (!aUnlocked && !bUnlocked) {
-                              const aIsAch = !!aAch;
-                              const bIsAch = !!bAch;
-                              if (!aIsAch && bIsAch) return -1;
-                              if (aIsAch && !bIsAch) return 1;
-                              if (!aIsAch && !bIsAch) return a.price - b.price;
-                              return 0;
-                            }
-                            return 0;
-                          })
-                          .map((item) => {
-                          const ach = ACHIEVEMENTS_LIST.find((a) => a.rewardType === "trail" && a.rewardId === item.id);
-                          const isAchievementReward = !!ach;
-                          const isItemUnlocked = isAchievementReward ? gameState.unlockedAchievements.includes(ach.id) : (item.price === 0 || (customization.unlockedTrails || []).includes(item.id));
-                          const isEquipped = (customization.trailType || "normal") === item.id;
-                          const canAfford = (customization.coins || 0) >= item.price;
-                          
-                          return (
-                            <div 
-                              key={item.id} 
-                              className={`p-4 border-2 flex items-center gap-4 transition-all ${isEquipped ? "border-yellow-500 bg-yellow-900/20" : isItemUnlocked ? "border-green-600 bg-neutral-900 hover:border-green-400" : "border-neutral-800 bg-black"}`}
-                              onMouseEnter={() => setHoveredShopItem(item)}
-                              onMouseLeave={() => setHoveredShopItem(null)}
-                            >
-                               <div className="flex-1">
-                                 <div className={`font-arcade text-lg ${isItemUnlocked ? 'text-white' : 'text-neutral-500'}`}>{(t.shopItemNames?.['trail_' + item.id] || item.name).toUpperCase()}</div>
-                                 {!isItemUnlocked && (
-                                   isAchievementReward ? 
-                                     <div className="text-purple-400 text-xs font-bold pt-1 uppercase">{t.locked} ({t.achievementReward})</div> :
-                                     <div className="text-yellow-500 text-xs font-bold pt-1">{item.price} {t.coins || 'COINS'}</div>
-                                 )}
-                                 <button 
-                                   onClick={() => {
-                                     if (isItemUnlocked) {
-                                       setCustomization(p => ({ ...p, trailType: item.id }));
-                                     } else if (canAfford && !isAchievementReward) {
-                                       setCustomization(p => ({
-                                         ...p,
-                                         coins: (p.coins || 0) - item.price,
-                                         unlockedTrails: [...(p.unlockedTrails || []), item.id],
-                                         trailType: item.id
-                                       }));
-                                     }
-                                   }}
-                                   disabled={!isItemUnlocked && (!canAfford || isAchievementReward)}
-                                   className={`mt-2 px-4 py-2 font-bold text-xs w-full transition-colors ${isEquipped ? 'bg-yellow-500 text-black' : isItemUnlocked ? 'bg-green-600 text-white hover:bg-green-500' : (canAfford && !isAchievementReward) ? 'bg-yellow-600 text-black hover:bg-yellow-500' : 'bg-neutral-800 text-neutral-600'}`}
-                                 >
-                                   {isEquipped ? (t.equipped || "EQUIPPED") : isItemUnlocked ? (t.equip || "EQUIP") : isAchievementReward ? t.locked : (t.buy || "BUY")}
-                                 </button>
-                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {shopTab === "cosmetics" && (
-                    <>
-                      {/* Eyes Tab */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 border-r border-neutral-800 pr-4">
-                        <h3 className="text-xl text-neutral-400 font-black tracking-widest border-b border-neutral-800 pb-2">{t.eyesTab || "EYES"}</h3>
-                        {SHOP_ITEMS.filter((i) => i.type === "eyes")
-                          .sort((a, b) => {
-                            const aAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "eyes" && ach.rewardId === a.id);
-                            const bAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "eyes" && ach.rewardId === b.id);
-                            const aUnlocked = !!aAch ? gameState.unlockedAchievements.includes(aAch.id) : (a.price === 0 || (customization.unlockedEyes || []).includes(a.id));
-                            const bUnlocked = !!bAch ? gameState.unlockedAchievements.includes(bAch.id) : (b.price === 0 || (customization.unlockedEyes || []).includes(b.id));
-
-                            if (aUnlocked && !bUnlocked) return -1;
-                            if (!aUnlocked && bUnlocked) return 1;
-                            if (!aUnlocked && !bUnlocked) {
-                              const aIsAch = !!aAch;
-                              const bIsAch = !!bAch;
-                              if (!aIsAch && bIsAch) return -1;
-                              if (aIsAch && !bIsAch) return 1;
-                              if (!aIsAch && !bIsAch) return a.price - b.price;
-                              return 0;
-                            }
-                            return 0;
-                          })
-                          .map((item) => {
-                          const ach = ACHIEVEMENTS_LIST.find((a) => a.rewardType === "eyes" && a.rewardId === item.id);
-                          const isAchievementReward = !!ach;
-                          const isItemUnlocked = isAchievementReward ? gameState.unlockedAchievements.includes(ach.id) : (item.price === 0 || (customization.unlockedEyes || []).includes(item.id));
-                          const isEquipped = customization.eyes === item.id;
-                          const canAfford = (customization.coins || 0) >= item.price;
-                          
-                          return (
-                            <div 
-                              key={item.id} 
-                              onMouseEnter={() => setHoveredShopItem(item)}
-                              onMouseLeave={() => setHoveredShopItem(null)}
-                              onClick={() => {
-                                if (isItemUnlocked) {
-                                  setCustomization(p => ({ ...p, eyes: item.id as any }));
-                                } else if (canAfford && !isAchievementReward) {
-                                  setCustomization(p => ({
-                                    ...p,
-                                    coins: (p.coins || 0) - item.price,
-                                    unlockedEyes: [...(p.unlockedEyes || []), item.id],
-                                    eyes: item.id as any
-                                  }));
-                                }
-                              }}
-                              className={`p-4 border-2 flex items-center gap-4 transition-all cursor-pointer ${isEquipped ? "border-yellow-500 bg-yellow-900/40" : isItemUnlocked ? "border-green-600 bg-neutral-900 hover:border-green-400" : (canAfford && !isAchievementReward) ? "border-neutral-700 bg-black hover:border-yellow-600/50" : "border-neutral-800 bg-black opacity-80"}`}
-                            >
-                               <div className="flex-1">
-                                 <div className={`font-arcade text-lg ${isItemUnlocked ? 'text-white' : 'text-neutral-500'}`}>{(t.eye_names?.[item.id] || item.name).toUpperCase()}</div>
-                                 {!isItemUnlocked && (
-                                   isAchievementReward ? 
-                                     <div className="text-purple-400 text-xs font-bold pt-1 uppercase">{t.locked} ({t.achievementReward})</div> :
-                                     <div className="text-yellow-500 text-xs font-bold pt-1">{item.price} {t.coins || 'COINS'}</div>
-                                 )}
-                                 <div className="mt-2 w-full">
-                                   {isEquipped ? (
-                                     <div className="w-full text-yellow-500 font-black text-[10px] tracking-tighter bg-yellow-950 px-2 py-2 rounded border border-yellow-500/50 animate-pulse text-center uppercase">
-                                       {t.equipped || "EQUIPPED"}
-                                     </div>
-                                   ) : isItemUnlocked ? (
-                                     <div className="w-full text-green-500 font-bold text-[8px] uppercase tracking-widest bg-green-950 px-2 py-2 rounded border border-green-500/30 text-center">
-                                       {t.equip || "EQUIP"}
-                                     </div>
-                                   ) : isAchievementReward ? (
-                                     <div className="w-full px-2 py-2 font-bold text-[8px] uppercase tracking-widest bg-purple-900/50 text-purple-400 border border-purple-500/30 rounded text-center">
-                                        {t.locked}
-                                     </div>
-                                   ) : (
-                                     <div className={`w-full px-4 py-2 font-bold text-xs rounded transition-all text-center ${canAfford ? 'bg-yellow-600 text-black hover:bg-yellow-500 shadow-[0_0_10px_rgba(234,113,8,0.3)]' : 'bg-neutral-800 text-neutral-600'}`}>
-                                       {t.buy || "BUY"}
-                                     </div>
-                                   )}
-                                 </div>
-                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Hats Tab */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 pl-4 border-l border-neutral-800">
-                        <h3 className="text-xl text-neutral-400 font-black tracking-widest border-b border-neutral-800 pb-2">{t.hatsTab || "HATS & ACCESSORIES"}</h3>
-                        {SHOP_ITEMS.filter((i) => i.type === "accessory")
-                          .sort((a, b) => {
-                            const aAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "accessory" && ach.rewardId === a.id);
-                            const bAch = ACHIEVEMENTS_LIST.find((ach) => ach.rewardType === "accessory" && ach.rewardId === b.id);
-                            const aUnlocked = !!aAch ? gameState.unlockedAchievements.includes(aAch.id) : (a.price === 0 || (customization.unlockedAccessories || []).includes(a.id));
-                            const bUnlocked = !!bAch ? gameState.unlockedAchievements.includes(bAch.id) : (b.price === 0 || (customization.unlockedAccessories || []).includes(b.id));
-
-                            if (aUnlocked && !bUnlocked) return -1;
-                            if (!aUnlocked && bUnlocked) return 1;
-                            if (!aUnlocked && !bUnlocked) {
-                              const aIsAch = !!aAch;
-                              const bIsAch = !!bAch;
-                              if (!aIsAch && bIsAch) return -1;
-                              if (aIsAch && !bIsAch) return 1;
-                              if (!aIsAch && !bIsAch) return a.price - b.price;
-                              return 0;
-                            }
-                            return 0;
-                          })
-                          .map((item) => {
-                          const ach = ACHIEVEMENTS_LIST.find((a) => a.rewardType === "accessory" && a.rewardId === item.id);
-                          const isAchievementReward = !!ach;
-                          const isItemUnlocked = isAchievementReward ? gameState.unlockedAchievements.includes(ach.id) : (item.price === 0 || (customization.unlockedAccessories || []).includes(item.id));
-                          const isEquipped = customization.accessory === item.id;
-                          const canAfford = (customization.coins || 0) >= item.price;
-                          
-                          return (
-                            <div 
-                              key={item.id} 
-                              onMouseEnter={() => setHoveredShopItem(item)}
-                              onMouseLeave={() => setHoveredShopItem(null)}
-                              onClick={() => {
-                                if (isItemUnlocked) {
-                                  setCustomization(p => ({ ...p, accessory: item.id as any }));
-                                } else if (canAfford && !isAchievementReward) {
-                                  setCustomization(p => ({
-                                    ...p,
-                                    coins: (p.coins || 0) - item.price,
-                                    unlockedAccessories: [...(p.unlockedAccessories || []), item.id],
-                                    accessory: item.id as any
-                                  }));
-                                }
-                              }}
-                              className={`p-4 border-2 flex items-center gap-4 transition-all cursor-pointer ${isEquipped ? "border-yellow-500 bg-yellow-900/40" : isItemUnlocked ? "border-green-600 bg-neutral-900 hover:border-green-400" : (canAfford && !isAchievementReward) ? "border-neutral-700 bg-black hover:border-yellow-600/50" : "border-neutral-800 bg-black opacity-80"}`}
-                            >
-                               <div className="flex-1">
-                                 <div className={`font-arcade text-lg ${isItemUnlocked ? 'text-white' : 'text-neutral-500'}`}>{(t.acc_names?.[item.id] || item.name).toUpperCase()}</div>
-                                 {!isItemUnlocked && (
-                                   isAchievementReward ? 
-                                     <div className="text-purple-400 text-xs font-bold pt-1 uppercase">{t.locked} ({t.achievementReward})</div> :
-                                     <div className="text-yellow-500 text-xs font-bold pt-1">{item.price} {t.coins || 'COINS'}</div>
-                                 )}
-                                 <div className="mt-2 w-full">
-                                   {isEquipped ? (
-                                     <div className="w-full text-yellow-500 font-black text-[10px] tracking-tighter bg-yellow-950 px-2 py-2 rounded border border-yellow-500/50 animate-pulse text-center uppercase">
-                                       {t.equipped || "EQUIPPED"}
-                                     </div>
-                                   ) : isItemUnlocked ? (
-                                     <div className="w-full text-green-500 font-bold text-[8px] uppercase tracking-widest bg-green-950 px-2 py-2 rounded border border-green-500/30 text-center">
-                                       {t.equip || "EQUIP"}
-                                     </div>
-                                   ) : isAchievementReward ? (
-                                     <div className="w-full px-2 py-2 font-bold text-[8px] uppercase tracking-widest bg-purple-900/50 text-purple-400 border border-purple-500/30 rounded text-center">
-                                        {t.locked}
-                                     </div>
-                                   ) : (
-                                     <div className={`w-full px-4 py-2 font-bold text-xs rounded transition-all text-center ${canAfford ? 'bg-yellow-600 text-black hover:bg-yellow-500 shadow-[0_0_10px_rgba(234,113,8,0.3)]' : 'bg-neutral-800 text-neutral-600'}`}>
-                                       {t.buy || "BUY"}
-                                     </div>
-                                   )}
-                                 </div>
-                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {shopTab === "sounds" && (
-                    <>
-                      {/* Sounds Tab */}
-                      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 border-r border-neutral-800 pr-4">
-                        <h3 className="text-xl text-neutral-400 font-black tracking-widest border-b border-neutral-800 pb-2">{t.deathSounds || "DEATH SOUNDS"}</h3>
-                        {SHOP_ITEMS.filter((i) => i.type === "deathSound")
-                          .sort((a, b) => {
-                            const aUnlocked = a.price === 0 || (customization.unlockedDeathSounds || []).includes(a.id);
-                            const bUnlocked = b.price === 0 || (customization.unlockedDeathSounds || []).includes(b.id);
-                            if (aUnlocked && !bUnlocked) return -1;
-                            if (!aUnlocked && bUnlocked) return 1;
-                            return a.price - b.price;
-                          })
-                          .map((item) => {
-                            const isUnlocked = item.price === 0 || (customization.unlockedDeathSounds || []).includes(item.id);
-                            const isSelected = customization.deathSound === item.id || (!customization.deathSound && item.id === "default");
-                            
-                            return (
-                              <div
-                                key={item.id}
-                                onMouseEnter={() => setHoveredShopItem(item)}
-                                onMouseLeave={() => setHoveredShopItem(null)}
-                                className={`flex flex-col p-4 rounded-lg border-2 transition-all group ${
-                                  isSelected
-                                    ? "bg-yellow-500/20 border-yellow-500 cursor-default"
-                                    : "bg-black/40 border-neutral-800 hover:border-neutral-600 cursor-pointer"
-                                }`}
-                                onClick={() => {
-                                  if (isUnlocked) {
-                                    setCustomization((p) => ({ ...p, deathSound: item.id }));
-                                    import('./services/audioService').then(m => m.audio.playDie(item.id));
-                                  } else if ((customization.coins || 0) >= item.price) {
-                                    setCustomization((p) => ({
-                                      ...p,
-                                      coins: (p.coins || 0) - item.price,
-                                      unlockedDeathSounds: [...(p.unlockedDeathSounds || []), item.id],
-                                      deathSound: item.id,
-                                    }));
-                                    import('./services/audioService').then(m => m.audio.playDie(item.id));
-                                  }
-                                }}
-                              >
-                                <div className="flex justify-between items-center w-full">
-                                  <div className="flex-1">
-                                    <div className={`font-black uppercase tracking-wider text-lg ${isSelected ? "text-yellow-400" : "text-white group-hover:text-yellow-200"}`}>{item.name}</div>
-                                    {!isUnlocked && (
-                                      <div className="text-yellow-500 font-arcade text-sm mt-1">{item.price} COINS</div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        import('./services/audioService').then(m => m.audio.playDie(item.id));
-                                      }}
-                                      className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full transition-colors text-white"
-                                      title="Preview Sound"
-                                    >
-                                      ▶️
-                                    </button>
-                                    <div className="text-3xl opacity-50">
-                                      {isUnlocked ? "🎵" : "🔒"}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="mt-3 w-full">
-                                  {isSelected ? (
-                                    <div className="w-full text-yellow-500 font-black text-[10px] tracking-tighter bg-yellow-950 px-2 py-2 rounded border border-yellow-500/50 animate-pulse text-center uppercase">
-                                      {t.equipped || "EQUIPPED"}
-                                    </div>
-                                  ) : isUnlocked ? (
-                                    <div className="w-full text-green-500 font-bold text-[8px] uppercase tracking-widest bg-green-950 px-2 py-2 rounded border border-green-500/30 text-center">
-                                      {t.equip || "EQUIP"}
-                                    </div>
-                                  ) : (
-                                    <div className={`w-full px-4 py-2 font-bold text-xs rounded transition-all text-center ${(customization.coins || 0) >= item.price ? 'bg-yellow-600 text-black hover:bg-yellow-500' : 'bg-neutral-800 text-neutral-600'}`}>
-                                      {t.buy || "BUY"}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                        })}
-                      </div>
-                      <div className="flex-1 flex flex-col justify-center items-center text-center opacity-50 mb-10">
-                         <div className="text-6xl mb-4">🔊</div>
-                         <div className="text-xl font-bold max-w-[250px]">{t.deathSoundDesc || "Equip a custom sound effect to assert dominance when you fall!"}</div>
-                      </div>
-                    </>
-                  )}
-                  </div>
-                </div>
-
-                <div className="mt-8 w-72">
-                  <MenuButton
-                    index={0}
-                    label={t.back}
-                    onClick={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-              </div>
+              <ShopView 
+                t={t}
+                customization={customization}
+                setCustomization={setCustomization}
+                shopTab={shopTab}
+                setShopTab={setShopTab}
+                hoveredShopItem={hoveredShopItem}
+                setHoveredShopItem={setHoveredShopItem}
+                gameState={gameState}
+                onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                CharacterPreview={CharacterPreview}
+                SHOP_ITEMS={SHOP_ITEMS}
+                ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+              />
             )}
 
             {/* Book Menu */}
@@ -8684,269 +7526,25 @@ const App: React.FC = () => {
 
             {/* Settings Menu */}
             {gameState.status === "settings" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-hidden">
-                <div className="w-full max-w-5xl aspect-video bg-black/80 flex flex-col items-center justify-between py-6 px-8">
-                <h2 className="text-2xl text-rage-red uppercase tracking-widest shrink-0">{t.settings}</h2>
-                <div className="flex gap-12 w-full justify-center flex-1 min-h-0">
-                  
-                  {/* LEFT COLUMN: Player & Audio */}
-                  <div className="flex flex-col gap-2 w-80 h-full justify-center">
-                    <h3 className="text-lg text-neutral-400 font-arcade">Player & Audio</h3>
-                    
-                    <div
-                      className={`p-2 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(0)}
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="uppercase text-[8px] font-arcade text-neutral-400 w-full text-left ml-2">
-                          {t.playerNameLabel || "PLAYER NAME"}
-                        </span>
-                        <div className="w-full bg-black border border-neutral-700 p-1">
-                          <input
-                            type="text"
-                            value={settings.playerName || ""}
-                            maxLength={10}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "");
-                              setSettings((p) => ({ ...p, playerName: val }));
-                              setPlayerName(val);
-                            }}
-                            className="w-full bg-transparent outline-none text-center text-white font-arcade uppercase placeholder:text-neutral-800 text-sm"
-                            placeholder="???"
-                          />
-                        </div>
-                      </div>
-                      <div className="text-[7px] text-neutral-600 mt-1 text-center uppercase tracking-widest">
-                        Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
-                      </div>
-                    </div>
-
-                    <div className="h-10">
-                    <MenuButton
-                      index={1}
-                      label={t.keybindings}
-                      onClick={() => {
-                        setGameState((p) => ({ ...p, status: "keybindings" }));
-                        setMenuSelection(0);
-                      }}
-                      isSelected={menuSelection === 1}
-                      onHover={setMenuSelection}
-                    />
-                    </div>
-
-                    <div className="scale-90 origin-left">
-                    <SettingsSlider
-                      label={t.sfx}
-                      value={settings.sfxVolume}
-                      index={2}
-                      colorClass="bg-troll-green"
-                      onChange={(v: number) =>
-                        setSettings((p) => ({ ...p, sfxVolume: v }))
-                      }
-                      isSelected={menuSelection === 2}
-                      onHover={setMenuSelection}
-                    />
-                    </div>
-
-                    <div className="scale-90 origin-left">
-                    <SettingsSlider
-                      label={t.deathSounds || "DEATH SOUNDS"}
-                      value={settings.deathVolume ?? 0.5}
-                      index={3}
-                      colorClass="bg-red-500"
-                      onChange={(v: number) =>
-                        setSettings((p) => ({ ...p, deathVolume: v }))
-                      }
-                      isSelected={menuSelection === 3}
-                      onHover={setMenuSelection}
-                    />
-                    </div>
-
-                    <div className="scale-90 origin-left">
-                    <SettingsSlider
-                      label={t.opponentOpacity || "OPPONENT OPACITY"}
-                      value={settings.opponentOpacity ?? 0.5}
-                      index={4}
-                      colorClass="bg-cyan-500"
-                      onChange={(v: number) =>
-                        setSettings((p) => ({ ...p, opponentOpacity: v }))
-                      }
-                      isSelected={menuSelection === 4}
-                      onHover={setMenuSelection}
-                    />
-                    </div>
-                  </div>
-
-                  {/* RIGHT COLUMN: Graphics & Gameplay */}
-                  <div className="flex flex-col gap-2 w-80 h-full justify-center">
-                    <h3 className="text-lg text-neutral-400 font-arcade">Graphics & Gameplay</h3>
-
-                    <div
-                      className={`p-2 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(5)}
-                      onClick={() => {
-                        setSettings((p) => {
-                          const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
-                          let nextIndex = currentIndex + 1;
-                          if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
-                          return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
-                        });
-                      }}
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <span>MAX FPS</span>
-                        <span className="text-blue-400 font-bold">
-                          {settings.fpsCap === 0 ? "UNLIMITED" : settings.fpsCap}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-2 border cursor-pointer ${menuSelection === 6 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(6)}
-                      onClick={() => {
-                        setSettings((p) => {
-                          const currentScale = p.uiScale || 1;
-                          const currentIndex = UI_SCALE_OPTIONS.indexOf(currentScale) !== -1 ? UI_SCALE_OPTIONS.indexOf(currentScale) : 2;
-                          let nextIndex = currentIndex + 1;
-                          if (nextIndex >= UI_SCALE_OPTIONS.length) nextIndex = 0;
-                          return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
-                        });
-                      }}
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <span>{t.uiSize || "UI SIZE"}</span>
-                        <span className="text-blue-400 font-bold">
-                          {Math.round((settings.uiScale || 1) * 100)}%
-                        </span>
-                      </div>
-                    </div>
-
-                     <div
-                      className={`p-2 border cursor-pointer ${menuSelection === 7 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(7)}
-                      onClick={() => {
-                        setSettings((p) => {
-                          const currentScale = p.resolutionScale || 1080;
-                          const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
-                          let nextIndex = currentIndex + 1;
-                          if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = 0;
-                          return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
-                        });
-                      }}
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <span>AUFLÖSUNG</span>
-                        <span className="text-blue-400 font-bold">
-                          {settings.resolutionScale === 720 ? "720p" : settings.resolutionScale === 1080 ? "1080p" : settings.resolutionScale === 1440 ? "1440p" : "2160p"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="scale-90 origin-left mt-[-8px]">
-                    <SettingsSlider
-                      label="SCREEN SHAKE"
-                      value={settings.screenShake ?? 1}
-                      index={8}
-                      colorClass="bg-yellow-500"
-                      onChange={(v: number) =>
-                        setSettings((p) => ({ ...p, screenShake: v }))
-                      }
-                      isSelected={menuSelection === 8}
-                      onHover={setMenuSelection}
-                    />
-                    </div>
-
-                    <div
-                      className={`p-2 border cursor-pointer mt-[-8px] ${menuSelection === 9 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(9)}
-                      onClick={() => {
-                        setSettings((p) => ({ ...p, invertXOnGravityReverse: !p.invertXOnGravityReverse }));
-                      }}
-                    >
-                      <div className="flex flex-col gap-1 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span>{lang === Language.DE ? "INVERTIERE L/R" : "INVERT L/R"}</span>
-                          <span className="text-blue-400 font-bold">
-                            {settings.invertXOnGravityReverse ? "ON" : "OFF"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`p-2 border cursor-pointer ${menuSelection === 10 ? "border-white bg-neutral-800" : "border-transparent"}`}
-                      onMouseEnter={() => setMenuSelection(10)}
-                      onClick={() => {
-                        setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
-                      }}
-                    >
-                      <div className="flex flex-col gap-1 text-xs">
-                        <div className="flex justify-between items-center">
-                          <span>{lang === Language.DE ? "INVERTIERE O/U" : "INVERT U/D"}</span>
-                          <span className="text-blue-400 font-bold">
-                            {settings.invertYOnGravityReverse ? "ON" : "OFF"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Bottom Row */}
-                <div className="flex justify-between items-end w-full px-8 shrink-0 pb-4 h-20">
-                  <div className="flex gap-4">
-                    <div className="w-56 h-12">
-                      <MenuButton
-                        index={11}
-                        label={lang === Language.DE ? "💾 IMPORT" : "💾 IMPORT"}
-                        onClick={triggerImport}
-                        isSelected={menuSelection === 11}
-                        onHover={setMenuSelection}
-                      />
-                    </div>
-                    <div className="w-56 h-12">
-                      <MenuButton
-                        index={12}
-                        label={lang === Language.DE ? "📤 EXPORT" : "📤 EXPORT"}
-                        onClick={handleExportSave}
-                        isSelected={menuSelection === 12}
-                        onHover={setMenuSelection}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="w-56 h-12">
-                    <MenuButton
-                      index={13}
-                      label={t.back}
-                      onClick={() => {
-                        const nextStatus = gameState.previousStatus || "menu";
-                        setGameState((p) => ({ 
-                          ...p, 
-                          status: nextStatus,
-                          previousStatus: undefined 
-                        }));
-                        if (nextStatus === "menu") {
-                          setMenuSelection(0);
-                        }
-                      }}
-                      isSelected={menuSelection === 13}
-                      onHover={setMenuSelection}
-                    />
-                  </div>
-                </div>
-
-                <input
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  ref={saveInputRef}
-                  onChange={handleImportSave}
-                />
-                </div>
-              </div>
+              <SettingsMenu 
+                t={t}
+                settings={settings}
+                setSettings={setSettings}
+                lang={lang}
+                menuSelection={menuSelection}
+                setMenuSelection={setMenuSelection}
+                onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                onKeybindings={() => {
+                   setGameState((p) => ({ ...p, status: "keybindings" }));
+                   setMenuSelection(0);
+                }}
+                FPS_OPTIONS={FPS_OPTIONS}
+                UI_SCALE_OPTIONS={UI_SCALE_OPTIONS}
+                RESOLUTION_OPTIONS={RESOLUTION_OPTIONS}
+                setPlayerName={setPlayerName}
+                MenuButton={MenuButton}
+                SettingsSlider={SettingsSlider}
+              />
             )}
 
             {/* Keybindings Menu */}
@@ -9327,8 +7925,6 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
         {/* Global Toast */}
         <AnimatePresence>
@@ -9457,12 +8053,15 @@ const App: React.FC = () => {
           />
         )}
       </div>
-
-      <div className="mt-4 text-neutral-500 text-xs hidden md:block text-center opacity-0 pointer-events-none">
-        Rage Cube v7.0
-      </div>
     </div>
-  );
+  </div>
+</div>
+
+    <div className="mt-4 text-neutral-500 text-xs hidden md:block text-center opacity-0 pointer-events-none">
+      Rage Cube v7.0
+    </div>
+  </>
+);
 };
 
 export default App;
