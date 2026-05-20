@@ -61,6 +61,7 @@ class OnlineService {
   public suggestions: any[] = []; // New: Store suggestions
   public finishTimerEnabled: boolean = true;
   public isPaused: boolean = false;
+  public comboPowerups: boolean = false;
   public hostId: string | null = null;
   public messages: ChatMessage[] = [];
   public currentVote: VoteData | null = null;
@@ -83,7 +84,7 @@ class OnlineService {
   private reconnectCount: number = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
   
-  public onLobbyUpdate?: (players: OnlinePlayer[], level?: LevelData, mode?: 'brawler' | 'vs' | 'editor', levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean, powerups?: Record<string, number>, suddenDeath?: boolean, suggestions?: any[], finishTimerEnabled?: boolean) => void;
+  public onLobbyUpdate?: (players: OnlinePlayer[], level?: LevelData, mode?: 'brawler' | 'vs' | 'editor', levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean, powerups?: Record<string, number>, suddenDeath?: boolean, suggestions?: any[], finishTimerEnabled?: boolean, comboPowerups?: boolean) => void;
   public onGameStart?: (mode?: 'brawler' | 'vs' | 'editor', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, levelIndex?: number, vsCollision?: boolean) => void;
   public onStatusChange?: (status: string) => void;
   public onSync?: (id: string, state: SyncState) => void;
@@ -112,6 +113,7 @@ class OnlineService {
       this.suggestions = data.suggestions || [];
       this.finishTimerEnabled = data.finishTimerEnabled !== undefined ? data.finishTimerEnabled : true;
       this.isPaused = data.isPaused !== undefined ? data.isPaused : false;
+      this.comboPowerups = data.comboPowerups !== undefined ? data.comboPowerups : false;
       this.hostId = data.hostId;
 
       if (this.localPlayer && data.hostId === this.localPlayer.id) {
@@ -145,7 +147,7 @@ class OnlineService {
       this.lastStatus = data.status;
 
       if (this.onLobbyUpdate) {
-        this.onLobbyUpdate(Array.from(this.players.values()), this.currentLevel, this.currentMode, this.levelQueue, data.teamMode, data.hazardMode, data.levelIndex, data.vsCollision, data.powerups, data.suddenDeath, this.suggestions, this.finishTimerEnabled);
+        this.onLobbyUpdate(Array.from(this.players.values()), this.currentLevel, this.currentMode, this.levelQueue, data.teamMode, data.hazardMode, data.levelIndex, data.vsCollision, data.powerups, data.suddenDeath, this.suggestions, this.finishTimerEnabled, this.comboPowerups);
       }
 
       // P2P connection management
@@ -542,7 +544,7 @@ class OnlineService {
     }
   }
 
-  public async broadcastLobbyState(mode?: 'brawler' | 'vs' | 'editor', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, status?: string, levelIndex?: number, vsCollision?: boolean, vote?: VoteData | null, powerups?: Record<string, number>, suddenDeath?: boolean, finishTimerEnabled?: boolean, isPaused?: boolean) {
+  public async broadcastLobbyState(mode?: 'brawler' | 'vs' | 'editor', level?: LevelData, levelQueue?: LevelData[], teamMode?: string, hazardMode?: string, status?: string, levelIndex?: number, vsCollision?: boolean, vote?: VoteData | null, powerups?: Record<string, number>, suddenDeath?: boolean, finishTimerEnabled?: boolean, isPaused?: boolean, comboPowerups?: boolean) {
     if (this.isHost && this.lobbyCode) {
       const updates: any = {};
       if (mode) updates.mode = mode;
@@ -558,6 +560,7 @@ class OnlineService {
       if (suddenDeath !== undefined) updates.suddenDeath = suddenDeath;
       if (finishTimerEnabled !== undefined) updates.finishTimerEnabled = finishTimerEnabled;
       if (isPaused !== undefined) updates.isPaused = isPaused;
+      if (comboPowerups !== undefined) updates.comboPowerups = comboPowerups;
       this.socket?.emit("update-room", { code: this.lobbyCode, playerId: this.localPlayer?.id, updates });
     }
   }

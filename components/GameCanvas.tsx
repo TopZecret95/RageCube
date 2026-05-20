@@ -65,6 +65,59 @@ import {
 const SLOW_MO_FACTOR = 0.4; // 40% speed
 const SLOW_MO_DURATION = 300; // 5 seconds at 60fps
 
+const getFusedPowerupType = (holding: string, picked: string): string => {
+  if (holding === picked) {
+    if (holding === "powerup_grow") return "powerup_titan";
+    if (holding === "powerup_slow") return "powerup_blizzard";
+    if (holding === "powerup_shield") return "powerup_thunder_shield";
+    if (holding === "powerup_bomb") return "powerup_nuke_bomb";
+    if (holding === "powerup_fireball") return "powerup_meteor_rain";
+    if (holding === "powerup_melee") return "powerup_golden_sword";
+    if (holding === "powerup_dash") return "powerup_teleport_dash";
+    if (holding === "powerup_teleport") return "powerup_teleport_all";
+    if (holding === "powerup_triple_jump") return "powerup_gravity_boots";
+    if (holding === "powerup_steal") return "powerup_black_hole";
+    if (holding === "powerup_ice_block") return "powerup_glacier";
+    if (holding === "powerup_slime_block") return "powerup_trampoline";
+    if (holding === "powerup_build") return "powerup_fortress";
+    if (holding === "powerup_hook") return "powerup_voltage_hook";
+    if (holding === "powerup_shrink") return "powerup_nano_spy";
+    return holding;
+  }
+
+  // Cross-fusions
+  if ((holding === "powerup_grow" && picked === "powerup_shrink") || (holding === "powerup_shrink" && picked === "powerup_grow")) {
+    return "powerup_quantum_shift";
+  }
+
+  const isOpenOffensive = (type: string) => type === "powerup_fireball" || type === "powerup_bomb" || type === "powerup_melee";
+  if ((holding === "powerup_shield" && isOpenOffensive(picked)) || (picked === "powerup_shield" && isOpenOffensive(holding))) {
+    return "powerup_fire_shield";
+  }
+
+  if ((holding === "powerup_dash" && picked === "powerup_fireball") || (holding === "powerup_fireball" && picked === "powerup_dash")) {
+    return "powerup_lodestar";
+  }
+
+  if ((holding === "powerup_melee" && picked === "powerup_ice_block") || (holding === "powerup_ice_block" && picked === "powerup_melee")) {
+    return "powerup_frost_mourne";
+  }
+
+  if ((holding === "powerup_bomb" && picked === "powerup_slime_block") || (holding === "powerup_slime_block" && picked === "powerup_bomb")) {
+    return "powerup_sticky_bomb";
+  }
+
+  if ((holding === "powerup_shield" && picked === "powerup_triple_jump") || (holding === "powerup_triple_jump" && picked === "powerup_shield")) {
+    return "powerup_angel_wings";
+  }
+
+  if ((holding === "powerup_teleport" && picked === "powerup_steal") || (holding === "powerup_steal" && picked === "powerup_teleport")) {
+    return "powerup_trickster";
+  }
+
+  return "powerup_chaos_orb";
+};
+
 const GameCanvas: React.FC<GameCanvasProps> = ({
   level,
   customization,
@@ -88,6 +141,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   brawlerTeam2,
   brawlerHazardMode,
   brawlerSuddenDeath,
+  brawlerComboPowerups = false,
   vsCollision = true,
   isOnline,
   onlinePing,
@@ -1460,8 +1514,358 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const triggerAction = (p: PlayerState) => {
     if (!p || p.finished) return;
     if (!p.inventory) return;
-    const type = p.inventory;
+    const type = p.inventory as string;
     p.inventory = null;
+
+    if (type === "powerup_titan") {
+      p.isGrown = true;
+      p.isPermanentlyGrown = false;
+      p.isShrunk = false;
+      p.isPermanentlyShrunk = false;
+      p.w = 60;
+      p.h = 60;
+      p.pos.y -= 40;
+      p.growTimer = 600;
+      p.shieldTimer = 300;
+      audio.playPowerup();
+      spawnParticles(p.pos.x + 30, p.pos.y + 30, "#ef4444", 20, "spark");
+      shakeIntensity.current = 15;
+      return;
+    }
+    if (type === "powerup_blizzard") {
+      audio.playPowerup();
+      players.current.forEach((op) => {
+        if (op.name !== p.name) {
+          op.slowTimer = 480;
+          op.vel.x = 0;
+          spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#38bdf8", 15, "spark");
+        }
+      });
+      shakeIntensity.current = 10;
+      return;
+    }
+    if (type === "powerup_thunder_shield") {
+      p.shieldTimer = 360;
+      audio.playPowerup();
+      players.current.forEach((op) => {
+        if (op.name !== p.name) {
+          const dx = op.pos.x - p.pos.x;
+          const dy = op.pos.y - p.pos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 180) {
+            op.vel.x = (dx > 0 ? 1 : -1) * 22;
+            op.vel.y = -10;
+            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#eab308", 15, "spark");
+          }
+        }
+      });
+      shakeIntensity.current = 15;
+      return;
+    }
+    if (type === "powerup_nuke_bomb") {
+      audio.playPowerup();
+      for (let i = -1; i <= 1; i++) {
+        const bomb = {
+          x: p.pos.x + 5 + i * 25,
+          y: p.pos.y + 5,
+          w: 16,
+          h: 16,
+          timer: 40 + Math.abs(i) * 20,
+          owner: p.name,
+          active: true,
+        };
+        bombs.current.push(bomb);
+        if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
+          onlineService.sendEvent("bomb", bomb);
+        }
+      }
+      shakeIntensity.current = 10;
+      return;
+    }
+    if (type === "powerup_meteor_rain") {
+      audio.playPowerup();
+      const angles = [-0.3, 0, 0.3];
+      angles.forEach((angle) => {
+        const proj = {
+          x: p.pos.x + (p.facing === 1 ? 20 : -10),
+          y: p.pos.y + 5 + angle * 10,
+          w: 12,
+          h: 12,
+          velX: p.facing * 10 * Math.cos(angle),
+          velY: 10 * Math.sin(angle),
+          owner: p.name,
+          active: true,
+        };
+        projectiles.current.push(proj);
+        if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
+          onlineService.sendEvent("projectile", proj);
+        }
+      });
+      shakeIntensity.current = 8;
+      return;
+    }
+    if (type === "powerup_golden_sword") {
+      p.meleeActive = true;
+      p.meleeTimer = 30;
+      audio.playPowerup();
+      players.current.forEach((op) => {
+        if (op.name !== p.name) {
+          const hitBox = {
+            x: p.pos.x + (p.facing === 1 ? 20 : -140),
+            y: p.pos.y - 30,
+            w: 140,
+            h: 80,
+          };
+          const opBox = { x: op.pos.x, y: op.pos.y, w: op.w, h: op.h };
+          if (checkCollision(hitBox, opBox) && op.shieldTimer <= 0) {
+            op.vel.x = p.facing * 30;
+            op.vel.y = -12;
+            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#facc15", 25, "spark");
+          }
+        }
+      });
+      shakeIntensity.current = 25;
+      return;
+    }
+    if (type === "powerup_teleport_dash") {
+      p.pos.x += p.facing * 240;
+      p.vel = { x: p.facing * 12, y: 0 };
+      audio.playPowerup();
+      shakeIntensity.current = 12;
+      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#a855f7", 12, "spark");
+      return;
+    }
+    if (type === "powerup_teleport_all") {
+      const opponent = players.current.find((op) => op.name !== p.name);
+      if (opponent) {
+        audio.playPowerup();
+        const tempX = p.pos.x;
+        const tempY = p.pos.y;
+        p.pos.x = opponent.pos.x;
+        p.pos.y = opponent.pos.y;
+        opponent.pos.x = tempX;
+        opponent.pos.y = tempY;
+        spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#ec4899", 15, "spark");
+        spawnParticles(opponent.pos.x + opponent.w / 2, opponent.pos.y + opponent.h / 2, "#ec4899", 15, "spark");
+        shakeIntensity.current = 15;
+      }
+      return;
+    }
+    if (type === "powerup_gravity_boots") {
+      audio.playPowerup();
+      p.oneTimeTripleJump = true;
+      p.tripleJumpActive = true;
+      p.jumpCount = 0;
+      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#10b981", 12, "spark");
+      return;
+    }
+    if (type === "powerup_black_hole") {
+      audio.playPowerup();
+      players.current.forEach((op) => {
+        if (op.name !== p.name) {
+          const dx = p.pos.x - op.pos.x;
+          const dy = p.pos.y - op.pos.y;
+          op.vel.x += (dx > 0 ? 1 : -1) * 12;
+          op.vel.y -= 5;
+          if (op.inventory) {
+            p.inventory = op.inventory;
+            op.inventory = null;
+          }
+          spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#1e1b4b", 15, "spark");
+        }
+      });
+      shakeIntensity.current = 15;
+      return;
+    }
+    if (type === "powerup_glacier") {
+      audio.playPowerup();
+      for (let i = -1; i <= 1; i++) {
+        const newBlock = {
+          x: p.pos.x + i * TILE_SIZE,
+          y: p.pos.y + p.h,
+          w: TILE_SIZE,
+          h: TILE_SIZE,
+          type: "ice" as const,
+          expires: Date.now() + 15000,
+        };
+        tempBlocks.current.push(newBlock);
+        if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
+          onlineService.sendEvent("block", newBlock);
+        }
+      }
+      return;
+    }
+    if (type === "powerup_trampoline") {
+      audio.playPowerup();
+      for (let i = -1; i <= 1; i++) {
+        const newBlock = {
+          x: p.pos.x + i * TILE_SIZE,
+          y: p.pos.y + p.h,
+          w: TILE_SIZE,
+          h: TILE_SIZE,
+          type: "slime" as const,
+          expires: Date.now() + 15000,
+         };
+        tempBlocks.current.push(newBlock);
+        if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
+          onlineService.sendEvent("block", newBlock);
+        }
+      }
+      return;
+    }
+    if (type === "powerup_fortress") {
+      audio.playPowerup();
+      for (let i = 0; i < 3; i++) {
+        const newBlock = {
+          x: p.pos.x + p.facing * TILE_SIZE,
+          y: p.pos.y - i * TILE_SIZE,
+          w: TILE_SIZE,
+          h: TILE_SIZE,
+          type: "wall" as const,
+          expires: Date.now() + 15000,
+        };
+        tempBlocks.current.push(newBlock);
+        if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
+          onlineService.sendEvent("block", newBlock);
+        }
+      }
+      return;
+    }
+    if (type === "powerup_voltage_hook") {
+      audio.playPowerup();
+      p.oneTimeHook = true;
+      p.hookActive = true;
+      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#14b8a6", 12, "spark");
+      return;
+    }
+    if (type === "powerup_nano_spy") {
+      audio.playPowerup();
+      p.isShrunk = true;
+      p.isPermanentlyShrunk = false;
+      p.isGrown = false;
+      p.w = 6;
+      p.h = 6;
+      p.shrinkTimer = 600;
+      spawnParticles(p.pos.x + 3, p.pos.y + 3, "#f43f5e", 10, "spark");
+      return;
+    }
+    if (type === "powerup_quantum_shift") {
+      audio.playPowerup();
+      p.shieldTimer = 360;
+      p.isShrunk = true;
+      p.w = 8;
+      p.h = 8;
+      p.shrinkTimer = 360;
+      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#6366f1", 15, "spark");
+      return;
+    }
+    if (type === "powerup_fire_shield") {
+      audio.playPowerup();
+      p.shieldTimer = 360;
+      const proj = {
+        x: p.pos.x + (p.facing === 1 ? 20 : -10),
+        y: p.pos.y + 5,
+        w: 12,
+        h: 12,
+        velX: p.facing * 11,
+        velY: 0,
+        owner: p.name,
+        active: true,
+      };
+      projectiles.current.push(proj);
+      return;
+    }
+    if (type === "powerup_lodestar") {
+      audio.playPowerup();
+      p.dashTimer = 22;
+      p.dashCooldown = 15;
+      p.dashDirection = { x: p.facing, y: 0 };
+      const bomb = {
+        x: p.pos.x - p.facing * 15,
+        y: p.pos.y,
+        w: 12,
+        h: 12,
+        timer: 25,
+        owner: p.name,
+        active: true,
+      };
+      bombs.current.push(bomb);
+      return;
+    }
+    if (type === "powerup_frost_mourne") {
+      audio.playPowerup();
+      p.meleeActive = true;
+      p.meleeTimer = 20;
+      players.current.forEach((op) => {
+        if (op.name !== p.name) {
+          const hitBox = { x: p.pos.x - 40, y: p.pos.y - 10, w: 100, h: 40 };
+          if (checkCollision(hitBox, { x: op.pos.x, y: op.pos.y, w: op.w, h: op.h })) {
+            op.slowTimer = 360;
+            op.vel.x = p.facing * 8;
+            op.vel.y = -3;
+            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#06b6d4", 18, "spark");
+          }
+        }
+      });
+      return;
+    }
+    if (type === "powerup_sticky_bomb") {
+      audio.playPowerup();
+      const bomb = {
+        x: p.pos.x + 5,
+        y: p.pos.y + 5,
+        w: 12,
+        h: 12,
+        timer: 40,
+        owner: p.name,
+        active: true,
+      };
+      bombs.current.push(bomb);
+      return;
+    }
+    if (type === "powerup_angel_wings") {
+      audio.playPowerup();
+      p.shieldTimer = 240;
+      p.oneTimeTripleJump = true;
+      p.jumpCount = 0;
+      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#f472b6", 18, "spark");
+      return;
+    }
+    if (type === "powerup_trickster") {
+      audio.playPowerup();
+      const op = players.current.find((op) => op.name !== p.name);
+      if (op) {
+        const tempX = p.pos.x;
+        const tempY = p.pos.y;
+        p.pos.x = op.pos.x;
+        p.pos.y = op.pos.y;
+        op.pos.x = tempX;
+        op.pos.y = tempY;
+        if (op.inventory) {
+          p.inventory = op.inventory;
+          op.inventory = null;
+        }
+        spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#fb7185", 15, "spark");
+        spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#fb7185", 15, "spark");
+      }
+      return;
+    }
+    if (type === "powerup_chaos_orb") {
+      audio.playPowerup();
+      const proj = {
+        x: p.pos.x + (p.facing === 1 ? 20 : -10),
+        y: p.pos.y + 5,
+        w: 12,
+        h: 12,
+        velX: p.facing * 12,
+        velY: 2,
+        owner: p.name,
+        active: true,
+      };
+      projectiles.current.push(proj);
+      return;
+    }
+
     if (type === "powerup_ice_block" || type === "powerup_slime_block") {
       const checkRect = {
         x: p.pos.x + p.w / 4,
@@ -2522,6 +2926,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               // Move current position towards target
               p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
               p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
+
+              // Also apply velocity prediction to the current position to keep it moving between syncs
+              // This is standard dead reckoning, and makes movement look beautifully smooth!
+              p.pos.x += p.vel.x * dt;
+              p.pos.y += p.vel.y * dt;
             }
           }
 
@@ -2983,6 +3392,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     (e) => e.id !== powerupId,
                   );
                   audio.playCoin();
+                } else if (brawlerComboPowerups) {
+                  const fused = getFusedPowerupType(p.inventory, entity.type);
+                  p.inventory = fused as EntityType;
+                  collectPowerup(powerupId, p);
+                  dynamicPowerups.current = dynamicPowerups.current.filter(
+                    (e) => e.id !== powerupId,
+                  );
+                  audio.playPowerup();
+                  shakeIntensity.current = 10;
                 }
                 continue;
               }
@@ -3414,6 +3832,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     (e) => e.id !== powerupId,
                   );
                   audio.playCoin();
+                } else if (brawlerComboPowerups) {
+                  const fused = getFusedPowerupType(p.inventory, entity.type);
+                  p.inventory = fused as EntityType;
+                  collectPowerup(powerupId, p);
+                  dynamicPowerups.current = dynamicPowerups.current.filter(
+                    (e) => e.id !== powerupId,
+                  );
+                  audio.playPowerup();
+                  shakeIntensity.current = 10;
                 }
                 continue;
               }
@@ -5671,26 +6098,49 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               let puName = "";
               if (p.inventory) {
                 if (p.inventory === "powerup_build") puName = hudT.puBuild;
-                if (p.inventory === "powerup_hook") puName = hudT.puHook;
-                if (p.inventory === "powerup_slow_mo") puName = hudT.puSlowMo;
-                if (p.inventory === "powerup_xray") puName = hudT.puXray;
-                if (p.inventory === "powerup_ice_block") puName = hudT.puIce;
-                if (p.inventory === "powerup_slime_block")
+                else if (p.inventory === "powerup_hook") puName = hudT.puHook;
+                else if (p.inventory === "powerup_slow_mo") puName = hudT.puSlowMo;
+                else if (p.inventory === "powerup_xray") puName = hudT.puXray;
+                else if (p.inventory === "powerup_ice_block") puName = hudT.puIce;
+                else if (p.inventory === "powerup_slime_block")
                   puName = hudT.puSlime;
-                if (p.inventory === "powerup_fireball")
+                else if (p.inventory === "powerup_fireball")
                   puName = hudT.puFireball;
-                if (p.inventory === "powerup_bomb") puName = hudT.puBomb;
-                if (p.inventory === "powerup_shield") puName = hudT.puShield;
-                if (p.inventory === "powerup_steal") puName = hudT.puSteal;
-                if (p.inventory === "powerup_slow") puName = hudT.puSlow;
-                if (p.inventory === "powerup_melee") puName = hudT.puMelee;
-                if (p.inventory === "powerup_shrink") puName = hudT.puShrink;
-                if (p.inventory === "powerup_grow") puName = hudT.puGrow;
-                if (p.inventory === "powerup_dash") puName = hudT.puDash;
-                if (p.inventory === "powerup_teleport")
+                else if (p.inventory === "powerup_bomb") puName = hudT.puBomb;
+                else if (p.inventory === "powerup_shield") puName = hudT.puShield;
+                else if (p.inventory === "powerup_steal") puName = hudT.puSteal;
+                else if (p.inventory === "powerup_slow") puName = hudT.puSlow;
+                else if (p.inventory === "powerup_melee") puName = hudT.puMelee;
+                else if (p.inventory === "powerup_shrink") puName = hudT.puShrink;
+                else if (p.inventory === "powerup_grow") puName = hudT.puGrow;
+                else if (p.inventory === "powerup_dash") puName = hudT.puDash;
+                else if (p.inventory === "powerup_teleport")
                   puName = hudT.puTeleport;
-                if (p.inventory === "powerup_triple_jump")
+                else if (p.inventory === "powerup_triple_jump")
                   puName = hudT.puTripleJump;
+                else if (p.inventory === "powerup_titan") puName = lang === "de" ? "⭐ TITAN-KOLOSS" : "⭐ TITAN BEAST";
+                else if (p.inventory === "powerup_blizzard") puName = lang === "de" ? "⭐ BLIZZARD-STURM" : "⭐ BLIZZARD STORM";
+                else if (p.inventory === "powerup_thunder_shield") puName = lang === "de" ? "⭐ BLITZSCHILD" : "⭐ THUNDER SHIELD";
+                else if (p.inventory === "powerup_nuke_bomb") puName = lang === "de" ? "⭐ NUKE-BOMBE" : "⭐ NUKE CLUSTER BOMB";
+                else if (p.inventory === "powerup_meteor_rain") puName = lang === "de" ? "⭐ METEORSTURM" : "⭐ METEOR SHOWER";
+                else if (p.inventory === "powerup_golden_sword") puName = lang === "de" ? "⭐ SEELENFRESSER" : "⭐ EXCALIBUR BLOCK";
+                else if (p.inventory === "powerup_teleport_dash") puName = lang === "de" ? "⭐ WARP-SPRINT" : "⭐ WARP DASH";
+                else if (p.inventory === "powerup_teleport_all") puName = lang === "de" ? "⭐ WELTEN-SWAP" : "⭐ WORMHOLE SWAP";
+                else if (p.inventory === "powerup_gravity_boots") puName = lang === "de" ? "⭐ SCHWERKRAFT-STIEFEL" : "⭐ GRAVITY BOOTS";
+                else if (p.inventory === "powerup_black_hole") puName = lang === "de" ? "⭐ SCHWARZES LOCH" : "⭐ BLACK HOLE";
+                else if (p.inventory === "powerup_glacier") puName = lang === "de" ? "⭐ GLETSCHER-WALL" : "⭐ GLACIER WALL";
+                else if (p.inventory === "powerup_trampoline") puName = lang === "de" ? "⭐ MEGA-TRAMPOLIN" : "⭐ MEGA TRAMPOLINE";
+                else if (p.inventory === "powerup_fortress") puName = lang === "de" ? "⭐ FESTUNGS-WALL" : "⭐ FORTRESS BLOCK";
+                else if (p.inventory === "powerup_voltage_hook") puName = lang === "de" ? "⭐ ELEKTRO-GREIFER" : "⭐ VOLTAGE GRAPPLE";
+                else if (p.inventory === "powerup_nano_spy") puName = lang === "de" ? "⭐ NANOSPION" : "⭐ NANO SPY";
+                else if (p.inventory === "powerup_quantum_shift") puName = lang === "de" ? "⭐ QUANTEN-SHIFT" : "⭐ QUANTUM SHIFT";
+                else if (p.inventory === "powerup_fire_shield") puName = lang === "de" ? "⭐ INFERNOSCHILD" : "⭐ HELLFIRE SHIELD";
+                else if (p.inventory === "powerup_lodestar") puName = lang === "de" ? "⭐ LEUCHTSPURSAG-DASH" : "⭐ LODESTAR DASH";
+                else if (p.inventory === "powerup_frost_mourne") puName = lang === "de" ? "⭐ FROSTMOURNE-KLINGE" : "⭐ FROST MOURNE CORE";
+                else if (p.inventory === "powerup_sticky_bomb") puName = lang === "de" ? "⭐ SCHLEIMBOMBE" : "⭐ STICKY SLIME BOMB";
+                else if (p.inventory === "powerup_angel_wings") puName = lang === "de" ? "⭐ ENGELSFLÜGEL" : "⭐ ANGEL WINGS FLY";
+                else if (p.inventory === "powerup_trickster") puName = lang === "de" ? "⭐ TRICKSTER-SWAP" : "⭐ TRICKSTER SWAP";
+                else if (p.inventory === "powerup_chaos_orb") puName = lang === "de" ? "⭐ CHAOS-ORB" : "⭐ CHAOS ORB PROJ";
               } else {
                 if (p.oneTimeBuild) puName = hudT.puBuild;
                 else if (p.oneTimeHook) puName = hudT.puHook;

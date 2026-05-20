@@ -34,6 +34,7 @@ export interface GameCanvasProps {
   brawlerTeam2?: number;
   brawlerHazardMode?: BrawlerHazardMode;
   brawlerSuddenDeath?: boolean;
+  brawlerComboPowerups?: boolean;
   vsCollision?: boolean;
   isOnline?: boolean;
   onlinePing?: number;

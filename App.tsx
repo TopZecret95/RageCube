@@ -1006,6 +1006,7 @@ const App: React.FC = () => {
   const [brawlerHazardMode, setBrawlerHazardMode] =
     useState<BrawlerHazardMode>("none");
   const [brawlerSuddenDeath, setBrawlerSuddenDeath] = useState<boolean>(true);
+  const [brawlerComboPowerups, setBrawlerComboPowerups] = useState<boolean>(false);
   const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
   const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">("effects");
   const [hoveredShopItem, setHoveredShopItem] = useState<any>(null);
@@ -3277,15 +3278,17 @@ const App: React.FC = () => {
 
   // --- ONLINE LOBBY LOGIC ---
   const createOnlineLobby = async (mode: "brawler" | "vs" | "editor") => {
-    if (!playerName.trim()) {
-      setOnlineError(t.nameRequired || "NAME IS REQUIRED TO JOIN OR CREATE A LOBBY");
-      return;
+    let activeName = playerName.trim();
+    if (!activeName) {
+      activeName = "CUBE_PLAYER_" + Math.floor(1000 + Math.random() * 9000);
+      setPlayerName(activeName);
+      setSettings((p) => ({ ...p, playerName: activeName }));
     }
     setOnlineError("Creating lobby...");
     try {
       const localPlayer: OnlinePlayer = {
         id: Math.random().toString(36).substr(2, 9),
-        name: playerName.trim(),
+        name: activeName,
         customization: customization,
         isHost: true,
         ready: true,
@@ -3357,9 +3360,11 @@ const App: React.FC = () => {
   };
 
   const joinOnlineLobby = async (code: string) => {
-    if (!playerName.trim()) {
-      setOnlineError(t.nameRequired || "NAME IS REQUIRED TO JOIN OR CREATE A LOBBY");
-      return;
+    let activeName = playerName.trim();
+    if (!activeName) {
+      activeName = "CUBE_PLAYER_" + Math.floor(1000 + Math.random() * 9000);
+      setPlayerName(activeName);
+      setSettings((p) => ({ ...p, playerName: activeName }));
     }
     setOnlineError("Joining lobby...");
     try {
@@ -3367,7 +3372,7 @@ const App: React.FC = () => {
       // We will adjust it once the lobby update comes in
       const localPlayer: OnlinePlayer = {
         id: Math.random().toString(36).substr(2, 9),
-        name: playerName.trim(),
+        name: activeName,
         customization: customization,
         isHost: false,
         ready: false,
@@ -3399,7 +3404,8 @@ const App: React.FC = () => {
       updatedPowerups,
       suddenDeath,
       suggestions,
-      finishTimerEnabled
+      finishTimerEnabled,
+      comboPowerups
     ) => {
       // Automatic team assignment for local player if not set
       if (onlineService.localPlayer && (onlineService.localPlayer.team === undefined || onlineService.localPlayer.team === null)) {
@@ -3456,6 +3462,9 @@ const App: React.FC = () => {
       }
       if (suddenDeath !== undefined && !onlineService.isHost) {
         setBrawlerSuddenDeath(suddenDeath);
+      }
+      if (comboPowerups !== undefined && !onlineService.isHost) {
+        setBrawlerComboPowerups(comboPowerups);
       }
 
       setGameState((p) => {
@@ -4622,6 +4631,12 @@ const App: React.FC = () => {
                    </div>
                 </div>
 
+                {onlineError && (
+                  <div className="text-red-500 font-arcade text-[10px] md:text-xs mb-3 animate-pulse max-w-sm text-center uppercase tracking-wider">
+                    {onlineError}
+                  </div>
+                )}
+
                 <button
                   onClick={() => setGameState(p => ({ ...p, status: "menu" }))}
                   className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
@@ -4798,6 +4813,7 @@ const App: React.FC = () => {
                 brawlerTeam2={brawlerTeam2}
                 brawlerHazardMode={brawlerHazardMode}
                 brawlerSuddenDeath={brawlerSuddenDeath}
+                brawlerComboPowerups={brawlerComboPowerups}
                 vsCollision={gameState.collisionEnabled}
                 isOnline={!!onlineService.lobbyCode}
                 onlinePing={onlineService.ping}
@@ -5506,6 +5522,50 @@ const App: React.FC = () => {
                         className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerSuddenDeath ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <div className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerSuddenDeath ? "translate-x-7" : "translate-x-1"}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Combo Powerups (Fusion) Toggle */}
+                  <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">
+                          {lang === "de" ? "KOMBI-POWERUPS (FUSION)" : "COMBO POWERUPS (FUSION)"}
+                        </div>
+                        <div className="text-[8px] text-neutral-400 mt-1 max-w-[280px] leading-relaxed">
+                          {lang === "de" 
+                            ? "Sammle ein Powerup, wenn du bereits eins besitzt, um ein extrem starkes fusions-basiertes Powerup zu erschaffen!"
+                            : "Collect a second powerup while holding one to fuse them into an extremely powerful combo tier powerup!"}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (gameState.onlineMode && !onlineService.isHost) return;
+                          const newVal = !brawlerComboPowerups;
+                          setBrawlerComboPowerups(newVal);
+                          if (onlineService.isHost) {
+                            onlineService.broadcastLobbyState(
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              undefined,
+                              newVal
+                            );
+                          }
+                        }}
+                        className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerComboPowerups ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerComboPowerups ? "translate-x-7" : "translate-x-1"}`} />
                       </button>
                     </div>
                   </div>
