@@ -244,13 +244,14 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
         </div>
 
         {/* Bottom Row */}
-        <div className="flex justify-between items-end w-full px-8 shrink-0 pb-4 h-20">
+        <div className="flex justify-center items-end w-full px-8 shrink-0 pb-4 h-20">
           <MenuButton
             index={11}
-            label={t.backToMenu}
+            label={t.back || t.backToMenu || "ZURÜCK"}
             onClick={onBack}
             isSelected={menuSelection === 11}
             onHover={setMenuSelection}
+            className="w-fit min-w-[180px] px-8"
           />
         </div>
       </div>

@@ -547,14 +547,15 @@ const MenuButton = React.memo(
     onHover,
     disabled,
     danger,
+    className = "",
   }: any) => (
     <button
       onMouseEnter={() => onHover(index)}
       onClick={onClick}
       disabled={disabled}
       className={`
-        w-full py-3 px-4 font-arcade text-[10px] md:text-sm font-bold uppercase tracking-[0.2em] transition-all transform-gpu will-change-transform box-border
-        relative overflow-hidden flex items-center justify-center text-center
+        ${className.includes("w-") ? "" : "w-full"} py-3 px-4 font-arcade text-[10px] md:text-sm font-bold uppercase tracking-[0.2em] transition-all transform-gpu will-change-transform box-border
+        relative overflow-hidden flex items-center justify-center text-center ${className}
         ${
           danger 
             ? "bg-red-950 text-red-500 border-2" 

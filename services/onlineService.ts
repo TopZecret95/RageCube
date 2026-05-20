@@ -443,7 +443,7 @@ class OnlineService {
       }
     }
 
-    const socketSyncInterval = connectedToAll ? 1000 : 200;
+    const socketSyncInterval = connectedToAll ? 1000 : 40;
     if (!connectedToAll || now - this.lastSocketSync > socketSyncInterval) {
       this.lastSocketSync = now;
       this.socket?.emit("player-sync", { code: this.lobbyCode, playerId: this.localPlayer.id, state: fullState });

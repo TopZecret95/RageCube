@@ -238,7 +238,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       setStartCountdown(null);
       isStartingRef.current = false;
     }
-  }, [level.id, resetTrigger, respawnTrigger, gameMode, isOnline]);
+  }, [level.id, gameMode, isOnline]);
 
   useEffect(() => {
     if (startCountdown === null) {
@@ -571,7 +571,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     return teamColors[team % teamColors.length];
   };
 
-  const initPlayers = () => {
+  const initPlayers = (isRespawn = false) => {
     if (level.autoScroll) {
       if (level.start) currentRespawnPos.current = { ...level.start };
       cameraRef.current.x = Math.max(
@@ -581,6 +581,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       cameraRef.current.y = 0;
       scrollWallX.current = cameraRef.current.x;
       hasStartedMoving.current = false;
+    }
+
+    // Capture existing metrics if it is a respawn
+    const coinsMap = new Map<string, string[]>();
+    const deathsMap = new Map<string, number>();
+    if (isRespawn && players.current && players.current.length > 0) {
+      players.current.forEach((p) => {
+        const key = p.onlineId || p.name || p.playerIndex.toString();
+        if (p.collectedCoinIds) {
+          coinsMap.set(key, [...p.collectedCoinIds]);
+        }
+        if (p.deaths !== undefined) {
+          deathsMap.set(key, p.deaths);
+        }
+      });
     }
 
     const common = {
@@ -804,6 +819,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         .filter((other) => other.playerIndex !== p.playerIndex)
         .map((other) => other.playerIndex);
     });
+
+    // Restore captured metrics
+    if (isRespawn) {
+      players.current.forEach((p) => {
+        const key = p.onlineId || p.name || p.playerIndex.toString();
+        if (coinsMap.has(key)) {
+          p.collectedCoinIds = coinsMap.get(key) || [];
+        }
+        if (deathsMap.has(key)) {
+          p.deaths = deathsMap.get(key) || 0;
+        }
+      });
+    }
 
     console.log("initPlayers called, players.current:", players.current);
   };
@@ -1306,7 +1334,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       roundTimerRef.current = 0;
     }
 
-    initPlayers();
+    initPlayers(false);
     shakeIntensity.current = 0;
     tempBlocks.current = [];
     collectedPowerups.current = [];
@@ -1335,7 +1363,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   // Instant Respawn Handling
   useEffect(() => {
     if (respawnTrigger > 0) {
-      initPlayers();
+      initPlayers(true);
       players.current.forEach(resetPlayerSize);
       // Keep collected powerups that are one-time? No, reset them.
       // But we keep coins.
@@ -2393,7 +2421,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.pos.y = p.targetPos.y;
             } else {
               const dtInSeconds = (16.66 / 1000) * dt;
-              const lerpFactor = 1.0 - Math.exp(-20 * dtInSeconds);
+              const lerpFactor = 1.0 - Math.exp(-25 * dtInSeconds);
               p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
               p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
             }
@@ -2489,16 +2517,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             } else {
               // Standard lerp for smooth movement
               const dtInSeconds = (16.66 / 1000) * dt;
-              const lerpFactor = 1.0 - Math.exp(-20 * dtInSeconds); // Slightly slower lerp for more stability
+              const lerpFactor = 1.0 - Math.exp(-25 * dtInSeconds); // Responsive lerp for real-time tracking
 
               // Move current position towards target
               p.pos.x += (p.targetPos.x - p.pos.x) * lerpFactor;
               p.pos.y += (p.targetPos.y - p.pos.y) * lerpFactor;
-
-              // Also apply velocity to the current position to keep it moving between syncs
-              // This provides "dead reckoning" without drifting the target itself
-              p.pos.x += p.vel.x * dt;
-              p.pos.y += p.vel.y * dt;
             }
           }
 
@@ -5935,19 +5958,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       ctx.restore(); // Restore back to screen space for countdown
 
-      // Spectator Overlay
+      // Spectator Overlay (rendered clean and small at the very top edge of the screen)
       if (isSpectatingNowLocal) {
         const t = TRANSLATIONS[lang];
         ctx.save();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-        ctx.fillRect(0, 0, GAME_WIDTH, 70);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+        ctx.fillRect(0, 0, GAME_WIDTH, 48);
 
         ctx.fillStyle = "#22d3ee"; // Cyan
-        ctx.font = '32px "Press Start 2P", monospace';
+        ctx.font = '12px "Press Start 2P", monospace';
         ctx.textAlign = "center";
         ctx.shadowColor = "cyan";
-        ctx.shadowBlur = 10;
-        ctx.fillText(t.spectatorMode, GAME_WIDTH / 2, 30);
+        ctx.shadowBlur = 4;
+        ctx.fillText(t.spectatorMode, GAME_WIDTH / 2, 16);
         ctx.shadowBlur = 0;
 
         const activePlayers = players.current.filter((p) => !p.finished);
@@ -5955,21 +5978,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (activePlayers.length > 0) {
           const target =
             activePlayers[spectateTargetIdx % activePlayers.length];
-          ctx.font = '20px "Press Start 2P", monospace';
+          ctx.font = '8px "Press Start 2P", monospace';
           ctx.fillText(
             t.watching + target.name.toUpperCase(),
             GAME_WIDTH / 2,
-            50,
+            30,
           );
-          ctx.font = '12px "Press Start 2P", monospace';
-          ctx.fillStyle = "rgba(255,255,255,0.6)";
-          ctx.fillText(t.switchSpectatorHint, GAME_WIDTH / 2, 62);
+          ctx.font = '7px "Press Start 2P", monospace';
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText(t.switchSpectatorHint, GAME_WIDTH / 2, 40);
         } else {
-          ctx.font = '20px "Press Start 2P", monospace';
+          ctx.font = '8px "Press Start 2P", monospace';
           ctx.fillText(
             lang === "de" ? "ALLE SPIELER IM ZIEL" : "ALL PLAYERS FINISHED",
             GAME_WIDTH / 2,
-            50,
+            30,
           );
         }
         ctx.restore();
