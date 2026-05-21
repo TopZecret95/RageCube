@@ -2219,6 +2219,9 @@ const App: React.FC = () => {
       if (e.code === "Escape") {
         if (status === "testing" || status === "brawler_testing") {
           setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] })); // Clear coins on exit test
+          if (onlineService.lobbyCode && onlineService.isHost) {
+            onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+          }
         } else if (status === "vs_playing" || status === "brawler_playing") {
           setGameState((p) => ({
             ...p,
