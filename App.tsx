@@ -2206,6 +2206,32 @@ const App: React.FC = () => {
       return;
     }
 
+    if (kickConfirmTarget) {
+      if (e.code === "Enter" || e.code === "Space") {
+        e.preventDefault();
+        onlineService.initiateVote("kick", kickConfirmTarget.id);
+        setKickConfirmTarget(null);
+      }
+      if (e.code === "Escape") {
+        e.preventDefault();
+        setKickConfirmTarget(null);
+      }
+      return;
+    }
+
+    if (voteConfirmType) {
+      if (e.code === "Enter" || e.code === "Space") {
+        e.preventDefault();
+        onlineService.initiateVote(voteConfirmType);
+        setVoteConfirmType(null);
+      }
+      if (e.code === "Escape") {
+        e.preventDefault();
+        setVoteConfirmType(null);
+      }
+      return;
+    }
+
     if (
       [
         "playing",
@@ -4663,6 +4689,15 @@ const App: React.FC = () => {
                        type="text"
                        value={onlineLobbyInput}
                        onChange={(e) => setOnlineLobbyInput(e.target.value.toUpperCase())}
+                       onKeyDown={(e) => {
+                         e.stopPropagation();
+                         if (e.key === "Enter") {
+                           e.preventDefault();
+                           if (onlineLobbyInput.trim()) {
+                             joinOnlineLobby(onlineLobbyInput.trim());
+                           }
+                         }
+                       }}
                        placeholder="ENTER ANY LOBBY CODE"
                        className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
                      />
@@ -6199,6 +6234,15 @@ const App: React.FC = () => {
                         }
                         onKeyDown={(e) => {
                           e.stopPropagation();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (onlineLobbyInput.length === 4) {
+                              setShowJoinPrompt(false);
+                              joinOnlineLobby(onlineLobbyInput);
+                            } else {
+                              setOnlineError(t.codeLengthError || "Code must be 4 characters");
+                            }
+                          }
                           if (e.key === "Escape") {
                             setShowJoinPrompt(false);
                           }
