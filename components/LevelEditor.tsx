@@ -1954,9 +1954,33 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           if (recentSentSyncs.current.length > 20) {
             recentSentSyncs.current.pop();
           }
-          onLevelChange(getCurrentLevelData());
+
+          const performSync = () => {
+            onLevelChange(getCurrentLevelData());
+            lastSyncTime.current = Date.now();
+          };
+
+          const now = Date.now();
+          const remains = 150 - (now - lastSyncTime.current);
+
+          if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current);
+            syncTimeoutRef.current = null;
+          }
+
+          if (remains <= 0) {
+            performSync();
+          } else {
+            syncTimeoutRef.current = setTimeout(performSync, remains);
+          }
        }
     }
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
   }, [entities, startPos, startPosP2, levelWidth, levelHeight, isBrawler, allowedAbility, autoScroll, autoScrollSpeed, levelName, onLevelChange, getCurrentLevelData]);
 
   const handleTest = () => {
@@ -1965,6 +1989,16 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       else alert("Level needs a GOAL!");
       return;
     }
+    
+    // Immediately flush any throttled/pending level sync synchronously
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+    if (onLevelChange) {
+      onLevelChange(getCurrentLevelData());
+    }
+
     onTest(getCurrentLevelData(), history, historyIndex);
   };
 

@@ -3570,8 +3570,11 @@ const App: React.FC = () => {
           status: "editor",
         }));
       } else if (status === "testing") {
+        const activeLevel = onlineService.currentLevel || stateRef.current.editorData || stateRef.current.level;
+        if (activeLevel) {
+          setLevel(activeLevel);
+        }
         setGameState((p) => {
-          const activeLevel = onlineService.currentLevel || stateRef.current.editorData || p.currentLevel;
           return {
             ...p,
             status: activeLevel?.isBrawler ? "brawler_testing" : "testing",
