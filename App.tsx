@@ -2205,33 +2205,6 @@ const App: React.FC = () => {
       }
       return;
     }
-
-    if (kickConfirmTarget) {
-      if (e.code === "Enter" || e.code === "Space") {
-        e.preventDefault();
-        onlineService.initiateVote("kick", kickConfirmTarget.id);
-        setKickConfirmTarget(null);
-      }
-      if (e.code === "Escape") {
-        e.preventDefault();
-        setKickConfirmTarget(null);
-      }
-      return;
-    }
-
-    if (voteConfirmType) {
-      if (e.code === "Enter" || e.code === "Space") {
-        e.preventDefault();
-        onlineService.initiateVote(voteConfirmType);
-        setVoteConfirmType(null);
-      }
-      if (e.code === "Escape") {
-        e.preventDefault();
-        setVoteConfirmType(null);
-      }
-      return;
-    }
-
     if (
       [
         "playing",
