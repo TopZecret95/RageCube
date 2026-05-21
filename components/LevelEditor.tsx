@@ -1550,11 +1550,11 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           !(x >= ent.x && x < ent.x + ent.w && y >= ent.y && y < ent.y + ent.h),
       );
       if (newEntities.length !== entities.length) {
-        pushHistory(newEntities);
+        let finalEntities = newEntities;
         // Symmetry Erase
         if (symmetryEnabled) {
           const mirrorX = levelWidth - x;
-          const mirrored = newEntities.filter(
+          finalEntities = newEntities.filter(
             (ent) =>
               !(
                 mirrorX >= ent.x &&
@@ -1563,8 +1563,9 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
                 y < ent.y + ent.h
               ),
           );
-          setEntities(mirrored);
         }
+        setEntities(finalEntities);
+        setHasChanged(true);
       }
     } else {
       const isGravityTool =
@@ -1655,7 +1656,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             updatedEntities.push(mirroredEntity);
           }
 
-          pushHistory(updatedEntities);
+          setEntities(updatedEntities);
+          setHasChanged(true);
           setLastPlacedGridPos({ x: gridX, y: gridY });
         }
       } else {
@@ -1690,7 +1692,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           const mirroredEntity = { ...newEntity, x: mirrorX };
           newEntities.push(mirroredEntity);
         }
-        pushHistory(newEntities);
+        setEntities(newEntities);
+        setHasChanged(true);
         setLastPlacedGridPos({ x: gridX, y: gridY });
       }
     }
@@ -1801,8 +1804,12 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       setHoveredRadialTool(null);
     }
 
+    if (isDraggingEntities || isDragging || rightClickDragging) {
+      if (entities !== history[historyIndex]) {
+        pushHistory(entities);
+      }
+    }
     if (isDraggingEntities) {
-      pushHistory(entities);
       setIsDraggingEntities(false);
     }
 
@@ -1947,19 +1954,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
           if (recentSentSyncs.current.length > 20) {
             recentSentSyncs.current.pop();
           }
-          
-          const now = Date.now();
-          if (now - lastSyncTime.current > 50) {
-            onLevelChange(getCurrentLevelData());
-            lastSyncTime.current = now;
-            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-          } else {
-            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-            syncTimeoutRef.current = setTimeout(() => {
-              onLevelChange(getCurrentLevelData());
-              lastSyncTime.current = Date.now();
-            }, 50);
-          }
+          onLevelChange(getCurrentLevelData());
        }
     }
   }, [entities, startPos, startPosP2, levelWidth, levelHeight, isBrawler, allowedAbility, autoScroll, autoScrollSpeed, levelName, onLevelChange, getCurrentLevelData]);

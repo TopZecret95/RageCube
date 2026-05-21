@@ -2134,7 +2134,8 @@ const App: React.FC = () => {
         }));
         setRespawnTrigger((t) => t + 1);
       } else if (currentVoteCopy.type === "test_level") {
-        onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "testing");
+        const testLevel = stateRef.current.editorData || stateRef.current.level;
+        onlineService.broadcastLobbyState("editor", testLevel, undefined, undefined, undefined, "testing");
       } else if (currentVoteCopy.type === "kick" && currentVoteCopy.targetId) {
         onlineService.kickPlayer(currentVoteCopy.targetId);
       }
@@ -3566,14 +3567,18 @@ const App: React.FC = () => {
           status: "editor",
         }));
       } else if (status === "testing") {
-        setGameState((p) => ({
-          ...p,
-          status: p.currentLevel?.isBrawler ? "brawler_testing" : "testing",
-          collectedCoins: [], // Ensure coins are wiped on start
-          score: 0,
-          deaths: 0,
-          time: 0,
-        }));
+        setGameState((p) => {
+          const activeLevel = onlineService.currentLevel || stateRef.current.editorData || p.currentLevel;
+          return {
+            ...p,
+            status: activeLevel?.isBrawler ? "brawler_testing" : "testing",
+            currentLevel: activeLevel,
+            collectedCoins: [], // Ensure coins are wiped on start
+            score: 0,
+            deaths: 0,
+            time: 0,
+          };
+        });
         setRespawnTrigger(0);
         processedCoins.current.clear();
       } else if (status === "summary") {
@@ -6169,7 +6174,18 @@ const App: React.FC = () => {
 
                 {showJoinPrompt && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-40">
-                    <div className="bg-neutral-900 p-8 border-2 border-cyan-500 flex flex-col items-center">
+                    <form 
+                      className="bg-neutral-900 p-8 border-2 border-cyan-500 flex flex-col items-center"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (onlineLobbyInput.length === 4) {
+                          setShowJoinPrompt(false);
+                          joinOnlineLobby(onlineLobbyInput);
+                        } else {
+                          setOnlineError(t.codeLengthError || "Code must be 4 characters");
+                        }
+                      }}
+                    >
                       <h2 className="text-2xl text-cyan-400 mb-4 font-arcade">
                         {t.enterLobbyCode}
                       </h2>
@@ -6183,14 +6199,6 @@ const App: React.FC = () => {
                         }
                         onKeyDown={(e) => {
                           e.stopPropagation();
-                          if (e.key === "Enter") {
-                            if (onlineLobbyInput.length === 4) {
-                              setShowJoinPrompt(false);
-                              joinOnlineLobby(onlineLobbyInput);
-                            } else {
-                              setOnlineError(t.codeLengthError || "Code must be 4 characters");
-                            }
-                          }
                           if (e.key === "Escape") {
                             setShowJoinPrompt(false);
                           }
@@ -6199,26 +6207,20 @@ const App: React.FC = () => {
                       />
                       <div className="flex gap-4 w-full">
                         <button
+                          type="button"
                           className="flex-1 bg-neutral-800 p-2 hover:bg-neutral-700"
                           onClick={() => setShowJoinPrompt(false)}
                         >
                           {t.cancel || "CANCEL"}
                         </button>
                         <button
+                          type="submit"
                           className="flex-1 bg-cyan-600 p-2 hover:bg-cyan-500 text-white font-bold"
-                          onClick={() => {
-                            if (onlineLobbyInput.length === 4) {
-                              setShowJoinPrompt(false);
-                              joinOnlineLobby(onlineLobbyInput);
-                            } else {
-                              setOnlineError(t.codeLengthError || "Code must be 4 characters");
-                            }
-                          }}
                         >
                           {t.join || "JOIN"}
                         </button>
                       </div>
-                    </div>
+                    </form>
                   </div>
                 )}
               </div>
