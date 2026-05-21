@@ -3556,6 +3556,11 @@ const App: React.FC = () => {
           spectateTargetId: undefined,
           currentLevelIndex: 0,
         }));
+      } else if (status === "editor") {
+        setGameState((p) => ({
+          ...p,
+          status: "editor",
+        }));
       } else if (status === "testing") {
         setGameState((p) => ({
           ...p,
@@ -3604,11 +3609,13 @@ const App: React.FC = () => {
 
     const resolveVoteInterval = setInterval(() => {
       if (onlineService.isHost && onlineService.currentVote) {
-        if (Date.now() > onlineService.currentVote.endTime) {
+        const totalPlayers = Array.from(onlineService.players.values()).length;
+        const votesCast = Object.keys(onlineService.currentVote.votes).length;
+        if (Date.now() > onlineService.currentVote.endTime || (votesCast >= totalPlayers && totalPlayers > 0)) {
           resolveVote();
         }
       }
-    }, 1000);
+    }, 250);
 
     onlineService.onAppEvent = (id, event, data) => {
       if (event === "start_timer") {
@@ -3958,6 +3965,9 @@ const App: React.FC = () => {
       ) {
         setEditorVerified(true);
         setGameState((p) => ({ ...p, status: "editor" }));
+        if (onlineService.lobbyCode && onlineService.isHost) {
+          onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+        }
         return;
       }
 
