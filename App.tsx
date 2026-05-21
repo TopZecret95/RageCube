@@ -2133,6 +2133,8 @@ const App: React.FC = () => {
           collectedCoins: [],
         }));
         setRespawnTrigger((t) => t + 1);
+      } else if (currentVoteCopy.type === "test_level") {
+        onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "testing");
       } else if (currentVoteCopy.type === "kick" && currentVoteCopy.targetId) {
         onlineService.kickPlayer(currentVoteCopy.targetId);
       }
@@ -2865,8 +2867,9 @@ const App: React.FC = () => {
       if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
     } else if (status === "online_lobby") {
       if (e.code === "Escape") {
+        const isEditor = st.gameState.onlineMode === "editor";
         onlineService.disconnect();
-        setGameState((p) => ({ ...p, status: "online_menu", previousStatus: undefined }));
+        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu", previousStatus: undefined }));
         return;
       }
       if (e.code === "ArrowUp" || e.code === "KeyW") {
@@ -3037,8 +3040,9 @@ const App: React.FC = () => {
               );
             }
           } else if (sel === 5) {
+            const isEditor = st.gameState.onlineMode === "editor";
             onlineService.closeLobby();
-            setGameState((p) => ({ ...p, status: "online_menu" }));
+            setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
           }
         } else {
           if (sel === 0) {
@@ -3053,8 +3057,9 @@ const App: React.FC = () => {
               previousStatus: "online_lobby",
             }));
           } else if (sel === 2) {
+            const isEditor = st.gameState.onlineMode === "editor";
             onlineService.disconnect();
-            setGameState((p) => ({ ...p, status: "online_menu" }));
+            setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
           }
         }
       }
@@ -3548,6 +3553,17 @@ const App: React.FC = () => {
           spectateTargetId: undefined,
           currentLevelIndex: 0,
         }));
+      } else if (status === "testing") {
+        setGameState((p) => ({
+          ...p,
+          status: p.currentLevel?.isBrawler ? "brawler_testing" : "testing",
+          collectedCoins: [], // Ensure coins are wiped on start
+          score: 0,
+          deaths: 0,
+          time: 0,
+        }));
+        setRespawnTrigger(0);
+        processedCoins.current.clear();
       } else if (status === "summary") {
         setGameState((p) => ({
           ...p,
@@ -3556,17 +3572,20 @@ const App: React.FC = () => {
         }));
         setOnlineFinishTimer(null);
       } else if (status === "closed") {
-        setGameState((p) => ({ ...p, status: "online_menu" }));
+        const isEditor = stateRef.current.gameState.onlineMode === "editor";
+        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
         setOnlineError("Lobby was closed by host");
         onlineService.disconnect();
       } else if (status === "kicked") {
-        setGameState((p) => ({ ...p, status: "online_menu" }));
+        const isEditor = stateRef.current.gameState.onlineMode === "editor";
+        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
         setOnlineError(t.kickedMessage || "Du wurdest aus der Lobby gekickt.");
         onlineService.disconnect();
       }
     };
     onlineService.onDisconnect = () => {
-      setGameState((p) => ({ ...p, status: "online_menu" }));
+      const isEditor = stateRef.current.gameState.onlineMode === "editor";
+      setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
       setOnlineError("Disconnected from host");
     };
     onlineService.onError = (msg) => {
@@ -4658,6 +4677,12 @@ const App: React.FC = () => {
                     index: historyIndex || 0,
                   }); // Preserve History
                   setLevel(levelData);
+
+                  if (gameState.onlineMode === "editor" && onlineService.lobbyCode) {
+                    setVoteConfirmType('test_level');
+                    return;
+                  }
+
                   setRespawnTrigger(0);
                   processedCoins.current.clear(); // Reset coins for testing session
                   setGameState((p) => ({
@@ -4923,6 +4948,7 @@ const App: React.FC = () => {
                   <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
                     {voteConfirmType === 'restart' ? 'RESTART VOTE?' : 
                      voteConfirmType === 'skip' ? 'SKIP VOTE?' : 
+                     voteConfirmType === 'test_level' ? 'TEST LEVEL VOTE?' : 
                      'START VOTE?'}
                   </div>
                   <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
@@ -6639,6 +6665,7 @@ const App: React.FC = () => {
                         label={t.back}
                         danger
                         onClick={() => {
+                          const isEditor = gameState.onlineMode === "editor";
                           if (onlineService.isHost) {
                             onlineService.closeLobby();
                           } else {
@@ -6646,7 +6673,7 @@ const App: React.FC = () => {
                           }
                           setGameState((p) => ({
                             ...p,
-                            status: "online_menu",
+                            status: isEditor ? "editor_type_select" : "online_menu",
                           }));
                         }}
                         isSelected={

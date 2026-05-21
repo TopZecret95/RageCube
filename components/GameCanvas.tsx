@@ -263,7 +263,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     );
   };
 
-  const [abilityMessage, setAbilityMessage] = useState<string | null>(null);
+  const abilityMessageRef = useRef<string | null>(null);
 
   // Screen Shake
   const shakeIntensity = useRef(0);
@@ -1409,8 +1409,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     else if (ability === "hook") msg = TRANSLATIONS[lang].abHook;
 
     if (msg) {
-      setAbilityMessage(msg);
-      setTimeout(() => setAbilityMessage(null), 3000);
+      abilityMessageRef.current = msg;
+      setTimeout(() => { abilityMessageRef.current = null; }, 3000);
     }
   }, [level.id, gameMode, lang, isOnline, settings.showGhost]);
 
@@ -5883,6 +5883,99 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               indColor = "#ff00ff";
               letter = "🚀";
             }
+            // Fused powerups above head support
+            if (p.inventory === "powerup_titan") {
+              indColor = "#fbbf24";
+              letter = "🍄";
+            }
+            if (p.inventory === "powerup_blizzard") {
+              indColor = "#a5f3fc";
+              letter = "❄️";
+            }
+            if (p.inventory === "powerup_thunder_shield") {
+              indColor = "#eab308";
+              letter = "⚡";
+            }
+            if (p.inventory === "powerup_nuke_bomb") {
+              indColor = "#ef4444";
+              letter = "💥";
+            }
+            if (p.inventory === "powerup_meteor_rain") {
+              indColor = "#f97316";
+              letter = "☄️";
+            }
+            if (p.inventory === "powerup_golden_sword") {
+              indColor = "#facc15";
+              letter = "⚔️";
+            }
+            if (p.inventory === "powerup_teleport_dash") {
+              indColor = "#a855f7";
+              letter = "🌌";
+            }
+            if (p.inventory === "powerup_teleport_all") {
+              indColor = "#6366f1";
+              letter = "🌀";
+            }
+            if (p.inventory === "powerup_gravity_boots") {
+              indColor = "#f43f5e";
+              letter = "🥾";
+            }
+            if (p.inventory === "powerup_black_hole") {
+              indColor = "#d946ef";
+              letter = "🕳️";
+            }
+            if (p.inventory === "powerup_glacier") {
+              indColor = "#06b6d4";
+              letter = "🏔️";
+            }
+            if (p.inventory === "powerup_trampoline") {
+              indColor = "#ec4899";
+              letter = "🤸";
+            }
+            if (p.inventory === "powerup_fortress") {
+              indColor = "#64748b";
+              letter = "🏰";
+            }
+            if (p.inventory === "powerup_voltage_hook") {
+              indColor = "#0d9488";
+              letter = "🪝";
+            }
+            if (p.inventory === "powerup_nano_spy") {
+              indColor = "#10b981";
+              letter = "🐜";
+            }
+            if (p.inventory === "powerup_quantum_shift") {
+              indColor = "#3b82f6";
+              letter = "✨";
+            }
+            if (p.inventory === "powerup_fire_shield") {
+              indColor = "#ea580c";
+              letter = "🔥";
+            }
+            if (p.inventory === "powerup_lodestar") {
+              indColor = "#e11d48";
+              letter = "💫";
+            }
+            if (p.inventory === "powerup_frost_mourne") {
+              indColor = "#38bdf8";
+              letter = "❄️";
+            }
+            if (p.inventory === "powerup_sticky_bomb") {
+              indColor = "#84cc16";
+              letter = "🟢";
+            }
+            if (p.inventory === "powerup_angel_wings") {
+              indColor = "#f8fafc";
+              letter = "🪽";
+            }
+            if (p.inventory === "powerup_trickster") {
+              indColor = "#d946ef";
+              letter = "🃏";
+            }
+            if (p.inventory === "powerup_chaos_orb") {
+              indColor = "#ec4899";
+              letter = "🔮";
+            }
           } else {
             if (p.oneTimeBuild) {
               indColor = COLORS.POWERUP_BUILD;
@@ -6193,13 +6286,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Ability Toast
-      if (abilityMessage) {
+      if (abilityMessageRef.current) {
         ctx.fillStyle = "rgba(0,0,0,0.7)";
         ctx.fillRect(0, 100, GAME_WIDTH, 60);
         ctx.fillStyle = "#fbbf24"; // Amber
         ctx.textAlign = "center";
         ctx.font = '24px "Press Start 2P", monospace';
-        ctx.fillText(abilityMessage, GAME_WIDTH / 2, 140);
+        ctx.fillText(abilityMessageRef.current, GAME_WIDTH / 2, 140);
         ctx.textAlign = "left"; // Reset
       }
 
@@ -6518,7 +6611,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     settings.resolutionScale,
     canvasWidth,
     canvasHeight,
-    abilityMessage,
     ghostRun,
     startCountdown,
     isSpectating,

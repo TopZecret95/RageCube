@@ -42,7 +42,7 @@ export type ChatMessage = {
   type: 'chat' | 'system';
 };
 
-export type VoteType = 'next' | 'repeat' | 'return' | 'skip' | 'restart' | 'kick';
+export type VoteType = 'next' | 'repeat' | 'return' | 'skip' | 'restart' | 'kick' | 'test_level';
 export interface VoteData {
   type: VoteType;
   votes: Record<string, 'yes' | 'no'>;
