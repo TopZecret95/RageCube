@@ -1232,6 +1232,7 @@ const App: React.FC = () => {
     menuSelection,
     editingKey,
     level,
+    editorData: null as LevelData | null,
     customLevels,
     settings,
     customization,
@@ -1439,6 +1440,7 @@ const App: React.FC = () => {
       menuSelection,
       editingKey,
       level,
+      editorData,
       customLevels,
       sortedCustomLevels, // Use the memoized version
       settings,
@@ -3457,8 +3459,10 @@ const App: React.FC = () => {
         setBrawlerPowerups(updatedPowerups as any);
       }
 
-      if (newLevel && stateRef.current.level?.id !== newLevel.id) {
-        setLevel(newLevel);
+      if (newLevel) {
+        if (mode === "editor" || stateRef.current.level?.id !== newLevel.id) {
+          setLevel(newLevel);
+        }
       }
       
       if (mode === "editor" && newLevel && !onlineService.isHost) {
@@ -4716,6 +4720,11 @@ const App: React.FC = () => {
                   setLevel(levelData);
 
                   if (gameState.onlineMode === "editor" && onlineService.lobbyCode) {
+                    if (onlineService.isHost) {
+                      onlineService.broadcastLobbyState("editor", levelData);
+                    } else {
+                      onlineService.sendEvent('editor-sync', levelData);
+                    }
                     setVoteConfirmType('test_level');
                     return;
                   }
