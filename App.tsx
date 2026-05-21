@@ -2218,9 +2218,13 @@ const App: React.FC = () => {
     ) {
       if (e.code === "Escape") {
         if (status === "testing" || status === "brawler_testing") {
-          setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] })); // Clear coins on exit test
-          if (onlineService.lobbyCode && onlineService.isHost) {
-            onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+          if (onlineService.lobbyCode) {
+            if (onlineService.isHost) {
+              setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] }));
+              onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+            }
+          } else {
+            setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] })); // Clear coins on exit test
           }
         } else if (status === "vs_playing" || status === "brawler_playing") {
           setGameState((p) => ({
@@ -3963,10 +3967,17 @@ const App: React.FC = () => {
         gameState.status === "testing" ||
         gameState.status === "brawler_testing"
       ) {
-        setEditorVerified(true);
-        setGameState((p) => ({ ...p, status: "editor" }));
-        if (onlineService.lobbyCode && onlineService.isHost) {
-          onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+        if (onlineService.lobbyCode) {
+          if (onlineService.isHost) {
+            setEditorVerified(true);
+            setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] }));
+            onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+          } else {
+             // Let host decide
+          }
+        } else {
+          setEditorVerified(true);
+          setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] }));
         }
         return;
       }

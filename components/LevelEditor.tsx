@@ -1932,6 +1932,7 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
 
   // Throttle syncing to prevent lag
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncTime = useRef<number>(0);
 
   useEffect(() => {
     if (onLevelChange) {
@@ -1947,12 +1948,18 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
             recentSentSyncs.current.pop();
           }
           
-          if (syncTimeoutRef.current) {
-            clearTimeout(syncTimeoutRef.current);
-          }
-          syncTimeoutRef.current = setTimeout(() => {
+          const now = Date.now();
+          if (now - lastSyncTime.current > 50) {
             onLevelChange(getCurrentLevelData());
-          }, 200); // 200ms throttle
+            lastSyncTime.current = now;
+            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+          } else {
+            if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+            syncTimeoutRef.current = setTimeout(() => {
+              onLevelChange(getCurrentLevelData());
+              lastSyncTime.current = Date.now();
+            }, 50);
+          }
        }
     }
   }, [entities, startPos, startPosP2, levelWidth, levelHeight, isBrawler, allowedAbility, autoScroll, autoScrollSpeed, levelName, onLevelChange, getCurrentLevelData]);
