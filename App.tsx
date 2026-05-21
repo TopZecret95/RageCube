@@ -6,7 +6,6 @@ import LevelEditor from "./components/LevelEditor";
 import CustomLevelSelect from "./components/CustomLevelSelect";
 import LevelPreview from "./components/LevelPreview";
 import Book from "./components/Book";
-import { MobileControls } from "./components/ui/MobileControls";
 import {
   GameState,
   Language,
@@ -631,29 +630,23 @@ const SliderRow = React.memo(
       [max],
     );
 
-    const onMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-      if ('button' in e && e.button !== 0) return;
+    const onMouseDown = (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
       isDragging.current = true;
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      handleMouseInteraction(clientX);
+      handleMouseInteraction(e.clientX);
 
-      const onMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
-        const moveClientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : (moveEvent as MouseEvent).clientX;
-        handleMouseInteraction(moveClientX);
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        handleMouseInteraction(moveEvent.clientX);
       };
 
       const onMouseUp = () => {
         isDragging.current = false;
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
-        window.removeEventListener("touchmove", onMouseMove);
-        window.removeEventListener("touchend", onMouseUp);
       };
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
-      window.addEventListener("touchmove", onMouseMove, { passive: false });
-      window.addEventListener("touchend", onMouseUp);
     };
 
     return (
@@ -661,7 +654,6 @@ const SliderRow = React.memo(
         className={`p-2 border cursor-ew-resize transition-colors ${isSelected ? "border-white bg-neutral-800" : "border-transparent hover:bg-neutral-800/50"} text-xs md:text-sm`}
         onMouseEnter={() => onHover(index)}
         onMouseDown={onMouseDown}
-        onTouchStart={onMouseDown}
       >
         <div className="flex justify-between mb-1 pointer-events-none select-none">
           <span>{label}</span>
@@ -708,29 +700,23 @@ const SettingsSlider = React.memo(
       }
     }, []);
 
-    const onMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-      if ('button' in e && e.button !== 0) return;
+    const onMouseDown = (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
       isDragging.current = true;
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      handleMouseInteraction(clientX);
+      handleMouseInteraction(e.clientX);
 
-      const onMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
-        const moveClientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : (moveEvent as MouseEvent).clientX;
-        handleMouseInteraction(moveClientX);
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        handleMouseInteraction(moveEvent.clientX);
       };
 
       const onMouseUp = () => {
         isDragging.current = false;
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
-        window.removeEventListener("touchmove", onMouseMove);
-        window.removeEventListener("touchend", onMouseUp);
       };
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
-      window.addEventListener("touchmove", onMouseMove, { passive: false });
-      window.addEventListener("touchend", onMouseUp);
     };
 
     return (
@@ -738,7 +724,6 @@ const SettingsSlider = React.memo(
         className={`p-4 border cursor-ew-resize transition-colors ${isSelected ? "border-white bg-neutral-800" : "border-transparent hover:bg-neutral-800/50"}`}
         onMouseEnter={() => onHover(index)}
         onMouseDown={onMouseDown}
-        onTouchStart={onMouseDown}
       >
         <div className="flex justify-between mb-2 text-sm pointer-events-none select-none">
           <span>{label}</span>
@@ -4833,8 +4818,7 @@ const App: React.FC = () => {
               "brawler_won",
               "online_summary",
             ].includes(gameState.status) && (
-              <>
-                <GameCanvas
+              <GameCanvas
                 level={gamescreenLevel}
                 customization={customization}
                 customizationP2={customizationP2}
@@ -4893,8 +4877,6 @@ const App: React.FC = () => {
                 spectateTargetId={gameState.spectateTargetId}
                 opponentOpacity={settings.opponentOpacity}
               />
-              <MobileControls />
-            </>
             )}
 
             {/* Online Pause Overlay */}
