@@ -4810,7 +4810,7 @@ const App: React.FC = () => {
   ) => {
     let s = 1000;
     s -= timeTaken * 5;
-    s -= deaths * 50;
+    s -= deaths * 10;
     return isRun ? s : Math.max(0, s);
   };
 
@@ -4855,10 +4855,11 @@ const App: React.FC = () => {
     }
 
     setGameState((prev) => {
+      const penaltyAmount = prev.geometryDashMode ? 10 : 50;
       const baseScorePenalty =
         prev.status === "random_run" || !!prev.storyCategoryName
-          ? prev.score - 50
-          : Math.max(0, prev.score - 50);
+          ? prev.score - penaltyAmount
+          : Math.max(0, prev.score - penaltyAmount);
       return {
         ...prev,
         deaths: newTotalDeaths,
