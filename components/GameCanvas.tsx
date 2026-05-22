@@ -152,6 +152,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   opponentOpacity = 0.5,
   status,
   geometryDashMode = false,
+  gdSpeedMode = 1,
+  levelDeaths = 0,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -254,6 +256,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     p.collectedPowerupIds = [];
     p.hasStartedMove = false;
     p.moveStartTime = 0;
+    p.scrollX = 0;
     if (p.gravityFlipped) {
       p.gravityFlipped = false;
       p.gravity = GRAVITY;
@@ -881,7 +884,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       players.current.forEach((p) => {
         const key = p.onlineId || p.name || p.playerIndex.toString();
         if (coinsMap.has(key)) {
-          p.collectedCoinIds = coinsMap.get(key) || [];
+          p.collectedCoinIds = geometryDashMode ? [] : (coinsMap.get(key) || []);
         }
         if (deathsMap.has(key)) {
           p.deaths = deathsMap.get(key) || 0;
@@ -896,6 +899,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const scrollSpeed = 260;
         const startWallX = Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15);
         p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+        p.scrollX = startWallX;
         p.vel.x = scrollSpeed / 60;
       });
     }
@@ -2137,6 +2141,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15)
               : 0;
             p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+            p.scrollX = startWallX;
           }
         }
 
@@ -2272,6 +2277,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ? Math.max(0, pLocal.pos.x - GAME_WIDTH / 2 + 15)
         : 0;
       pLocal.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+      pLocal.scrollX = startWallX;
     }
 
     if (gameMode === "brawler") return;
@@ -2933,6 +2939,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15)
               : 0;
             p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+            p.scrollX = startWallX;
           }
         }
 
@@ -3402,12 +3409,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (gameMode === "brawler") continue; // No coins in Brawler mode
               const coinId = entity.id || "0";
 
-              const isMulti = players.current.length > 1 || gameMode === "vs";
-              if (isMulti) {
-                if (!p.collectedCoinIds.includes(coinId)) {
-                  p.collectedCoinIds.push(coinId);
-                }
+              if (!p.collectedCoinIds.includes(coinId)) {
+                p.collectedCoinIds.push(coinId);
               }
+
+              const isMulti = players.current.length > 1 || gameMode === "vs";
 
               audio.playCoin();
               spawnParticles(
@@ -3685,6 +3691,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               p.vel = { x: 0, y: 0 };
               p.respawnTimer = Date.now();
               resetPlayerSize(p);
+              p.deaths = (p.deaths || 0) + 1;
               onDie();
               audio.playDie(p.deathSound);
               break;
@@ -3857,12 +3864,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (gameMode === "brawler") continue;
               const coinId = entity.id || "0";
 
-              const isMulti = players.current.length > 1 || gameMode === "vs";
-              if (isMulti) {
-                if (!p.collectedCoinIds.includes(coinId)) {
-                  p.collectedCoinIds.push(coinId);
-                }
+              if (!p.collectedCoinIds.includes(coinId)) {
+                p.collectedCoinIds.push(coinId);
               }
+
+              const isMulti = players.current.length > 1 || gameMode === "vs";
 
               audio.playCoin();
               spawnParticles(
@@ -4386,22 +4392,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           );
         }
 
+        // Handle Geometry Dash auto-scroll
+        if (p.hasStartedMove && (level.autoScroll || geometryDashMode)) {
+          let currentScrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
+          
+          if (geometryDashMode) {
+             if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") currentScrollSpeed *= 1.5;
+             if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") currentScrollSpeed *= 0.7;
+          }
+          
+          const dtInSeconds = (16.666 / 1000) * dt; 
+          p.scrollX = (p.scrollX || 0) + currentScrollSpeed * dtInSeconds;
+        }
+
         // Keep players from running off the right edge in auto-scroll
         if ((level.autoScroll || geometryDashMode) && p.hasStartedMove) {
-          const scrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
-          const pWallX = ((Date.now() - p.moveStartTime) / 1000) * scrollSpeed;
-          const maxRight = pWallX + GAME_WIDTH - p.w;
+          const maxRight = (p.scrollX || 0) + GAME_WIDTH - p.w;
           if (p.pos.x > maxRight) {
             p.pos.x = maxRight;
             if (p.vel.x > 0) p.vel.x = 0;
           }
         }
 
-        const pWallX =
-          (level.autoScroll || geometryDashMode) && p.hasStartedMove
-            ? ((Date.now() - p.moveStartTime) / 1000) *
-              (geometryDashMode ? 260 : (level.autoScrollSpeed || 150))
-            : 0;
+        const pWallX = (level.autoScroll || geometryDashMode) && p.hasStartedMove ? (p.scrollX || 0) : 0;
 
         const dieTop =
           (p.gravityFlipped && p.pos.y + p.h < 0) ||
@@ -4485,6 +4498,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               }
             }
           } else {
+            p.deaths = (p.deaths || 0) + 1;
             spawnParticles(
               p.pos.x + p.w / 2,
               p.pos.y + p.h / 2,
@@ -4499,6 +4513,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.respawnTimer = Date.now();
             p.vel = { x: 0, y: 0 };
             resetPlayerSize(p);
+            p.deaths = (p.deaths || 0) + 1;
             onDie();
             if (isOnline) onlineService.sendEvent("die", null);
           }
@@ -4681,14 +4696,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         followedPlayer.hasStartedMove &&
         !followedPlayer.finished
       ) {
-        const scrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
-        scrollWallX.current =
-          ((Date.now() - followedPlayer.moveStartTime) / 1000) * scrollSpeed;
+        scrollWallX.current = followedPlayer.scrollX || 0;
       } else if (
         (level.autoScroll || geometryDashMode) &&
         (!followedPlayer || !followedPlayer.hasStartedMove)
       ) {
-        scrollWallX.current = 0;
+        scrollWallX.current = cameraRef.current.x; // Stay where it was initialized, instead of resetting to 0
       }
 
       if (isSpectatingNowLocal) {
@@ -4771,6 +4784,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
 
     const draw = (alpha: number) => {
+      const liveLocalPlayer = players.current.find((pl) => pl.isLocal);
+      const isSpectatingNowLocal =
+        isOnline &&
+        (liveLocalPlayer
+          ? liveLocalPlayer.finished
+          : isSpectating ||
+            (players.current.length > 0 && status.includes("playing")));
+
       ctx.fillStyle = COLORS.BG;
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -4778,8 +4799,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       
       const visualAlpha = typeof alpha === "number" ? alpha : 0;
 
-      let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * visualAlpha);
-      let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * visualAlpha);
+      // In auto-scroll and GD mode, camera is already up-to-date with Date.now().
+      // Extrapolating it with visualAlpha will double the movement and cause stuttering.
+      const useCamAlpha = (level.autoScroll || geometryDashMode) && !isSpectatingNowLocal ? 0 : visualAlpha;
+
+      let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * useCamAlpha);
+      let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * useCamAlpha);
 
       if (shakeIntensity.current > 0) {
         const shakeMult = settings.screenShake ?? 1;
@@ -5539,13 +5564,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Players
-      const liveLocalPlayer = players.current.find((pl) => pl.isLocal);
-      const isSpectatingNowLocal =
-        isOnline &&
-        (liveLocalPlayer
-          ? liveLocalPlayer.finished
-          : isSpectating ||
-            (players.current.length > 0 && status.includes("playing")));
       const activePlayers = players.current.filter((pl) => !pl.finished);
 
       players.current.forEach((p, i) => {
@@ -6204,7 +6222,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const hudT = TRANSLATIONS[lang];
         const totalCoinsAtLevel =
-          gameMode === "vs" || gameMode === "story"
+          gameMode === "vs" || gameMode === "story" || gameMode === "random_run" || geometryDashMode
             ? level.entities.filter((e) => e.type === "coin").length
             : 0;
 
@@ -6247,7 +6265,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (
             totalCoinsAtLevel > 0 &&
-            (gameMode === "vs" || gameMode === "story")
+            (gameMode === "vs" || gameMode === "story" || gameMode === "random_run" || geometryDashMode)
           ) {
             ctx.fillStyle =
               p.collectedCoinIds.length === totalCoinsAtLevel
@@ -6263,7 +6281,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // Death counter
           ctx.fillStyle = "#ef4444"; // red-500
-          ctx.fillText(`${hudT.deaths}: ${p.deaths || 0}`, startX, nextY);
+          const displayDeaths = geometryDashMode && p.isLocal ? levelDeaths : (p.deaths || 0);
+          ctx.fillText(`${hudT.deaths}: ${displayDeaths}`, startX, nextY);
           ctx.restore();
 
           // Powerup HUD for Local Player only to save space in horizontal layout
@@ -6659,8 +6678,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const loop = (timestamp: number) => {
       animationFrameId = requestAnimationFrame(loop);
-      const frameTime = timestamp - lastTime;
+      let frameTime = timestamp - lastTime;
       lastTime = timestamp;
+      
+      if (geometryDashMode) {
+        frameTime *= gdSpeedMode;
+      }
+      
       accumulator += frameTime;
       if (accumulator > 200) accumulator = 200;
       while (accumulator >= PHYSICS_STEP) {

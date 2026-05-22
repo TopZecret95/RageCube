@@ -148,6 +148,7 @@ export interface GameState {
   status: Status;
   previousStatus?: Status;
   geometryDashMode?: boolean;
+  gdSpeedMode?: number;
   currentLevelIndex: number;
   deaths: number; // Total session deaths
   levelDeaths: number; // Deaths in current level for score calc

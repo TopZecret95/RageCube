@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { secureSave, secureLoad, signData, verifyData } from "./utils/storage";
 import GameCanvas from "./components/GameCanvas";
@@ -89,7 +95,8 @@ const createGDLevel = (spec: {
   trampolines?: number[];
   gravityBlocks?: { x: number; y: number }[];
   coins?: { x: number; y: number }[];
-  platforms?: { x: number; y: number; w: number; h?: number }[];
+  platforms?: { x: number; y: number; w: number; h?: number; type?: string }[];
+  floorSegments?: { start: number; end: number; type: string }[];
   additionalEntities?: any[];
 }): LevelData => {
   const entities: any[] = [];
@@ -99,7 +106,12 @@ const createGDLevel = (spec: {
   for (let x = 0; x < spec.length; x += 30) {
     const inGap = gapList.some(([start, end]) => x >= start && x < end);
     if (!inGap) {
-      entities.push({ x, y: 480, w: 30, h: 30, type: "wall" });
+      let floorType = "wall";
+      if (spec.floorSegments) {
+         const segment = spec.floorSegments.find(s => x >= s.start && x < s.end);
+         if (segment) floorType = segment.type;
+      }
+      entities.push({ x, y: 480, w: 30, h: 30, type: floorType });
     }
   }
 
@@ -161,7 +173,7 @@ const createGDLevel = (spec: {
         y: p.y,
         w: p.w,
         h: p.h || 30,
-        type: "wall",
+        type: p.type || "wall",
       });
     });
   }
@@ -198,28 +210,34 @@ const GD_LEVEL_1_STEREO_MADNESS = createGDLevel({
   id: "gd_stereo_madness",
   name: "Stereo Madness",
   length: 4000,
-  hazards: [390, 570, 750, 780, 1020, 1170, 1200, 1230, 1560, 1710, 1890, 1920, 2220, 2400, 2430, 2760, 3060, 3090, 3120],
+  floorSegments: [{ start: 2000, end: 2600, type: "ice" }],
+  hazards: [
+    390, 570, 750, 780, 1020, 1170, 1200, 1230, 1560, 1710, 1890, 1920, 2220,
+    2400, 2430, 2760, 3060, 3090, 3120,
+  ],
   trampolines: [1950],
   platforms: [
-    { x: 900, y: 450, w: 30 },
-    { x: 930, y: 420, w: 30 },
-    { x: 960, y: 390, w: 30 },
-    { x: 1350, y: 450, w: 30 },
-    { x: 1380, y: 420, w: 30 },
-    { x: 1410, y: 450, w: 30 },
-    { x: 1600, y: 390, w: 90 },
-    { x: 2100, y: 390, w: 90 },
-    { x: 2040, y: 360, w: 60 },
-    { x: 2700, y: 360, w: 120 },
+    { x: 900, y: 450, w: 30, type: "wall" },
+    { x: 930, y: 420, w: 30, type: "wall" },
+    { x: 960, y: 390, w: 30, type: "wall" },
+    { x: 1350, y: 450, w: 30, type: "slime" },
+    { x: 1380, y: 420, w: 30, type: "slime" },
+    { x: 1410, y: 450, w: 30, type: "slime" },
+    { x: 1600, y: 390, w: 90, type: "ice" },
+    { x: 2100, y: 390, w: 90, type: "ice" },
+    { x: 2040, y: 360, w: 60, type: "wall" },
+    { x: 2700, y: 360, w: 120, type: "wall" },
   ],
   additionalEntities: [
     { x: 1630, y: 360, w: 30, h: 30, type: "hazard" },
     { x: 2130, y: 360, w: 30, h: 30, type: "hazard" },
   ],
   coins: [
-    { x: 965, y: 330 },
+    { x: 975, y: 340 },
+    { x: 1400, y: 380 },
     { x: 1635, y: 290 },
     { x: 2135, y: 290 },
+    { x: 2750, y: 300 },
   ],
 });
 
@@ -227,23 +245,24 @@ const GD_LEVEL_2_BACK_ON_TRACK = createGDLevel({
   id: "gd_back_on_track",
   name: "Back On Track",
   length: 4000,
-  hazards: [450, 1200, 1230, 1700, 2100, 2500, 2900, 2930, 3300],
-  trampolines: [800, 1400, 2300, 3100],
+  floorSegments: [{ start: 500, end: 1000, type: "slime" }],
+  hazards: [450, 900, 1500, 1530, 2100, 2500, 2900, 3100, 3130],
+  trampolines: [1800],
   platforms: [
-    { x: 830, y: 330, w: 270 },
-    { x: 1430, y: 330, w: 240 },
-    { x: 2330, y: 330, w: 210 },
-    { x: 3130, y: 300, w: 180 },
+    { x: 1100, y: 450, w: 30, type: "ice" },
+    { x: 1130, y: 420, w: 30, type: "ice" },
+    { x: 1160, y: 390, w: 120, type: "ice" },
+    { x: 1500, y: 390, w: 90, type: "wall" },
+    { x: 2300, y: 420, w: 120, type: "slime" },
+    { x: 2800, y: 360, w: 90, type: "wall" },
   ],
-  additionalEntities: [
-    { x: 950, y: 300, w: 30, h: 30, type: "hazard" },
-    { x: 1530, y: 300, w: 30, h: 30, type: "hazard" },
-    { x: 2400, y: 300, w: 30, h: 30, type: "hazard" },
-  ],
+  additionalEntities: [{ x: 1950, y: 250, w: 150, h: 30, type: "wall" }],
   coins: [
-    { x: 960, y: 240 },
-    { x: 1540, y: 240 },
-    { x: 3200, y: 200 },
+    { x: 700, y: 380 },
+    { x: 1220, y: 330 },
+    { x: 1500, y: 380 },
+    { x: 2025, y: 200 },
+    { x: 3115, y: 350 },
   ],
 });
 
@@ -251,178 +270,261 @@ const GD_LEVEL_3_POLARGEIST = createGDLevel({
   id: "gd_polargeist",
   name: "Polargeist",
   length: 4200,
-  hazards: [500, 1200, 1800, 2100, 3050, 3350, 3380],
-  platforms: [
-    { x: 700, y: 450, w: 30 },
-    { x: 730, y: 420, w: 30 },
-    { x: 760, y: 390, w: 30 },
-    { x: 790, y: 360, w: 120 },
-    { x: 1480, y: 320, w: 60, h: 160 },
-    { x: 2580, y: 320, w: 60, h: 160 },
+  gaps: [
+    [1000, 1060],
+    [2000, 2090],
   ],
-  additionalEntities: [
-    { x: 1380, y: 380, w: 30, h: 30, type: "trampoline" },
-    { x: 2480, y: 380, w: 30, h: 30, type: "trampoline" },
+  floorSegments: [{ start: 2500, end: 3200, type: "ice" }],
+  hazards: [500, 1500, 2500, 2530, 3000, 3300, 3330],
+  platforms: [
+    { x: 700, y: 450, w: 30, type: "wall" },
+    { x: 730, y: 420, w: 30, type: "wall" },
+    { x: 760, y: 390, w: 90, type: "wall" },
+    { x: 1600, y: 420, w: 60, type: "ice" },
+    { x: 1800, y: 390, w: 60, type: "ice" },
+    { x: 2650, y: 450, w: 30, type: "slime" },
+    { x: 2680, y: 420, w: 30, type: "slime" },
+    { x: 2710, y: 390, w: 120, type: "slime" },
   ],
   coins: [
-    { x: 835, y: 280 },
-    { x: 1400, y: 250 },
-    { x: 2500, y: 250 },
+    { x: 790, y: 330 },
+    { x: 1500, y: 380 },
+    { x: 2045, y: 350 },
+    { x: 2750, y: 330 },
+    { x: 3315, y: 350 },
   ],
 });
 
 const GD_LEVEL_4_DRY_OUT = createGDLevel({
   id: "gd_dry_out",
   name: "Dry Out",
-  length: 4200,
-  ceilings: [[900, 2200]],
-  hazards: [400, 600, 2500, 2800, 3100, 3400],
-  upsideDownHazards: [1100, 1400, 1700, 2000],
+  length: 4400,
+  ceilings: [[1400, 2600]],
   gravityBlocks: [
-    { x: 900, y: 450 },
-    { x: 2100, y: 180 },
+    { x: 1450, y: 420 },
+    { x: 2500, y: 210 },
   ],
+  hazards: [500, 800, 830, 1200, 2800, 3200, 3600, 3630],
+  upsideDownHazards: [1700, 2100, 2130, 2300],
   platforms: [
-    { x: 2400, y: 420, w: 90 },
+    { x: 1000, y: 450, w: 120, type: "wall" },
+    { x: 1350, y: 450, w: 30, type: "wall" },
+    { x: 1700, y: 390, w: 90, type: "ice" },
+    { x: 2900, y: 420, w: 90, type: "slime" },
   ],
+  floorSegments: [{ start: 3000, end: 3600, type: "slime" }],
   coins: [
-    { x: 1400, y: 250 },
-    { x: 1700, y: 250 },
-    { x: 2445, y: 340 },
+    { x: 500, y: 380 },
+    { x: 815, y: 350 },
+    { x: 1600, y: 250 },
+    { x: 2115, y: 250 },
+    { x: 3615, y: 350 },
   ],
 });
 
 const GD_LEVEL_5_BASE_AFTER_BASE = createGDLevel({
   id: "gd_base_after_base",
   name: "Base After Base",
-  length: 4200,
-  gaps: [[1200, 1400], [2600, 2800]],
-  hazards: [500, 750, 780, 1700, 1730, 1760, 2100, 2130, 2160, 3300, 3500],
-  trampolines: [1000],
+  length: 4600,
+  gaps: [
+    [1000, 1060],
+    [1800, 1890],
+    [3000, 3090],
+  ],
+  floorSegments: [{ start: 0, end: 1000, type: "ice" }],
+  hazards: [400, 600, 700, 1200, 1230, 2200, 2500, 2530, 2560, 3500, 3800],
+  trampolines: [1350, 2300],
+  additionalEntities: [
+    { x: 1500, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 2450, y: 250, w: 120, h: 30, type: "wall" },
+  ],
   platforms: [
-    { x: 1100, y: 380, w: 120 },
-    { x: 2500, y: 380, w: 120 },
+    { x: 850, y: 450, w: 120, type: "wall" },
+    { x: 1200, y: 450, w: 90, type: "slime" },
+    { x: 1600, y: 390, w: 90, type: "ice" },
+    { x: 2200, y: 420, w: 120, type: "wall" },
   ],
   coins: [
-    { x: 1240, y: 280 },
-    { x: 2640, y: 280 },
-    { x: 3400, y: 380 },
+    { x: 500, y: 380 },
+    { x: 1215, y: 350 },
+    { x: 2100, y: 380 },
+    { x: 2530, y: 350 },
+    { x: 3045, y: 350 },
   ],
 });
 
 const GD_LEVEL_6_CANT_LET_GO = createGDLevel({
   id: "gd_cant_let_go",
   name: "Can't Let Go",
-  length: 4400,
-  hazards: [600, 1200, 2000, 2700, 3350],
-  platforms: [
-    { x: 1000, y: 360, w: 600, h: 30 },
-    { x: 2400, y: 360, w: 600, h: 30 },
-    { x: 750, y: 450, w: 90 },
-    { x: 1800, y: 420, w: 90 },
+  length: 4800,
+  ceilings: [
+    [900, 2100],
+    [2800, 3800],
   ],
-  additionalEntities: [
-    { x: 1250, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 2650, y: 450, w: 30, h: 30, type: "hazard" },
+  gravityBlocks: [
+    { x: 950, y: 420 },
+    { x: 2000, y: 210 },
+    { x: 2850, y: 420 },
+    { x: 3700, y: 210 },
+  ],
+  gaps: [
+    [1300, 1360],
+    [1700, 1760],
+    [3100, 3190],
+    [3400, 3460],
+  ],
+  floorSegments: [{ start: 2200, end: 2800, type: "slime" }],
+  hazards: [400, 600, 2300, 2500, 2530, 4000, 4200, 4230],
+  upsideDownHazards: [1100, 1400, 1430, 1600, 1900, 3000, 3300, 3330, 3600],
+  platforms: [
+    { x: 1100, y: 420, w: 90, type: "wall" },
+    { x: 1800, y: 390, w: 90, type: "ice" },
+    { x: 2900, y: 450, w: 90, type: "slime" },
   ],
   coins: [
-    { x: 1350, y: 410 },
-    { x: 2750, y: 410 },
-    { x: 1845, y: 320 },
+    { x: 700, y: 380 },
+    { x: 1415, y: 250 },
+    { x: 2515, y: 350 },
+    { x: 3315, y: 250 },
+    { x: 4100, y: 380 },
   ],
 });
 
 const GD_LEVEL_7_JUMPER = createGDLevel({
   id: "gd_jumper",
   name: "Jumper",
-  length: 4500,
-  hazards: [500, 1000, 1600, 2800, 3400],
-  trampolines: [1300, 1800, 3000],
-  platforms: [
-    { x: 700, y: 450, w: 30 },
-    { x: 730, y: 420, w: 30 },
-    { x: 760, y: 390, w: 30 },
-    { x: 790, y: 360, w: 90 },
-    { x: 1330, y: 280, w: 200 },
-    { x: 1830, y: 250, w: 200 },
+  length: 4800,
+  gaps: [
+    [600, 660],
+    [1200, 1260],
+    [2500, 2590],
   ],
+  floorSegments: [{ start: 1000, end: 1500, type: "ice" }, { start: 2000, end: 3000, type: "ice" }],
+  hazards: [800, 1400, 1430, 1800, 2800, 3200, 3230, 3800, 4000],
+  trampolines: [1000, 1600, 2100, 3000, 3500],
   additionalEntities: [
-    { x: 1200, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 1230, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 1260, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 1700, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 1730, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 1760, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1150, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 1750, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 2250, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 3150, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 3650, y: 250, w: 120, h: 30, type: "wall" },
+  ],
+  platforms: [
+    { x: 800, y: 450, w: 120, type: "slime" },
+    { x: 1400, y: 390, w: 90, type: "wall" },
+    { x: 2000, y: 420, w: 90, type: "ice" },
   ],
   coins: [
-    { x: 1400, y: 180 },
-    { x: 1900, y: 150 },
-    { x: 3100, y: 200 },
+    { x: 1230, y: 350 },
+    { x: 1750, y: 200 },
+    { x: 2150, y: 180 },
+    { x: 2500, y: 350 },
+    { x: 3215, y: 350 },
   ],
 });
 
 const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
   id: "gd_time_machine",
   name: "Time Machine",
-  length: 4550,
-  hazards: [400, 700, 730, 2200, 2230, 2260, 2800, 2830, 2860, 3400],
-  trampolines: [1100, 1300, 1500, 1700],
-  platforms: [
-    { x: 2350, y: 450, w: 90 },
-    { x: 2950, y: 450, w: 90 },
+  length: 5000,
+  floorSegments: [{ start: 3000, end: 4000, type: "slime" }],
+  hazards: [
+    400, 800, 830, 1200, 1230, 1260, 1700, 1730, 2400, 2430, 2460, 2900, 3300,
+    3330, 3360, 4100, 4130,
   ],
+  platforms: [
+    { x: 1100, y: 390, w: 90, type: "ice" },
+    { x: 1900, y: 450, w: 30, type: "wall" },
+    { x: 1930, y: 420, w: 30, type: "wall" },
+    { x: 1960, y: 390, w: 120, type: "wall" },
+    { x: 2700, y: 450, w: 120, type: "wall" },
+    { x: 3100, y: 420, w: 90, type: "slime" },
+  ],
+  trampolines: [3600],
+  additionalEntities: [{ x: 3750, y: 250, w: 150, h: 30, type: "wall" }],
   coins: [
-    { x: 1200, y: 200 },
-    { x: 1400, y: 180 },
-    { x: 1600, y: 200 },
+    { x: 500, y: 380 },
+    { x: 1230, y: 350 },
+    { x: 2430, y: 350 },
+    { x: 2800, y: 400 },
+    { x: 3330, y: 350 },
   ],
 });
 
 const GD_LEVEL_9_CYCLES = createGDLevel({
   id: "gd_cycles",
   name: "Cycles",
-  length: 4600,
-  ceilings: [[1000, 1600], [2400, 3000]],
-  hazards: [400, 600, 1805, 1835, 2100, 3300, 3600],
-  upsideDownHazards: [1200, 1400, 2600, 2800],
+  length: 5200,
+  ceilings: [
+    [1000, 2000],
+    [3000, 4200],
+  ],
   gravityBlocks: [
-    { x: 950, y: 450 },
-    { x: 1550, y: 180 },
-    { x: 2350, y: 450 },
-    { x: 2950, y: 180 },
+    { x: 1050, y: 420 },
+    { x: 1900, y: 210 },
+    { x: 3050, y: 420 },
+    { x: 4100, y: 210 },
+  ],
+  floorSegments: [{ start: 2000, end: 3000, type: "ice" }],
+  hazards: [400, 600, 800, 830, 2300, 2330, 2360, 2700, 4500, 4530, 4560],
+  upsideDownHazards: [1200, 1400, 1430, 1700, 3200, 3230, 3500, 3530, 3800],
+  platforms: [
+    { x: 1200, y: 420, w: 90, type: "slime" },
+    { x: 1600, y: 390, w: 120, type: "wall" },
+    { x: 2500, y: 450, w: 90, type: "ice" },
   ],
   coins: [
-    { x: 1250, y: 250 },
-    { x: 2650, y: 250 },
-    { x: 3450, y: 380 },
+    { x: 1415, y: 250 },
+    { x: 2330, y: 350 },
+    { x: 3515, y: 250 },
+    { x: 4000, y: 250 },
+    { x: 4800, y: 380 },
   ],
 });
 
 const GD_LEVEL_10_CLUBSTEP = createGDLevel({
   id: "gd_clubstep",
   name: "Clubstep",
-  length: 5000,
-  ceilings: [[1400, 2200]],
-  hazards: [400, 600, 800, 2500, 2530, 2900, 2930, 2960, 3500, 4200, 4230, 4500],
-  upsideDownHazards: [1600, 1900, 2100],
-  trampolines: [950, 3100, 3800],
+  length: 5500,
+  ceilings: [
+    [1400, 2800],
+    [3600, 4800],
+  ],
   gravityBlocks: [
-    { x: 1350, y: 450 },
-    { x: 2150, y: 180 },
+    { x: 1450, y: 420 },
+    { x: 2700, y: 210 },
+    { x: 3650, y: 420 },
+    { x: 4700, y: 210 },
+  ],
+  gaps: [
+    [500, 560],
+    [900, 990],
+  ],
+  floorSegments: [{ start: 0, end: 1400, type: "slime" }, { start: 2800, end: 3600, type: "ice" }],
+  hazards: [
+    400, 700, 1050, 1080, 1110, 3100, 3130, 3400, 5000, 5030, 5060, 5300,
+  ],
+  upsideDownHazards: [
+    1600, 1800, 1830, 1860, 2200, 2400, 2430, 3800, 4000, 4030, 4060, 4400,
+  ],
+  trampolines: [300, 1200, 3200],
+  additionalEntities: [
+    { x: 450, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 1350, y: 250, w: 120, h: 30, type: "wall" },
+    { x: 3350, y: 250, w: 120, h: 30, type: "wall" },
   ],
   platforms: [
-    { x: 1050, y: 370, w: 200, h: 30 },
-    { x: 3200, y: 380, w: 300, h: 30 },
-    { x: 3850, y: 320, w: 90 },
-  ],
-  additionalEntities: [
-    { x: 1150, y: 450, w: 30, h: 30, type: "hazard" },
-    { x: 3350, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 600, y: 420, w: 90, type: "ice" },
+    { x: 1200, y: 390, w: 90, type: "slime" },
+    { x: 2000, y: 450, w: 120, type: "wall" },
+    { x: 3500, y: 420, w: 90, type: "ice" },
   ],
   coins: [
-    { x: 1150, y: 280 },
-    { x: 1750, y: 250 },
-    { x: 3350, y: 280 },
+    { x: 1080, y: 350 },
+    { x: 1830, y: 250 },
+    { x: 3000, y: 380 },
+    { x: 4030, y: 250 },
+    { x: 4900, y: 380 },
   ],
 });
 
@@ -439,40 +541,62 @@ const GD_LEVELS: LevelData[] = [
   GD_LEVEL_10_CLUBSTEP,
 ];
 
-const BRAWLER_CLASS_OPTIONS = ["standard", "fighter", "dasher", "jumper", "tank", "ninja", "heavy", "vampire"] as const;
+const BRAWLER_CLASS_OPTIONS = [
+  "standard",
+  "fighter",
+  "dasher",
+  "jumper",
+  "tank",
+  "ninja",
+  "heavy",
+  "vampire",
+] as const;
 
-const BRAWLER_DESCS: Record<string, {pos: string, neg: string}> = {
-  "fighter": { pos: "+ Starke Gesamt-Stats", neg: "- Viel längerer Dash CD" },
-  "dasher": { pos: "+ Sehr kurzer Dash CD", neg: "- Weniger Leben" },
-  "jumper": { pos: "+ Echter Triple Jump", neg: "- Weniger Leben" },
-  "tank": { pos: "+ Mehr Leben & Resistenz", neg: "- Sehr langsam" },
-  "ninja": { pos: "+ Sehr schnell & hoch", neg: "- Sehr wenig Leben" },
-  "heavy": { pos: "+ Gewaltiger Knockback", neg: "- Langsam & Massiv" },
-  "vampire": { pos: "+ Heilt bei Kill", neg: "- Extrem wenig Leben" },
+const BRAWLER_DESCS: Record<string, { pos: string; neg: string }> = {
+  fighter: { pos: "+ Starke Gesamt-Stats", neg: "- Viel längerer Dash CD" },
+  dasher: { pos: "+ Sehr kurzer Dash CD", neg: "- Weniger Leben" },
+  jumper: { pos: "+ Echter Triple Jump", neg: "- Weniger Leben" },
+  tank: { pos: "+ Mehr Leben & Resistenz", neg: "- Sehr langsam" },
+  ninja: { pos: "+ Sehr schnell & hoch", neg: "- Sehr wenig Leben" },
+  heavy: { pos: "+ Gewaltiger Knockback", neg: "- Langsam & Massiv" },
+  vampire: { pos: "+ Heilt bei Kill", neg: "- Extrem wenig Leben" },
 };
 
-const BRAWLER_STATS: Record<string, {hp: number, speed: number, jump: number}> = {
-  "standard": { hp: 10, speed: 10, jump: 10 },
-  "fighter": { hp: 12, speed: 11, jump: 7 },
-  "dasher": { hp: 8, speed: 12, jump: 10 },
-  "jumper": { hp: 8, speed: 10, jump: 12 },
-  "tank": { hp: 15, speed: 7, jump: 8 },
-  "ninja": { hp: 7, speed: 11.5, jump: 11.5 },
-  "heavy": { hp: 13, speed: 8, jump: 9 },
-  "vampire": { hp: 6, speed: 12, jump: 12 },
+const BRAWLER_STATS: Record<
+  string,
+  { hp: number; speed: number; jump: number }
+> = {
+  standard: { hp: 10, speed: 10, jump: 10 },
+  fighter: { hp: 12, speed: 11, jump: 7 },
+  dasher: { hp: 8, speed: 12, jump: 10 },
+  jumper: { hp: 8, speed: 10, jump: 12 },
+  tank: { hp: 15, speed: 7, jump: 8 },
+  ninja: { hp: 7, speed: 11.5, jump: 11.5 },
+  heavy: { hp: 13, speed: 8, jump: 9 },
+  vampire: { hp: 6, speed: 12, jump: 12 },
 };
 
 const PINGS = ["Ggwp!", "Oops!", "Help!", "Haha!", "Team?", "Wait!"];
 
-const StatBar = ({ label, value, max, color }: { label: string, value: number, max: number, color: string }) => (
+const StatBar = ({
+  label,
+  value,
+  max,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+}) => (
   <div className="w-full flex flex-col gap-0.5">
     <div className="flex justify-between text-[6px] font-black tracking-tighter uppercase text-neutral-400">
       <span>{label}</span>
       <span>{Math.round(value)}</span>
     </div>
     <div className="w-full h-1 bg-black/50 rounded-full overflow-hidden border border-white/5">
-      <div 
-        className={`h-full ${color} transition-all duration-500`} 
+      <div
+        className={`h-full ${color} transition-all duration-500`}
         style={{ width: `${(value / max) * 100}%` }}
       />
     </div>
@@ -483,100 +607,104 @@ const StatBar = ({ label, value, max, color }: { label: string, value: number, m
 
 const SHOP_ITEMS = [
   // Death Animations (10 total)
-  { id: 'normal', type: 'deathAnim', name: 'None', price: 0 }, // 1
-  { id: 'blood', type: 'deathAnim', name: 'Blood Pop', price: 250 }, // 2
-  { id: 'confetti', type: 'deathAnim', name: 'Confetti Party', price: 350 }, // 3
-  { id: 'firework', type: 'deathAnim', name: 'Glow Burst', price: 450 }, // 4
-  { id: 'dust', type: 'deathAnim', name: 'Poof Cloud', price: 250 }, // 5
-  { id: 'electric', type: 'deathAnim', name: 'Volt Burst', price: 500 }, // 6
-  { id: 'ghost', type: 'deathAnim', name: 'Soul Release', price: 550 }, // 7
-  { id: 'freeze', type: 'deathAnim', name: 'Ice Shatter', price: 600 }, // 8
-  { id: 'blackhole', type: 'deathAnim', name: 'Void Collapse', price: 750 }, // 9
-  { id: 'bubble', type: 'deathAnim', name: 'Bubble Pop', price: 400 }, // 10
+  { id: "normal", type: "deathAnim", name: "None", price: 0 }, // 1
+  { id: "blood", type: "deathAnim", name: "Blood Pop", price: 250 }, // 2
+  { id: "confetti", type: "deathAnim", name: "Confetti Party", price: 350 }, // 3
+  { id: "firework", type: "deathAnim", name: "Glow Burst", price: 450 }, // 4
+  { id: "dust", type: "deathAnim", name: "Poof Cloud", price: 250 }, // 5
+  { id: "electric", type: "deathAnim", name: "Volt Burst", price: 500 }, // 6
+  { id: "ghost", type: "deathAnim", name: "Soul Release", price: 550 }, // 7
+  { id: "freeze", type: "deathAnim", name: "Ice Shatter", price: 600 }, // 8
+  { id: "blackhole", type: "deathAnim", name: "Void Collapse", price: 750 }, // 9
+  { id: "bubble", type: "deathAnim", name: "Bubble Pop", price: 400 }, // 10
 
   // Trail Types (10 total)
-  { id: 'normal', type: 'trailType', name: 'Standard (Free)', price: 0 }, // 1
-  { id: 'pixel-fire', type: 'trailType', name: 'Flame Trail', price: 300 }, // 2
-  { id: 'stardust', type: 'trailType', name: 'Galaxy Dust', price: 400 }, // 3
-  { id: 'slime', type: 'trailType', name: 'Ooze Trail', price: 350 }, // 4
-  { id: 'rainbow-pulse', type: 'trailType', name: 'RGB Flow', price: 600 }, // 5
-  { id: 'ghostly', type: 'trailType', name: 'Phantom Vapor', price: 500 }, // 6
-  { id: 'bubble-trail', type: 'trailType', name: 'Deep Sea', price: 450 }, // 7
-  { id: 'spark-trail', type: 'trailType', name: 'Electric Spark', price: 550 }, // 8
-  { id: 'shadow-trail', type: 'trailType', name: 'Dark Void', price: 700 }, // 9
-  { id: 'neon-trail', type: 'trailType', name: 'Cyber Neon', price: 750 }, // 10
-  { id: 'matrix_trail', type: 'trailType', name: 'Matrix Code', price: 99999 },
+  { id: "normal", type: "trailType", name: "Standard (Free)", price: 0 }, // 1
+  { id: "pixel-fire", type: "trailType", name: "Flame Trail", price: 300 }, // 2
+  { id: "stardust", type: "trailType", name: "Galaxy Dust", price: 400 }, // 3
+  { id: "slime", type: "trailType", name: "Ooze Trail", price: 350 }, // 4
+  { id: "rainbow-pulse", type: "trailType", name: "RGB Flow", price: 600 }, // 5
+  { id: "ghostly", type: "trailType", name: "Phantom Vapor", price: 500 }, // 6
+  { id: "bubble-trail", type: "trailType", name: "Deep Sea", price: 450 }, // 7
+  { id: "spark-trail", type: "trailType", name: "Electric Spark", price: 550 }, // 8
+  { id: "shadow-trail", type: "trailType", name: "Dark Void", price: 700 }, // 9
+  { id: "neon-trail", type: "trailType", name: "Cyber Neon", price: 750 }, // 10
+  { id: "matrix_trail", type: "trailType", name: "Matrix Code", price: 99999 },
 
   // Death Sounds (10 total)
-  { id: 'default', type: 'deathSound', name: 'Standard (Free)', price: 0 },
-  { id: 'fart', type: 'deathSound', name: 'Fart', price: 100 },
-  { id: 'explosion', type: 'deathSound', name: 'Explosion', price: 150 },
-  { id: 'whistle_down', type: 'deathSound', name: 'Falling Whistle', price: 200 },
-  { id: 'power_down', type: 'deathSound', name: 'Power Down', price: 250 },
-  { id: 'glass', type: 'deathSound', name: 'Shatter', price: 300 },
-  { id: 'splat', type: 'deathSound', name: 'Splat', price: 250 },
-  { id: 'crunch', type: 'deathSound', name: 'Crunch', price: 200 },
-  { id: 'glitch', type: 'deathSound', name: 'Glitch Out', price: 350 },
-  { id: 'sad_trombone', type: 'deathSound', name: 'Sad Trombone', price: 400 },
-  { id: 'boing_die', type: 'deathSound', name: 'Boing', price: 150 },
+  { id: "default", type: "deathSound", name: "Standard (Free)", price: 0 },
+  { id: "fart", type: "deathSound", name: "Fart", price: 100 },
+  { id: "explosion", type: "deathSound", name: "Explosion", price: 150 },
+  {
+    id: "whistle_down",
+    type: "deathSound",
+    name: "Falling Whistle",
+    price: 200,
+  },
+  { id: "power_down", type: "deathSound", name: "Power Down", price: 250 },
+  { id: "glass", type: "deathSound", name: "Shatter", price: 300 },
+  { id: "splat", type: "deathSound", name: "Splat", price: 250 },
+  { id: "crunch", type: "deathSound", name: "Crunch", price: 200 },
+  { id: "glitch", type: "deathSound", name: "Glitch Out", price: 350 },
+  { id: "sad_trombone", type: "deathSound", name: "Sad Trombone", price: 400 },
+  { id: "boing_die", type: "deathSound", name: "Boing", price: 150 },
 
   // Eyes (Prices 50-250)
-  { id: 'normal', type: 'eyes', name: 'Default', price: 0 },
-  { id: 'angry', type: 'eyes', name: 'Angry Eyes', price: 50 },
-  { id: 'cyclops', type: 'eyes', name: 'Cyclops', price: 100 },
-  { id: 'derp', type: 'eyes', name: 'Derp Eyes', price: 50 },
-  { id: 'anime', type: 'eyes', name: 'Anime Eyes', price: 150 },
-  { id: 'dead', type: 'eyes', name: 'Dead Eyes', price: 100 },
-  { id: 'sunglasses', type: 'eyes', name: 'Cool Shades', price: 200 },
-  { id: 'pirate', type: 'eyes', name: 'Pirate Patch', price: 200 },
-  { id: 'rich', type: 'eyes', name: 'Money Eyes', price: 250 },
-  { id: 'glowing', type: 'eyes', name: 'Neon Glow', price: 180 },
-  { id: 'ninja', type: 'eyes', name: 'Ninja Mask', price: 220 },
-  { id: 'tired', type: 'eyes', name: 'Tired Eyes', price: 80 },
-  { id: 'laser', type: 'eyes', name: 'Laser Beam', price: 250 },
-  { id: 'kawaii', type: 'eyes', name: 'Kawaii', price: 150 },
-  { id: 'monocle', type: 'eyes', name: 'Gentleman', price: 180 },
-  { id: 'masked', type: 'eyes', name: 'Secret Mask', price: 200 },
-  { id: 'alien', type: 'eyes', name: 'Alien Eyes', price: 150 },
-  { id: 'cyborg', type: 'eyes', name: 'Cyborg Eye', price: 250 },
-  { id: 'stars', type: 'eyes', name: 'Star Eyes', price: 120 },
-  { id: 'hearts', type: 'eyes', name: 'Heart Eyes', price: 120 },
-  { id: 'hypno', type: 'eyes', name: 'Hypno Eyes', price: 250 },
-  { id: 'googly', type: 'eyes', name: 'Googly Eyes', price: 60 },
-  { id: 'void_eyes', type: 'eyes', name: 'Void Eyes', price: 99999 },
-  { id: 'evil', type: 'eyes', name: 'Evil Eyes', price: 666 },
+  { id: "normal", type: "eyes", name: "Default", price: 0 },
+  { id: "angry", type: "eyes", name: "Angry Eyes", price: 50 },
+  { id: "cyclops", type: "eyes", name: "Cyclops", price: 100 },
+  { id: "derp", type: "eyes", name: "Derp Eyes", price: 50 },
+  { id: "anime", type: "eyes", name: "Anime Eyes", price: 150 },
+  { id: "dead", type: "eyes", name: "Dead Eyes", price: 100 },
+  { id: "sunglasses", type: "eyes", name: "Cool Shades", price: 200 },
+  { id: "pirate", type: "eyes", name: "Pirate Patch", price: 200 },
+  { id: "rich", type: "eyes", name: "Money Eyes", price: 250 },
+  { id: "glowing", type: "eyes", name: "Neon Glow", price: 180 },
+  { id: "ninja", type: "eyes", name: "Ninja Mask", price: 220 },
+  { id: "tired", type: "eyes", name: "Tired Eyes", price: 80 },
+  { id: "laser", type: "eyes", name: "Laser Beam", price: 250 },
+  { id: "kawaii", type: "eyes", name: "Kawaii", price: 150 },
+  { id: "monocle", type: "eyes", name: "Gentleman", price: 180 },
+  { id: "masked", type: "eyes", name: "Secret Mask", price: 200 },
+  { id: "alien", type: "eyes", name: "Alien Eyes", price: 150 },
+  { id: "cyborg", type: "eyes", name: "Cyborg Eye", price: 250 },
+  { id: "stars", type: "eyes", name: "Star Eyes", price: 120 },
+  { id: "hearts", type: "eyes", name: "Heart Eyes", price: 120 },
+  { id: "hypno", type: "eyes", name: "Hypno Eyes", price: 250 },
+  { id: "googly", type: "eyes", name: "Googly Eyes", price: 60 },
+  { id: "void_eyes", type: "eyes", name: "Void Eyes", price: 99999 },
+  { id: "evil", type: "eyes", name: "Evil Eyes", price: 666 },
 
   // Accessories (Prices 50-250)
-  { id: 'none', type: 'accessory', name: 'None', price: 0 },
-  { id: 'crown', type: 'accessory', name: 'King Crown', price: 250 },
-  { id: 'horns', type: 'accessory', name: 'Devil Horns', price: 100 },
-  { id: 'headband', type: 'accessory', name: 'Ninja Band', price: 80 },
-  { id: 'cowboy', type: 'accessory', name: 'Cowboy Hat', price: 150 },
-  { id: 'viking', type: 'accessory', name: 'Viking Helmet', price: 180 },
-  { id: 'halo', type: 'accessory', name: 'Angel Halo', price: 250 },
-  { id: 'headphones', type: 'accessory', name: 'Beats', price: 120 },
-  { id: 'tophat', type: 'accessory', name: 'Top Hat', price: 200 },
-  { id: 'cap', type: 'accessory', name: 'Sport Cap', price: 80 },
-  { id: 'propeller', type: 'accessory', name: 'Propeller Hat', price: 150 },
-  { id: 'cat_ears', type: 'accessory', name: 'Neko Ears', price: 120 },
-  { id: 'demon_horns', type: 'accessory', name: 'Greater Horns', price: 220 },
-  { id: 'builder_hat', type: 'accessory', name: 'Hard Hat', price: 90 },
-  { id: 'wizard_hat', type: 'accessory', name: 'Mage Hat', price: 250 },
-  { id: 'bunny_ears', type: 'accessory', name: 'Bunny Ears', price: 120 },
-  { id: 'pirate_hat', type: 'accessory', name: 'Captain Hat', price: 150 },
-  { id: 'party_hat', type: 'accessory', name: 'Birthday!', price: 70 },
-  { id: 'sombrero', type: 'accessory', name: 'Sombrero', price: 130 },
-  { id: 'ushanka', type: 'accessory', name: 'Ushanka', price: 110 },
-  { id: 'fedora', type: 'accessory', name: 'Fedora', price: 150 },
-  { id: 'chef', type: 'accessory', name: 'Chef Hat', price: 90 },
-  { id: 'police', type: 'accessory', name: 'Police Cap', price: 140 },
-  { id: 'pumpkin', type: 'accessory', name: 'Pumpkin Head', price: 250 },
-  { id: 'secret_crown', type: 'accessory', name: 'Hacker Crown', price: 99999 },
-  { id: 'rainbow_horn', type: 'accessory', name: 'Rainbow Horn', price: 99999 },
-  { id: 'ghost_sheet', type: 'accessory', name: 'Ghost Sheet', price: 99999 },
-  { id: 'coffee_cup', type: 'accessory', name: 'Coffee Cup', price: 99999 },
+  { id: "none", type: "accessory", name: "None", price: 0 },
+  { id: "crown", type: "accessory", name: "King Crown", price: 250 },
+  { id: "horns", type: "accessory", name: "Devil Horns", price: 100 },
+  { id: "headband", type: "accessory", name: "Ninja Band", price: 80 },
+  { id: "cowboy", type: "accessory", name: "Cowboy Hat", price: 150 },
+  { id: "viking", type: "accessory", name: "Viking Helmet", price: 180 },
+  { id: "halo", type: "accessory", name: "Angel Halo", price: 250 },
+  { id: "headphones", type: "accessory", name: "Beats", price: 120 },
+  { id: "tophat", type: "accessory", name: "Top Hat", price: 200 },
+  { id: "cap", type: "accessory", name: "Sport Cap", price: 80 },
+  { id: "propeller", type: "accessory", name: "Propeller Hat", price: 150 },
+  { id: "cat_ears", type: "accessory", name: "Neko Ears", price: 120 },
+  { id: "demon_horns", type: "accessory", name: "Greater Horns", price: 220 },
+  { id: "builder_hat", type: "accessory", name: "Hard Hat", price: 90 },
+  { id: "wizard_hat", type: "accessory", name: "Mage Hat", price: 250 },
+  { id: "bunny_ears", type: "accessory", name: "Bunny Ears", price: 120 },
+  { id: "pirate_hat", type: "accessory", name: "Captain Hat", price: 150 },
+  { id: "party_hat", type: "accessory", name: "Birthday!", price: 70 },
+  { id: "sombrero", type: "accessory", name: "Sombrero", price: 130 },
+  { id: "ushanka", type: "accessory", name: "Ushanka", price: 110 },
+  { id: "fedora", type: "accessory", name: "Fedora", price: 150 },
+  { id: "chef", type: "accessory", name: "Chef Hat", price: 90 },
+  { id: "police", type: "accessory", name: "Police Cap", price: 140 },
+  { id: "pumpkin", type: "accessory", name: "Pumpkin Head", price: 250 },
+  { id: "secret_crown", type: "accessory", name: "Hacker Crown", price: 99999 },
+  { id: "rainbow_horn", type: "accessory", name: "Rainbow Horn", price: 99999 },
+  { id: "ghost_sheet", type: "accessory", name: "Ghost Sheet", price: 99999 },
+  { id: "coffee_cup", type: "accessory", name: "Coffee Cup", price: 99999 },
 ];
-
 
 const LevelMenu = ({
   categories,
@@ -917,33 +1045,43 @@ const MenuButton = React.memo(
       className={`
         ${className.includes("w-") ? "" : "w-full"} py-3 px-4 font-arcade text-[10px] md:text-sm font-bold uppercase tracking-[0.2em] transition-all transform-gpu will-change-transform box-border
         relative overflow-hidden flex items-center justify-center text-center ${className}
-        ${
-          danger 
-            ? "bg-red-950 text-red-500 border-2" 
-            : "lava-btn-bg border-2"
-        }
+        ${danger ? "bg-red-950 text-red-500 border-2" : "lava-btn-bg border-2"}
         ${
           disabled
             ? "opacity-40 cursor-not-allowed grayscale"
             : isSelected
-              ? (danger ? "border-red-400 scale-105 z-20 brightness-150 shadow-[0_0_20px_#ff000044]" : "lava-border-active scale-105 z-20 brightness-125 shadow-[0_0_20px_#ea710844]")
-              : (danger ? "border-red-800 hover:brightness-110" : "lava-border hover:brightness-110")
+              ? danger
+                ? "border-red-400 scale-105 z-20 brightness-150 shadow-[0_0_20px_#ff000044]"
+                : "lava-border-active scale-105 z-20 brightness-125 shadow-[0_0_20px_#ea710844]"
+              : danger
+                ? "border-red-800 hover:brightness-110"
+                : "lava-border hover:brightness-110"
         }
       `}
     >
       {/* Lava glow effect inside */}
-      {!danger && <div className="absolute inset-0 bg-gradient-to-t from-red-900/40 to-transparent pointer-events-none"></div>}
-      
+      {!danger && (
+        <div className="absolute inset-0 bg-gradient-to-t from-red-900/40 to-transparent pointer-events-none"></div>
+      )}
+
       {/* Selected electric dots */}
       {isSelected && (
         <>
-          <div className={`absolute left-1 top-1 w-1.5 h-1.5 ${danger ? 'bg-red-400' : 'bg-white'} shadow-[0_0_10px_#fff]`}></div>
-          <div className={`absolute right-1 top-1 w-1.5 h-1.5 ${danger ? 'bg-red-400' : 'bg-white'} shadow-[0_0_10px_#fff]`}></div>
-          <div className={`absolute left-1 bottom-1 w-1.5 h-1.5 ${danger ? 'bg-red-400' : 'bg-white'} shadow-[0_0_10px_#fff]`}></div>
-          <div className={`absolute right-1 bottom-1 w-1.5 h-1.5 ${danger ? 'bg-red-400' : 'bg-white'} shadow-[0_0_10px_#fff]`}></div>
+          <div
+            className={`absolute left-1 top-1 w-1.5 h-1.5 ${danger ? "bg-red-400" : "bg-white"} shadow-[0_0_10px_#fff]`}
+          ></div>
+          <div
+            className={`absolute right-1 top-1 w-1.5 h-1.5 ${danger ? "bg-red-400" : "bg-white"} shadow-[0_0_10px_#fff]`}
+          ></div>
+          <div
+            className={`absolute left-1 bottom-1 w-1.5 h-1.5 ${danger ? "bg-red-400" : "bg-white"} shadow-[0_0_10px_#fff]`}
+          ></div>
+          <div
+            className={`absolute right-1 bottom-1 w-1.5 h-1.5 ${danger ? "bg-red-400" : "bg-white"} shadow-[0_0_10px_#fff]`}
+          ></div>
         </>
       )}
-      
+
       <span className="relative z-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] whitespace-normal text-center leading-tight">
         {label}
       </span>
@@ -1104,23 +1242,23 @@ const SettingsSlider = React.memo(
   },
 );
 
-const ItemPreview = ({ 
-  item, 
-  customization 
-}: { 
-  item: any, 
-  customization: PlayerCustomization 
+const ItemPreview = ({
+  item,
+  customization,
+}: {
+  item: any;
+  customization: PlayerCustomization;
 }) => {
   const previewCustom = {
     ...customization,
-    [item.type]: item.id
+    [item.type]: item.id,
   };
 
   return (
     <div className="w-20 h-20 bg-neutral-950 border border-neutral-800 rounded-lg overflow-hidden flex items-center justify-center p-0 shadow-inner group-hover:border-neutral-600 transition-colors">
-       <div className="w-16 h-16">
-         <CharacterPreview customization={previewCustom} scale={3} />
-       </div>
+      <div className="w-16 h-16">
+        <CharacterPreview customization={previewCustom} scale={3} />
+      </div>
     </div>
   );
 };
@@ -1161,34 +1299,63 @@ const App: React.FC = () => {
 
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (typeof parsed.musicVolume !== 'number' || isNaN(parsed.musicVolume)) parsed.musicVolume = 0.3;
-      if (typeof parsed.sfxVolume !== 'number' || isNaN(parsed.sfxVolume)) parsed.sfxVolume = 0.5;
-      if (typeof parsed.deathVolume !== 'number' || isNaN(parsed.deathVolume)) parsed.deathVolume = 0.5;
-      if (typeof parsed.showGhost !== 'boolean') parsed.showGhost = true;
-      if (typeof parsed.editorEdgeScroll !== 'boolean') parsed.editorEdgeScroll = true;
-      if (typeof parsed.editorScrollSpeed !== 'number' || isNaN(parsed.editorScrollSpeed)) parsed.editorScrollSpeed = 350;
-      if (typeof parsed.uiScale !== 'number' || isNaN(parsed.uiScale)) parsed.uiScale = 1;
-      if (typeof parsed.playerName !== 'string') parsed.playerName = "";
-      if (typeof parsed.opponentOpacity !== 'number' || isNaN(parsed.opponentOpacity)) parsed.opponentOpacity = 0.5;
-      if (typeof parsed.resolutionScale !== 'number' || isNaN(parsed.resolutionScale)) parsed.resolutionScale = 1080;
+      if (typeof parsed.musicVolume !== "number" || isNaN(parsed.musicVolume))
+        parsed.musicVolume = 0.3;
+      if (typeof parsed.sfxVolume !== "number" || isNaN(parsed.sfxVolume))
+        parsed.sfxVolume = 0.5;
+      if (typeof parsed.deathVolume !== "number" || isNaN(parsed.deathVolume))
+        parsed.deathVolume = 0.5;
+      if (typeof parsed.showGhost !== "boolean") parsed.showGhost = true;
+      if (typeof parsed.editorEdgeScroll !== "boolean")
+        parsed.editorEdgeScroll = true;
+      if (
+        typeof parsed.editorScrollSpeed !== "number" ||
+        isNaN(parsed.editorScrollSpeed)
+      )
+        parsed.editorScrollSpeed = 350;
+      if (typeof parsed.uiScale !== "number" || isNaN(parsed.uiScale))
+        parsed.uiScale = 1;
+      if (typeof parsed.playerName !== "string") parsed.playerName = "";
+      if (
+        typeof parsed.opponentOpacity !== "number" ||
+        isNaN(parsed.opponentOpacity)
+      )
+        parsed.opponentOpacity = 0.5;
+      if (
+        typeof parsed.resolutionScale !== "number" ||
+        isNaN(parsed.resolutionScale)
+      )
+        parsed.resolutionScale = 1080;
       if (!parsed.keybindingsP1) parsed.keybindingsP1 = defaultKeybindingsP1;
       else {
-        if (!parsed.keybindingsP1.dash) parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
+        if (!parsed.keybindingsP1.dash)
+          parsed.keybindingsP1.dash = defaultKeybindingsP1.dash;
         // Make sure space is added to jump for P1 if missing
-        if (!parsed.keybindingsP1.up.includes("Space")) parsed.keybindingsP1.up.push("Space");
+        if (!parsed.keybindingsP1.up.includes("Space"))
+          parsed.keybindingsP1.up.push("Space");
         // Strip GP bindings from existing settings
-        (Object.keys(parsed.keybindingsP1) as Array<keyof Keybindings>).forEach(key => {
-            parsed.keybindingsP1[key] = parsed.keybindingsP1[key].filter((k: string) => !k.startsWith("GP_"));
-        });
+        (Object.keys(parsed.keybindingsP1) as Array<keyof Keybindings>).forEach(
+          (key) => {
+            parsed.keybindingsP1[key] = parsed.keybindingsP1[key].filter(
+              (k: string) => !k.startsWith("GP_"),
+            );
+          },
+        );
       }
-      
+
       if (!parsed.keybindingsP2) parsed.keybindingsP2 = defaultKeybindingsP2;
       else {
-        if (!parsed.keybindingsP2.dash) parsed.keybindingsP2.dash = defaultKeybindingsP2.dash;
+        if (!parsed.keybindingsP2.dash)
+          parsed.keybindingsP2.dash = defaultKeybindingsP2.dash;
         // Strip GP bindings from existing settings
-        (Object.keys(parsed.keybindingsP2) as Array<keyof Keybindings>).forEach(key => {
-            parsed.keybindingsP2[key] = parsed.keybindingsP2[key].filter((k: string) => !k.startsWith("GP_") && !(key === "up" && k === "Space"));
-        });
+        (Object.keys(parsed.keybindingsP2) as Array<keyof Keybindings>).forEach(
+          (key) => {
+            parsed.keybindingsP2[key] = parsed.keybindingsP2[key].filter(
+              (k: string) =>
+                !k.startsWith("GP_") && !(key === "up" && k === "Space"),
+            );
+          },
+        );
       }
       return parsed;
     }
@@ -1232,7 +1399,7 @@ const App: React.FC = () => {
       if (!isRainbowUnlocked) {
         setIsRainbowUnlocked(true);
         audio.playSfx("secret");
-        setCustomization(prev => ({ ...prev, accessory: 'unicorn' }));
+        setCustomization((prev) => ({ ...prev, accessory: "unicorn" }));
       }
     } else if (lowerColor === "#ffffff") {
       if (!isInvisibleUnlocked) {
@@ -1262,7 +1429,15 @@ const App: React.FC = () => {
       if (isMatrixUnlocked) setIsMatrixUnlocked(false);
       if (isVoidUnlocked) setIsVoidUnlocked(false);
     }
-  }, [customization.color, isAdminUnlocked, isRainbowUnlocked, isInvisibleUnlocked, isCoffeeUnlocked, isMatrixUnlocked, isVoidUnlocked]);
+  }, [
+    customization.color,
+    isAdminUnlocked,
+    isRainbowUnlocked,
+    isInvisibleUnlocked,
+    isCoffeeUnlocked,
+    isMatrixUnlocked,
+    isVoidUnlocked,
+  ]);
 
   // Editor State
   const [editorData, setEditorData] = useState<LevelData | null>(null);
@@ -1280,7 +1455,6 @@ const App: React.FC = () => {
     player: 1 | 2;
     action: keyof Keybindings;
   } | null>(null);
-
 
   const [highscoreLevelIndex, setHighscoreLevelIndex] = useState(0);
   const [globalScores, setGlobalScores] = useState<LeaderboardEntry[]>([]);
@@ -1303,31 +1477,51 @@ const App: React.FC = () => {
 
   const unlockEverything = () => {
     // Unlock all shop items
-    const allDeathAnims = SHOP_ITEMS.filter(i => i.type === 'deathAnim').map(i => i.id);
-    const allDeathSounds = SHOP_ITEMS.filter(i => i.type === 'deathSound').map(i => i.id);
-    const allTrails = SHOP_ITEMS.filter(i => i.type === 'trailType').map(i => i.id);
-    const allEyes = SHOP_ITEMS.filter(i => i.type === 'eyes').map(i => i.id);
-    const allAccessories = SHOP_ITEMS.filter(i => i.type === 'accessory').map(i => i.id);
+    const allDeathAnims = SHOP_ITEMS.filter((i) => i.type === "deathAnim").map(
+      (i) => i.id,
+    );
+    const allDeathSounds = SHOP_ITEMS.filter(
+      (i) => i.type === "deathSound",
+    ).map((i) => i.id);
+    const allTrails = SHOP_ITEMS.filter((i) => i.type === "trailType").map(
+      (i) => i.id,
+    );
+    const allEyes = SHOP_ITEMS.filter((i) => i.type === "eyes").map(
+      (i) => i.id,
+    );
+    const allAccessories = SHOP_ITEMS.filter((i) => i.type === "accessory").map(
+      (i) => i.id,
+    );
 
-    setCustomization(p => ({
+    setCustomization((p) => ({
       ...p,
-      unlockedDeathAnims: Array.from(new Set([...(p.unlockedDeathAnims || []), ...allDeathAnims])),
-      unlockedDeathSounds: Array.from(new Set([...(p.unlockedDeathSounds || []), ...allDeathSounds])),
-      unlockedTrails: Array.from(new Set([...(p.unlockedTrails || []), ...allTrails])),
-      unlockedEyes: Array.from(new Set([...(p.unlockedEyes || []), ...allEyes])),
-      unlockedAccessories: Array.from(new Set([...(p.unlockedAccessories || []), ...allAccessories])),
-      coins: p.coins + 999999 // Give a massive coin boost
+      unlockedDeathAnims: Array.from(
+        new Set([...(p.unlockedDeathAnims || []), ...allDeathAnims]),
+      ),
+      unlockedDeathSounds: Array.from(
+        new Set([...(p.unlockedDeathSounds || []), ...allDeathSounds]),
+      ),
+      unlockedTrails: Array.from(
+        new Set([...(p.unlockedTrails || []), ...allTrails]),
+      ),
+      unlockedEyes: Array.from(
+        new Set([...(p.unlockedEyes || []), ...allEyes]),
+      ),
+      unlockedAccessories: Array.from(
+        new Set([...(p.unlockedAccessories || []), ...allAccessories]),
+      ),
+      coins: p.coins + 999999, // Give a massive coin boost
     }));
 
     // Unlock all achievements
-    const allAchievementIds = ACHIEVEMENTS_LIST.map(a => a.id);
-    setGameState(p => ({
+    const allAchievementIds = ACHIEVEMENTS_LIST.map((a) => a.id);
+    setGameState((p) => ({
       ...p,
-      unlockedAchievements: allAchievementIds
+      unlockedAchievements: allAchievementIds,
     }));
 
     showToast("🔓 ADMIN UNLOCK ACTIVATED!");
-    audio.playSfx('goal');
+    audio.playSfx("goal");
   };
 
   // Source Toggle for VS Mode and Highscores ('beginner', 'advanced', 'expert', 'god', 'custom', 'brawler', 'builtin')
@@ -1368,9 +1562,12 @@ const App: React.FC = () => {
   const [brawlerHazardMode, setBrawlerHazardMode] =
     useState<BrawlerHazardMode>("none");
   const [brawlerSuddenDeath, setBrawlerSuddenDeath] = useState<boolean>(true);
-  const [brawlerComboPowerups, setBrawlerComboPowerups] = useState<boolean>(false);
+  const [brawlerComboPowerups, setBrawlerComboPowerups] =
+    useState<boolean>(false);
   const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
-  const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">("effects");
+  const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">(
+    "effects",
+  );
   const [hoveredShopItem, setHoveredShopItem] = useState<any>(null);
 
   // Check intro status
@@ -1420,9 +1617,7 @@ const App: React.FC = () => {
     const loadAssets = async () => {
       assetLoader.onProgress((p) => setAssetLoadProgress(p));
       try {
-        await Promise.all([
-          assetLoader.loadImage("intro", "/intro.png"),
-        ]);
+        await Promise.all([assetLoader.loadImage("intro", "/intro.png")]);
         setTimeout(() => setIsAssetsLoaded(true), 800);
       } catch (err) {
         console.error("Asset loading failed", err);
@@ -1438,7 +1633,9 @@ const App: React.FC = () => {
 
   const [respawnTrigger, setRespawnTrigger] = useState(0);
   const [resetTrigger, setResetTrigger] = useState(0);
-  const [achievementToast, setAchievementToast] = useState<Achievement | null>(null);
+  const [achievementToast, setAchievementToast] = useState<Achievement | null>(
+    null,
+  );
 
   const [onlineLobbyInput, setOnlineLobbyInput] = useState("");
   const [showJoinPrompt, setShowJoinPrompt] = useState(false);
@@ -1446,7 +1643,8 @@ const App: React.FC = () => {
     null,
   );
   const [kickMenuOpen, setKickMenuOpen] = useState(false);
-  const [kickConfirmTarget, setKickConfirmTarget] = useState<OnlinePlayer | null>(null);
+  const [kickConfirmTarget, setKickConfirmTarget] =
+    useState<OnlinePlayer | null>(null);
   const [voteConfirmType, setVoteConfirmType] = useState<VoteType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
@@ -1472,115 +1670,148 @@ const App: React.FC = () => {
 
   const handleExportSave = useCallback(() => {
     const saveData = {
-      ragecube_settings: JSON.parse(localStorage.getItem("ragecube_settings") || "{}"),
+      ragecube_settings: JSON.parse(
+        localStorage.getItem("ragecube_settings") || "{}",
+      ),
       ragecube_customization: secureLoad("ragecube_customization"),
       ragecube_achievements: secureLoad("ragecube_achievements"),
       ragecube_stats: secureLoad("ragecube_stats"),
       ragecube_highscores_v2: secureLoad("ragecube_highscores_v2"),
       ragecube_custom_levels: secureLoad("ragecube_custom_levels"),
     };
-    
+
     // Sign the whole saveData object
     const signedData = signData(saveData);
-    
-    const blob = new Blob([JSON.stringify(signedData, null, 2)], { type: "application/json" });
+
+    const blob = new Blob([JSON.stringify(signedData, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ragecube_save_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `ragecube_save_${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, []);
 
-  const handleImportSave = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImportSave = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        let parsedObject;
+      const reader = new FileReader();
+      reader.onload = (e) => {
         try {
-          parsedObject = JSON.parse(content);
-        } catch (e) {
-          alert(lang === Language.DE ? "Fehler: Die Datei ist kein gültiges Speicherstand-Format (Ungültiges JSON)." : "Error: The file is not a valid save format (Invalid JSON).");
-          return;
-        }
-        
-        // Verify signature
-        const data = verifyData(parsedObject);
-        if (data === null) {
-          showToast(lang === Language.DE ? "Der Import hat wegen Dateimanipulation nicht funktioniert." : "The import failed due to file manipulation.");
-          return;
-        }
+          const content = e.target?.result as string;
+          let parsedObject;
+          try {
+            parsedObject = JSON.parse(content);
+          } catch (e) {
+            alert(
+              lang === Language.DE
+                ? "Fehler: Die Datei ist kein gültiges Speicherstand-Format (Ungültiges JSON)."
+                : "Error: The file is not a valid save format (Invalid JSON).",
+            );
+            return;
+          }
 
-        // Basic validation
-        if (!data || typeof data !== 'object') {
-          alert(lang === Language.DE ? "Fehler: Die Datei enthält keine gültigen Daten." : "Error: The file does not contain valid data.");
-          return;
-        }
+          // Verify signature
+          const data = verifyData(parsedObject);
+          if (data === null) {
+            showToast(
+              lang === Language.DE
+                ? "Der Import hat wegen Dateimanipulation nicht funktioniert."
+                : "The import failed due to file manipulation.",
+            );
+            return;
+          }
 
-        if (data.ragecube_settings) {
-          localStorage.setItem("ragecube_settings", JSON.stringify(data.ragecube_settings));
-          setSettings(data.ragecube_settings);
+          // Basic validation
+          if (!data || typeof data !== "object") {
+            alert(
+              lang === Language.DE
+                ? "Fehler: Die Datei enthält keine gültigen Daten."
+                : "Error: The file does not contain valid data.",
+            );
+            return;
+          }
+
+          if (data.ragecube_settings) {
+            localStorage.setItem(
+              "ragecube_settings",
+              JSON.stringify(data.ragecube_settings),
+            );
+            setSettings(data.ragecube_settings);
+          }
+          if (data.ragecube_customization) {
+            secureSave("ragecube_customization", data.ragecube_customization);
+            setCustomization(data.ragecube_customization);
+          }
+          if (data.ragecube_achievements) {
+            secureSave("ragecube_achievements", data.ragecube_achievements);
+            setGameState((p) => ({
+              ...p,
+              unlockedAchievements: data.ragecube_achievements,
+            }));
+          }
+          if (data.ragecube_stats) {
+            secureSave("ragecube_stats", data.ragecube_stats);
+            setGameState((p) => ({
+              ...p,
+              totalBlocksPlaced: data.ragecube_stats.totalBlocksPlaced || 0,
+              totalCoinsCollected: data.ragecube_stats.totalCoinsCollected || 0,
+              flawlessLevelsCount: data.ragecube_stats.flawlessLevelsCount || 0,
+              pacifistLevelsCount: data.ragecube_stats.pacifistLevelsCount || 0,
+              totalJumps: data.ragecube_stats.totalJumps || 0,
+              totalDeaths: data.ragecube_stats.totalDeaths || 0,
+              totalPlayTime: data.ragecube_stats.totalPlayTime || 0,
+              distanceWalked: data.ragecube_stats.distanceWalked || 0,
+              powerupsCollected: data.ragecube_stats.powerupsCollected || 0,
+              totalScore: data.ragecube_stats.totalScore || 0,
+              speedrunUnder30Count:
+                data.ragecube_stats.speedrunUnder30Count || 0,
+              wallJumpsCount: data.ragecube_stats.wallJumpsCount || 0,
+              multiplayerWins: data.ragecube_stats.multiplayerWins || 0,
+              brawlerLevelsPlayedCount:
+                data.ragecube_stats.brawlerLevelsPlayedCount || 0,
+              editorTime: data.ragecube_stats.editorTime || 0,
+            }));
+          }
+          if (data.ragecube_highscores_v2) {
+            secureSave("ragecube_highscores_v2", data.ragecube_highscores_v2);
+            setHighScores(data.ragecube_highscores_v2);
+          }
+          if (data.ragecube_custom_levels) {
+            secureSave("ragecube_custom_levels", data.ragecube_custom_levels);
+            setCustomLevels(data.ragecube_custom_levels);
+          }
+
+          showToast(
+            lang === Language.DE
+              ? "Speicherstand erfolgreich importiert! Das Spiel wird nun neu gestartet..."
+              : "Save loaded successfully! The game will now restart...",
+          );
+
+          // Wait for the user to be able to read the toast before reloading
+          setTimeout(() => {
+            window.location.reload();
+          }, 2500);
+        } catch (err) {
+          console.error("Failed to parse save file", err);
+          alert(
+            lang === Language.DE
+              ? "Fehler beim Importieren!"
+              : "Error importing save data!",
+          );
         }
-        if (data.ragecube_customization) {
-          secureSave("ragecube_customization", data.ragecube_customization);
-          setCustomization(data.ragecube_customization);
-        }
-        if (data.ragecube_achievements) {
-          secureSave("ragecube_achievements", data.ragecube_achievements);
-          setGameState(p => ({ ...p, unlockedAchievements: data.ragecube_achievements }));
-        }
-        if (data.ragecube_stats) {
-          secureSave("ragecube_stats", data.ragecube_stats);
-          setGameState(p => ({ 
-            ...p, 
-            totalBlocksPlaced: data.ragecube_stats.totalBlocksPlaced || 0,
-            totalCoinsCollected: data.ragecube_stats.totalCoinsCollected || 0,
-            flawlessLevelsCount: data.ragecube_stats.flawlessLevelsCount || 0,
-            pacifistLevelsCount: data.ragecube_stats.pacifistLevelsCount || 0,
-            totalJumps: data.ragecube_stats.totalJumps || 0,
-            totalDeaths: data.ragecube_stats.totalDeaths || 0,
-            totalPlayTime: data.ragecube_stats.totalPlayTime || 0,
-            distanceWalked: data.ragecube_stats.distanceWalked || 0,
-            powerupsCollected: data.ragecube_stats.powerupsCollected || 0,
-            totalScore: data.ragecube_stats.totalScore || 0,
-            speedrunUnder30Count: data.ragecube_stats.speedrunUnder30Count || 0,
-            wallJumpsCount: data.ragecube_stats.wallJumpsCount || 0,
-            multiplayerWins: data.ragecube_stats.multiplayerWins || 0,
-            brawlerLevelsPlayedCount: data.ragecube_stats.brawlerLevelsPlayedCount || 0,
-            editorTime: data.ragecube_stats.editorTime || 0,
-           }));
-        }
-        if (data.ragecube_highscores_v2) {
-          secureSave("ragecube_highscores_v2", data.ragecube_highscores_v2);
-          setHighScores(data.ragecube_highscores_v2);
-        }
-        if (data.ragecube_custom_levels) {
-          secureSave("ragecube_custom_levels", data.ragecube_custom_levels);
-          setCustomLevels(data.ragecube_custom_levels);
-        }
-        
-        showToast(lang === Language.DE 
-          ? "Speicherstand erfolgreich importiert! Das Spiel wird nun neu gestartet..." 
-          : "Save loaded successfully! The game will now restart...");
-        
-        // Wait for the user to be able to read the toast before reloading
-        setTimeout(() => {
-          window.location.reload();
-        }, 2500);
-      } catch (err) {
-        console.error("Failed to parse save file", err);
-        alert(lang === Language.DE ? "Fehler beim Importieren!" : "Error importing save data!");
-      }
-    };
-    reader.readAsText(file);
-    if (saveInputRef.current) saveInputRef.current.value = "";
-  }, [lang]);
+      };
+      reader.readAsText(file);
+      if (saveInputRef.current) saveInputRef.current.value = "";
+    },
+    [lang],
+  );
 
   const triggerImport = useCallback(() => {
     if (saveInputRef.current) {
@@ -1625,7 +1856,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem("ragecube_settings", JSON.stringify(settings));
-    audio.setVolumes(settings.musicVolume, settings.sfxVolume, settings.deathVolume);
+    audio.setVolumes(
+      settings.musicVolume,
+      settings.sfxVolume,
+      settings.deathVolume,
+    );
     document.documentElement.style.fontSize = `${(settings.uiScale || 1) * 16}px`;
   }, [settings]);
 
@@ -1711,7 +1946,8 @@ const App: React.FC = () => {
           stats.levelsPlayedCount || gameState.levelsPlayedCount,
         playedLevelIds: stats.playedLevelIds || gameState.playedLevelIds,
         totalJumps: stats.totalJumps || gameState.totalJumps,
-        brawlerLevelsPlayedCount: stats.brawlerLevelsPlayedCount || gameState.brawlerLevelsPlayedCount,
+        brawlerLevelsPlayedCount:
+          stats.brawlerLevelsPlayedCount || gameState.brawlerLevelsPlayedCount,
         editorTime: stats.editorTime || gameState.editorTime,
       };
       secureSave("ragecube_stats", statsToSave);
@@ -1739,7 +1975,15 @@ const App: React.FC = () => {
     if (isCoffeeUnlocked) checkAchievements({ coffeeDesignUnlocked: true });
     if (isMatrixUnlocked) checkAchievements({ matrixDesignUnlocked: true });
     if (isVoidUnlocked) checkAchievements({ voidDesignUnlocked: true });
-  }, [isAdminUnlocked, isRainbowUnlocked, isInvisibleUnlocked, isCoffeeUnlocked, isMatrixUnlocked, isVoidUnlocked, checkAchievements]);
+  }, [
+    isAdminUnlocked,
+    isRainbowUnlocked,
+    isInvisibleUnlocked,
+    isCoffeeUnlocked,
+    isMatrixUnlocked,
+    isVoidUnlocked,
+    checkAchievements,
+  ]);
 
   // Track Editor Time
   useEffect(() => {
@@ -1748,7 +1992,7 @@ const App: React.FC = () => {
       interval = setInterval(() => {
         setGameState((p) => {
           const nextEditorTime = (p.editorTime || 0) + 1;
-          // Check for worker achievement here too? 
+          // Check for worker achievement here too?
           // Better to keep checkAchievements for win/start/death etc.
           // But 30 mins is a long time, let's check it every minute
           if (nextEditorTime % 60 === 0) {
@@ -1787,13 +2031,16 @@ const App: React.FC = () => {
     });
   }, [customLevels, levelSortMode]);
 
-  const storyCategories = React.useMemo(() => [
-    { name: t.beginner || "BEGINNER", levels: INITIAL_LEVELS },
-    { name: t.advanced || "ADVANCED", levels: ADVANCED_LEVELS },
-    { name: t.expert || "EXPERT", levels: EXPERT_LEVELS },
-    { name: t.god || "GOD", levels: GOD_LEVELS },
-    { name: t.brawlerLevels || "BRAWLER", levels: BRAWLER_LEVELS },
-  ], [t]);
+  const storyCategories = React.useMemo(
+    () => [
+      { name: t.beginner || "BEGINNER", levels: INITIAL_LEVELS },
+      { name: t.advanced || "ADVANCED", levels: ADVANCED_LEVELS },
+      { name: t.expert || "EXPERT", levels: EXPERT_LEVELS },
+      { name: t.god || "GOD", levels: GOD_LEVELS },
+      { name: t.brawlerLevels || "BRAWLER", levels: BRAWLER_LEVELS },
+    ],
+    [t],
+  );
 
   // Sync Ref with State
   useEffect(() => {
@@ -1839,7 +2086,10 @@ const App: React.FC = () => {
   }, [gameState.status, levelSource, highscoreLevelIndex]);
 
   // Unlock Helper
-  const isUnlocked = (type: "eyes" | "accessory" | "trail" | "brawlerClass", id: string) => {
+  const isUnlocked = (
+    type: "eyes" | "accessory" | "trail" | "brawlerClass",
+    id: string,
+  ) => {
     if (type === "brawlerClass") return true;
 
     if (type === "accessory" && id === "unicorn") return isRainbowUnlocked;
@@ -1864,9 +2114,12 @@ const App: React.FC = () => {
     // Check if it's a shop item
     const shopItem = SHOP_ITEMS.find((s) => s.type === type && s.id === id);
     if (shopItem && shopItem.price > 0) {
-      if (type === "eyes") return (customization.unlockedEyes || []).includes(id);
-      if (type === "accessory") return (customization.unlockedAccessories || []).includes(id);
-      if (type === "trail") return (customization.unlockedTrails || []).includes(id);
+      if (type === "eyes")
+        return (customization.unlockedEyes || []).includes(id);
+      if (type === "accessory")
+        return (customization.unlockedAccessories || []).includes(id);
+      if (type === "trail")
+        return (customization.unlockedTrails || []).includes(id);
     }
 
     // Default colors always unlocked, specific trails might be locked
@@ -1884,14 +2137,16 @@ const App: React.FC = () => {
     if (ach) {
       return `ACHIEVEMENT: ${(t.achievements_data as any)?.[ach.id]?.title || ach.title}`;
     }
-    
+
     // Legacy support just in case
-    if (id === "#ff4400" && type === "trail") return "HASEN-POWER: 1000 SPRÜNGE";
-    if (id === "rainbow" && type === "trail") return "EDITOR GOTT: LEVEL VERIFIZIERT";
+    if (id === "#ff4400" && type === "trail")
+      return "HASEN-POWER: 1000 SPRÜNGE";
+    if (id === "rainbow" && type === "trail")
+      return "EDITOR GOTT: LEVEL VERIFIZIERT";
 
     const shopItem = SHOP_ITEMS.find((s) => s.type === type && s.id === id);
     if (shopItem && shopItem.price > 0) {
-       return `${shopItem.price} COINS (SHOP)`;
+      return `${shopItem.price} COINS (SHOP)`;
     }
 
     return "STANDARD";
@@ -1955,7 +2210,7 @@ const App: React.FC = () => {
       isCustom: true,
       isBrawler: isBrawler,
       isVerified: false,
-      allowedAbility: "none"
+      allowedAbility: "none",
     });
     setEditorHistory(null);
     setEditorVerified(false);
@@ -1980,7 +2235,7 @@ const App: React.FC = () => {
 
     setLevel(updatedLevel);
     processedCoins.current.clear();
-    setGameState(prev => ({
+    setGameState((prev) => ({
       ...prev,
       status: "random_run",
       currentLevelIndex: 0,
@@ -2028,7 +2283,7 @@ const App: React.FC = () => {
       "vs_setup",
       "brawler_setup",
       "brawler_powerup_setup",
-      "editor_test_select"
+      "editor_test_select",
     ];
 
     if (playingStates.includes(gameState.status)) {
@@ -2036,11 +2291,17 @@ const App: React.FC = () => {
         if (onlineService.isPaused) return;
         setGameState((prev) => {
           const newLevelTime = prev.levelTime + 1;
-          
+
           // Forced timeout logic for multiplayer matches (Online & Local)
-          const isMulti = prev.status === "vs_playing" || prev.status === "brawler_playing";
+          const isMulti =
+            prev.status === "vs_playing" || prev.status === "brawler_playing";
           const isHost = onlineService.lobbyCode ? onlineService.isHost : true;
-          if (isMulti && isHost && newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT && onlineFinishTimerRef.current === null) {
+          if (
+            isMulti &&
+            isHost &&
+            newLevelTime >= GLOBAL_LEVEL_TIME_LIMIT &&
+            onlineFinishTimerRef.current === null
+          ) {
             // Force start the end-of-round sequence
             setTimeout(() => finalizeMatch(stateRef.current.onlineResults), 0);
           }
@@ -2212,13 +2473,13 @@ const App: React.FC = () => {
     stateRef.current.onlineResults = [];
     stateRef.current.onlineFinishTimer = null;
     setCurrentVote(null);
-    
+
     // Reset winner
-    setGameState(prev => ({ ...prev, winner: null }));
+    setGameState((prev) => ({ ...prev, winner: null }));
 
     setGameState((prev) => {
       let nextStatus: GameState["status"] = "playing";
-      
+
       const isVS =
         prev.status === "vs_won" ||
         prev.previousStatus === "vs_playing" ||
@@ -2261,7 +2522,7 @@ const App: React.FC = () => {
     setSelectedDifficultySet(levelSet);
     setLevel(levelSet[0]);
     processedCoins.current.clear();
-    setGameState(prev => ({
+    setGameState((prev) => ({
       ...prev,
       status: "playing",
       currentLevelIndex: 0,
@@ -2284,12 +2545,13 @@ const App: React.FC = () => {
   const handleNextLevel = () => {
     const currentState = stateRef.current.gameState;
     const nextIdx = currentState.currentLevelIndex + 1;
-    let collection = currentState.customLevelsQueue || stateRef.current.selectedDifficultySet;
+    let collection =
+      currentState.customLevelsQueue || stateRef.current.selectedDifficultySet;
 
     // Fallback if collection is empty but we are in a known mode
     if ((!collection || collection.length === 0) && onlineService.lobbyCode) {
-        if (currentState.onlineMode === "brawler") collection = BRAWLER_LEVELS;
-        else collection = filterVSLevels(INITIAL_LEVELS);
+      if (currentState.onlineMode === "brawler") collection = BRAWLER_LEVELS;
+      else collection = filterVSLevels(INITIAL_LEVELS);
     }
 
     if (collection && nextIdx < collection.length) {
@@ -2340,7 +2602,9 @@ const App: React.FC = () => {
           ...prev,
           status: nextStatus,
           currentLevelIndex: nextIdx,
-          customLevelsQueue: prev.customLevelsQueue || (onlineService.lobbyCode ? collection : null),
+          customLevelsQueue:
+            prev.customLevelsQueue ||
+            (onlineService.lobbyCode ? collection : null),
           levelTime: 0,
           levelDeaths: 0,
           winner: null,
@@ -2355,7 +2619,12 @@ const App: React.FC = () => {
       });
       setRespawnTrigger((p) => p + 1);
     } else {
-      if (onlineService.lobbyCode || currentState.status === "vs_playing" || currentState.status === "brawler_playing" || currentState.status === "online_summary") {
+      if (
+        onlineService.lobbyCode ||
+        currentState.status === "vs_playing" ||
+        currentState.status === "brawler_playing" ||
+        currentState.status === "online_summary"
+      ) {
         setGameState((p) => ({ ...p, status: "online_lobby" }));
         onlineService.returnToLobby();
       } else {
@@ -2364,12 +2633,15 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleFavorite = (type: 'skin' | 'trail', id: string) => {
-    setSettings(prev => {
-      const field = type === 'skin' ? 'favoriteSkins' : 'favoriteTrails' as keyof GameSettings;
+  const toggleFavorite = (type: "skin" | "trail", id: string) => {
+    setSettings((prev) => {
+      const field =
+        type === "skin"
+          ? "favoriteSkins"
+          : ("favoriteTrails" as keyof GameSettings);
       const existing = (prev as any)[field] || [];
-      const updated = existing.includes(id) 
-        ? existing.filter((x: string) => x !== id) 
+      const updated = existing.includes(id)
+        ? existing.filter((x: string) => x !== id)
         : [...existing, id];
       return { ...prev, [field]: updated };
     });
@@ -2450,7 +2722,7 @@ const App: React.FC = () => {
 
   const resolveVote = () => {
     const st = stateRef.current;
-    
+
     // Fallback to onlineService.currentVote since stateRef doesn't have it
     const currentVoteCopy = currentVote || onlineService.currentVote;
     if (!currentVoteCopy) return;
@@ -2475,11 +2747,16 @@ const App: React.FC = () => {
 
     if (success) {
       // System message about success
-      onlineService.sendChatMessage(`VOTE PASSED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`);
+      onlineService.sendChatMessage(
+        `VOTE PASSED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`,
+      );
 
       if (currentVoteCopy.type === "next" || currentVoteCopy.type === "skip") {
         handleNextLevel();
-      } else if (currentVoteCopy.type === "repeat" || currentVoteCopy.type === "restart") {
+      } else if (
+        currentVoteCopy.type === "repeat" ||
+        currentVoteCopy.type === "restart"
+      ) {
         setOnlineResults([]);
         setOnlineFinishTimer(null);
         onlineService.startGame();
@@ -2499,13 +2776,22 @@ const App: React.FC = () => {
         setRespawnTrigger((t) => t + 1);
       } else if (currentVoteCopy.type === "test_level") {
         const testLevel = stateRef.current.editorData || stateRef.current.level;
-        onlineService.broadcastLobbyState("editor", testLevel, undefined, undefined, undefined, "testing");
+        onlineService.broadcastLobbyState(
+          "editor",
+          testLevel,
+          undefined,
+          undefined,
+          undefined,
+          "testing",
+        );
       } else if (currentVoteCopy.type === "kick" && currentVoteCopy.targetId) {
         onlineService.kickPlayer(currentVoteCopy.targetId);
       }
     } else {
       // System message about failure
-      onlineService.sendChatMessage(`VOTE FAILED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`);
+      onlineService.sendChatMessage(
+        `VOTE FAILED: ${currentVoteCopy.type.toUpperCase()} (${yesCount} vs ${noCount})`,
+      );
     }
 
     if (onlineService.isHost) {
@@ -2525,13 +2811,13 @@ const App: React.FC = () => {
 
     // Secret Cheat Code Detection
     if (e.key && e.key.length === 1) {
-      setCheatBuffer(prev => {
+      setCheatBuffer((prev) => {
         const next = (prev + e.key.toUpperCase()).slice(-16);
         let h = 5381;
         for (let i = 0; i < next.length; i++) {
-          h = ((h << 5) + h) + next.charCodeAt(i);
+          h = (h << 5) + h + next.charCodeAt(i);
         }
-        if ((h >>> 0) === 1621615750) {
+        if (h >>> 0 === 1621615750) {
           st.unlockEverything();
           return "";
         }
@@ -2584,11 +2870,26 @@ const App: React.FC = () => {
         if (status === "testing" || status === "brawler_testing") {
           if (onlineService.lobbyCode) {
             if (onlineService.isHost) {
-              setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] }));
-              onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+              setGameState((p) => ({
+                ...p,
+                status: "editor",
+                collectedCoins: [],
+              }));
+              onlineService.broadcastLobbyState(
+                "editor",
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                "editor",
+              );
             }
           } else {
-            setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] })); // Clear coins on exit test
+            setGameState((p) => ({
+              ...p,
+              status: "editor",
+              collectedCoins: [],
+            })); // Clear coins on exit test
           }
         } else if (status === "vs_playing" || status === "brawler_playing") {
           setGameState((p) => ({
@@ -2655,7 +2956,7 @@ const App: React.FC = () => {
           case 5: // Random
             setMenuSelection(0);
             setGameState((p) => ({ ...p, status: "random_run_setup" }));
-            break; 
+            break;
           case 6: // Highscores
             setLevelSource("builtin");
             setHighscoreLevelIndex(0);
@@ -2671,9 +2972,13 @@ const App: React.FC = () => {
           case 9: // Online
             setMenuSelection(0);
             setGameState((p) => ({ ...p, status: "online_menu" }));
-            break; 
+            break;
           case 10: // Settings
-            setGameState((p) => ({ ...p, status: "settings", previousStatus: "menu" }));
+            setGameState((p) => ({
+              ...p,
+              status: "settings",
+              previousStatus: "menu",
+            }));
             break;
           case 11: // Book
             setGameState((p) => ({ ...p, status: "book" }));
@@ -2735,10 +3040,19 @@ const App: React.FC = () => {
         if (sel === 1) startStoryGame(ADVANCED_LEVELS);
         if (sel === 2) startStoryGame(EXPERT_LEVELS);
         if (sel === 3) startStoryGame(GOD_LEVELS);
-        if (sel === 4) setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+        if (sel === 4)
+          setGameState((p) => ({
+            ...p,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
+          }));
       }
       if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
     } else if (status === "random_run_setup") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
       if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
@@ -2757,10 +3071,19 @@ const App: React.FC = () => {
           setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
         }
         if (sel === 1) startRandomRun();
-        if (sel === 2) setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+        if (sel === 2)
+          setGameState((p) => ({
+            ...p,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
+          }));
       }
       if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
     } else if (status === "vs_setup" || status === "brawler_setup") {
       // VS Setup Logic
       // 0-5 (P1), 6-11 (P2), 12 (Level Menu), 14 (Play), 15 (Back)
@@ -2808,7 +3131,11 @@ const App: React.FC = () => {
 
       if (e.code === "Enter" || e.code === "Space") {
         if (sel === 12) setShowLevelMenu(true);
-        if (sel === 13 && status === "vs_setup") setGameState(p => ({ ...p, collisionEnabled: !p.collisionEnabled }));
+        if (sel === 13 && status === "vs_setup")
+          setGameState((p) => ({
+            ...p,
+            collisionEnabled: !p.collisionEnabled,
+          }));
         if (sel === 15) setGameState((p) => ({ ...p, status: "menu" }));
       }
 
@@ -2817,7 +3144,7 @@ const App: React.FC = () => {
         sel === 13 &&
         status === "vs_setup"
       ) {
-        setGameState(p => ({ ...p, collisionEnabled: !p.collisionEnabled }));
+        setGameState((p) => ({ ...p, collisionEnabled: !p.collisionEnabled }));
       }
 
       if (sel === 14 && (e.code === "Enter" || e.code === "Space")) {
@@ -2857,7 +3184,12 @@ const App: React.FC = () => {
         }
       }
 
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+      if (e.code === "Escape")
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
     } else if (status === "brawler_powerup_setup") {
       const powerupKeys = Object.keys(st.brawlerPowerups);
       const maxSel = powerupKeys.length + 1; // 0 to length-1 are powerups, length is PLAY button, length+1 is BACK button
@@ -2876,11 +3208,25 @@ const App: React.FC = () => {
           const key = powerupKeys[sel];
           const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
           setBrawlerPowerups((prev) => {
-              const newPowerups = { ...prev, [key]: Math.max(0, Math.min(100, prev[key] + delta)) };
-              if (st.gameState.onlineMode && onlineService.isHost) {
-                  onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, newPowerups);
-              }
-              return newPowerups;
+            const newPowerups = {
+              ...prev,
+              [key]: Math.max(0, Math.min(100, prev[key] + delta)),
+            };
+            if (st.gameState.onlineMode && onlineService.isHost) {
+              onlineService.broadcastLobbyState(
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                newPowerups,
+              );
+            }
+            return newPowerups;
           });
         }
       }
@@ -2890,30 +3236,60 @@ const App: React.FC = () => {
           if (st.gameState.onlineMode && !onlineService.isHost) return;
           const key = powerupKeys[sel];
           setBrawlerPowerups((prev) => {
-              const newPowerups = { ...prev, [key]: prev[key] > 0 ? 0 : 100 };
-              if (st.gameState.onlineMode && onlineService.isHost) {
-                  onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, newPowerups);
-              }
-              return newPowerups;
+            const newPowerups = { ...prev, [key]: prev[key] > 0 ? 0 : 100 };
+            if (st.gameState.onlineMode && onlineService.isHost) {
+              onlineService.broadcastLobbyState(
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                newPowerups,
+              );
+            }
+            return newPowerups;
           });
         } else if (sel === powerupKeys.length) {
-            if (st.gameState.onlineMode && !onlineService.isHost) return;
-            if (st.gameState.onlineMode && onlineService.isHost) {
-                if (onlineService.lobbyCode) {
-                    onlineService.broadcastLobbyState('brawler', undefined, undefined, undefined, undefined, 'playing');
-                }
-            } else if (!st.gameState.onlineMode) {
-              setGameState((p) => ({ ...p, status: "brawler_playing" }));
-              setRespawnTrigger(0);
-              checkAchievements({ mode: "vs" });
+          if (st.gameState.onlineMode && !onlineService.isHost) return;
+          if (st.gameState.onlineMode && onlineService.isHost) {
+            if (onlineService.lobbyCode) {
+              onlineService.broadcastLobbyState(
+                "brawler",
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                "playing",
+              );
             }
+          } else if (!st.gameState.onlineMode) {
+            setGameState((p) => ({ ...p, status: "brawler_playing" }));
+            setRespawnTrigger(0);
+            checkAchievements({ mode: "vs" });
+          }
         } else if (sel === powerupKeys.length + 1) {
-          setGameState((p) => ({ ...p, status: p.previousStatus === "online_lobby" ? "online_lobby" : "brawler_setup" }));
+          setGameState((p) => ({
+            ...p,
+            status:
+              p.previousStatus === "online_lobby"
+                ? "online_lobby"
+                : "brawler_setup",
+          }));
         }
       }
 
       if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: p.previousStatus === "online_lobby" ? "online_lobby" : "brawler_setup" }));
+        setGameState((p) => ({
+          ...p,
+          status:
+            p.previousStatus === "online_lobby"
+              ? "online_lobby"
+              : "brawler_setup",
+        }));
     } else if (status === "highscores") {
       const ls = st.levelSource;
       const currentList = ls === "builtin" ? INITIAL_LEVELS : st.customLevels;
@@ -2936,7 +3312,12 @@ const App: React.FC = () => {
       if (e.code === "ArrowRight" || e.code === "KeyD")
         setHighscoreLevelIndex((p) => Math.min(currentList.length - 1, p + 1));
 
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+      if (e.code === "Escape")
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
     } else if (status === "paused") {
       if (e.code === "KeyR") {
         handleRetry();
@@ -2959,7 +3340,9 @@ const App: React.FC = () => {
         (onlineService.lobbyCode ? 2 : 0) + // Give Up & Lobby (Online)
         (!onlineService.lobbyCode &&
         (gameState.previousStatus === "vs_playing" ||
-          gameState.previousStatus === "brawler_playing")
+          gameState.previousStatus === "brawler_playing" ||
+          gameState.previousStatus === "playing" ||
+          gameState.previousStatus === "random_run")
           ? 1
           : 0) + // Lobby (Local)
         1 + // Settings
@@ -2994,7 +3377,8 @@ const App: React.FC = () => {
           !(
             gameState.previousStatus === "vs_playing" ||
             gameState.previousStatus === "brawler_playing"
-          ) || !onlineService.lobbyCode
+          ) ||
+          !onlineService.lobbyCode
         ) {
           buttons.push({ action: handleRetry });
         }
@@ -3021,17 +3405,29 @@ const App: React.FC = () => {
           });
         } else if (
           gameState.previousStatus === "vs_playing" ||
-          gameState.previousStatus === "brawler_playing"
+          gameState.previousStatus === "brawler_playing" ||
+          gameState.previousStatus === "playing" ||
+          gameState.previousStatus === "random_run"
         ) {
           buttons.push({
             action: () => {
-              setGameState((p) => ({
-                ...p,
-                status:
-                  p.previousStatus === "brawler_playing"
-                    ? "brawler_setup"
-                    : "vs_setup",
-              }));
+              setGameState((p) => {
+                let nextStatus: GameState["status"] = "menu";
+                if (p.previousStatus === "brawler_playing")
+                  nextStatus = "brawler_setup";
+                else if (p.previousStatus === "vs_playing")
+                  nextStatus = "vs_setup";
+                else if (
+                  p.previousStatus === "playing" ||
+                  p.previousStatus === "random_run"
+                )
+                  nextStatus = "difficulty_select";
+
+                return {
+                  ...p,
+                  status: nextStatus,
+                };
+              });
             },
           });
         }
@@ -3073,18 +3469,41 @@ const App: React.FC = () => {
     } else if (status === "settings") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
       if (e.code === "ArrowDown" || e.code === "KeyS") navDown(13);
-      if (e.code === "ArrowLeft" || e.code === "ArrowRight" || e.code === "KeyA" || e.code === "KeyD") {
+      if (
+        e.code === "ArrowLeft" ||
+        e.code === "ArrowRight" ||
+        e.code === "KeyA" ||
+        e.code === "KeyD"
+      ) {
         const diff = e.code === "ArrowRight" || e.code === "KeyD" ? 0.1 : -0.1;
         if (sel === 2)
-          setSettings((p) => ({ ...p, sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)) }));
+          setSettings((p) => ({
+            ...p,
+            sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)),
+          }));
         if (sel === 3)
-          setSettings((p) => ({ ...p, deathVolume: Math.min(1, Math.max(0, (p.deathVolume ?? 0.5) + diff)) }));
+          setSettings((p) => ({
+            ...p,
+            deathVolume: Math.min(
+              1,
+              Math.max(0, (p.deathVolume ?? 0.5) + diff),
+            ),
+          }));
         if (sel === 4)
-          setSettings((p) => ({ ...p, opponentOpacity: Math.min(1, Math.max(0, (p.opponentOpacity ?? 0.5) + diff)) }));
+          setSettings((p) => ({
+            ...p,
+            opponentOpacity: Math.min(
+              1,
+              Math.max(0, (p.opponentOpacity ?? 0.5) + diff),
+            ),
+          }));
         if (sel === 5) {
           setSettings((p) => {
             const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
-            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
+            let nextIndex =
+              e.code === "ArrowRight" || e.code === "KeyD"
+                ? currentIndex + 1
+                : currentIndex - 1;
             if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
             if (nextIndex < 0) nextIndex = FPS_OPTIONS.length - 1;
             return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
@@ -3093,9 +3512,16 @@ const App: React.FC = () => {
         if (sel === 6) {
           setSettings((p) => {
             const currentScale = p.uiScale || 1;
-            const currentIndex = UI_SCALE_OPTIONS.indexOf(currentScale) !== -1 ? UI_SCALE_OPTIONS.indexOf(currentScale) : 2;
-            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
-            if (nextIndex >= UI_SCALE_OPTIONS.length) nextIndex = UI_SCALE_OPTIONS.length - 1;
+            const currentIndex =
+              UI_SCALE_OPTIONS.indexOf(currentScale) !== -1
+                ? UI_SCALE_OPTIONS.indexOf(currentScale)
+                : 2;
+            let nextIndex =
+              e.code === "ArrowRight" || e.code === "KeyD"
+                ? currentIndex + 1
+                : currentIndex - 1;
+            if (nextIndex >= UI_SCALE_OPTIONS.length)
+              nextIndex = UI_SCALE_OPTIONS.length - 1;
             if (nextIndex < 0) nextIndex = 0;
             return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
           });
@@ -3103,15 +3529,25 @@ const App: React.FC = () => {
         if (sel === 7) {
           setSettings((p) => {
             const currentScale = p.resolutionScale || 1080;
-            const currentIndex = RESOLUTION_OPTIONS.indexOf(currentScale) !== -1 ? RESOLUTION_OPTIONS.indexOf(currentScale) : 1;
-            let nextIndex = e.code === "ArrowRight" || e.code === "KeyD" ? currentIndex + 1 : currentIndex - 1;
-            if (nextIndex >= RESOLUTION_OPTIONS.length) nextIndex = RESOLUTION_OPTIONS.length - 1;
+            const currentIndex =
+              RESOLUTION_OPTIONS.indexOf(currentScale) !== -1
+                ? RESOLUTION_OPTIONS.indexOf(currentScale)
+                : 1;
+            let nextIndex =
+              e.code === "ArrowRight" || e.code === "KeyD"
+                ? currentIndex + 1
+                : currentIndex - 1;
+            if (nextIndex >= RESOLUTION_OPTIONS.length)
+              nextIndex = RESOLUTION_OPTIONS.length - 1;
             if (nextIndex < 0) nextIndex = 0;
             return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
           });
         }
         if (sel === 8) {
-          setSettings((p) => ({ ...p, screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)) }));
+          setSettings((p) => ({
+            ...p,
+            screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)),
+          }));
         }
       }
       if (e.code === "Enter" || e.code === "Space") {
@@ -3120,10 +3556,16 @@ const App: React.FC = () => {
           setMenuSelection(0);
         }
         if (sel === 9) {
-          setSettings((p) => ({ ...p, invertXOnGravityReverse: !p.invertXOnGravityReverse }));
+          setSettings((p) => ({
+            ...p,
+            invertXOnGravityReverse: !p.invertXOnGravityReverse,
+          }));
         }
         if (sel === 10) {
-          setSettings((p) => ({ ...p, invertYOnGravityReverse: !p.invertYOnGravityReverse }));
+          setSettings((p) => ({
+            ...p,
+            invertYOnGravityReverse: !p.invertYOnGravityReverse,
+          }));
         }
         if (sel === 11) {
           triggerImport();
@@ -3132,10 +3574,19 @@ const App: React.FC = () => {
           handleExportSave();
         }
         if (sel === 13) {
-          setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+          setGameState((p) => ({
+            ...p,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
+          }));
         }
       }
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+      if (e.code === "Escape")
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
     } else if (status === "keybindings") {
       if (st.editingKey) {
         e.preventDefault();
@@ -3165,12 +3616,13 @@ const App: React.FC = () => {
                   action: ["KeyQ"],
                   dash: ["ShiftLeft"],
                 });
-          
+
           const existing = currentBindings[action] || [];
           // If it's Player 1 and action is up, we always append "Space" as a secondary jump key
-          const newBindings = player === 1 && action === "up" && e.code !== "Space" 
-            ? [e.code, "Space"] 
-            : [e.code];
+          const newBindings =
+            player === 1 && action === "up" && e.code !== "Space"
+              ? [e.code, "Space"]
+              : [e.code];
 
           return {
             ...p,
@@ -3240,7 +3692,11 @@ const App: React.FC = () => {
       if (e.code === "Escape") {
         const isEditor = st.gameState.onlineMode === "editor";
         onlineService.disconnect();
-        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu", previousStatus: undefined }));
+        setGameState((p) => ({
+          ...p,
+          status: isEditor ? "editor_type_select" : "online_menu",
+          previousStatus: undefined,
+        }));
         return;
       }
       if (e.code === "ArrowUp" || e.code === "KeyW") {
@@ -3278,9 +3734,7 @@ const App: React.FC = () => {
             );
           }
         } else {
-          const max = st.gameState.isHost
-            ? 5
-            : 2;
+          const max = st.gameState.isHost ? 5 : 2;
           setMenuSelection((prev) => (prev === 0 ? max : prev - 1));
         }
       }
@@ -3319,9 +3773,7 @@ const App: React.FC = () => {
             );
           }
         } else {
-          const max = st.gameState.isHost
-            ? 5
-            : 2;
+          const max = st.gameState.isHost ? 5 : 2;
           setMenuSelection((prev) => (prev === max ? 0 : prev + 1));
         }
       }
@@ -3398,7 +3850,7 @@ const App: React.FC = () => {
               }));
             } else if (st.gameState.onlineMode === "vs") {
               const newValue = !st.gameState.collisionEnabled;
-              setGameState(p => ({ ...p, collisionEnabled: newValue }));
+              setGameState((p) => ({ ...p, collisionEnabled: newValue }));
               onlineService.broadcastLobbyState(
                 undefined,
                 undefined,
@@ -3407,13 +3859,16 @@ const App: React.FC = () => {
                 undefined,
                 undefined,
                 undefined,
-                newValue
+                newValue,
               );
             }
           } else if (sel === 5) {
             const isEditor = st.gameState.onlineMode === "editor";
             onlineService.closeLobby();
-            setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
+            setGameState((p) => ({
+              ...p,
+              status: isEditor ? "editor_type_select" : "online_menu",
+            }));
           }
         } else {
           if (sel === 0) {
@@ -3430,7 +3885,10 @@ const App: React.FC = () => {
           } else if (sel === 2) {
             const isEditor = st.gameState.onlineMode === "editor";
             onlineService.disconnect();
-            setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
+            setGameState((p) => ({
+              ...p,
+              status: isEditor ? "editor_type_select" : "online_menu",
+            }));
           }
         }
       }
@@ -3481,7 +3939,8 @@ const App: React.FC = () => {
         if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
         if (e.code === "ArrowDown" || e.code === "KeyS") {
           let maxItems = 1;
-          if (hasNext) maxItems = 2; // Next, Lobby, Menu
+          if (hasNext)
+            maxItems = 2; // Next, Lobby, Menu
           else if (!onlineService.lobbyCode) maxItems = 2; // Play Again, Lobby, Menu
           navDown(maxItems);
         }
@@ -3494,7 +3953,11 @@ const App: React.FC = () => {
               } else {
                 setGameState((p) => ({
                   ...p,
-                  status: onlineService.lobbyCode ? "online_lobby" : p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+                  status: onlineService.lobbyCode
+                    ? "online_lobby"
+                    : p.status === "brawler_won"
+                      ? "brawler_setup"
+                      : "vs_setup",
                 }));
               }
             } else if (sel === 2) {
@@ -3516,7 +3979,8 @@ const App: React.FC = () => {
             } else if (sel === 1) {
               setGameState((p) => ({
                 ...p,
-                status: p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+                status:
+                  p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
               }));
             } else if (sel === 2) {
               setGameState((p) => ({ ...p, status: "menu" }));
@@ -3524,44 +3988,76 @@ const App: React.FC = () => {
           }
         }
       } else {
-        const isStoryMode = !st.gameState.customLevelsQueue;
-        const isLastStoryLevel =
-          isStoryMode &&
-          st.gameState.currentLevelIndex >= st.selectedDifficultySet.length - 1;
+        const isLastLevel =
+          !st.gameState.geometryDashMode &&
+          ((st.gameState.customLevelsQueue &&
+            st.gameState.currentLevelIndex >=
+              st.gameState.customLevelsQueue.length - 1) ||
+          (!st.gameState.customLevelsQueue &&
+            st.gameState.currentLevelIndex >=
+              st.selectedDifficultySet.length - 1));
 
-        if (isStoryMode && !isLastStoryLevel) {
+        if (!isLastLevel) {
+          if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+          if (e.code === "ArrowDown" || e.code === "KeyS") navDown(1);
+
           if (e.code === "Enter" || e.code === "Space") {
-            const nextIdx = st.gameState.currentLevelIndex + 1;
-            const collection =
-              st.gameState.customLevelsQueue || st.selectedDifficultySet;
+            if (sel === 0) {
+              const nextIdx = st.gameState.currentLevelIndex + 1;
+              const collection =
+                st.gameState.customLevelsQueue || st.selectedDifficultySet;
 
-            if (nextIdx < collection.length) {
-              setLevel(collection[nextIdx]);
-              processedCoins.current.clear();
+              if (nextIdx < collection.length) {
+                setLevel(collection[nextIdx]);
+                processedCoins.current.clear();
+
+                // Clear state for next run
+                setOnlineResults([]);
+                setOnlineFinishTimer(null);
+                setCurrentVote(null);
+
+                setGameState((prev) => ({
+                  ...prev,
+                  status: prev.customLevelsQueue ? "random_run" : "playing",
+                  currentLevelIndex: nextIdx,
+                  levelTime: 0,
+                  levelDeaths: 0,
+                  blocksPlaced: 0,
+                  collectedCoins: [],
+                  score: prev.score,
+                  levelStartScore: prev.score,
+                }));
+
+                // Keep respawn logic tight for GD mode as handleNextLevel does
+                setRespawnTrigger((p) => p + 1);
+              } else {
+                setGameState((prev) => ({
+                  ...prev,
+                  status: "menu",
+                  geometryDashMode: false,
+                }));
+              }
+            } else if (sel === 1) {
               setGameState((prev) => ({
                 ...prev,
-                status: prev.customLevelsQueue ? "random_run" : "playing",
-                currentLevelIndex: nextIdx,
-                levelTime: 0,
-                levelDeaths: 0,
-                blocksPlaced: 0,
-                collectedCoins: [],
-                score: prev.score,
-                levelStartScore: prev.score,
+                status: prev.geometryDashMode ? "geometry_dash_menu" : "menu",
+                geometryDashMode: false,
               }));
-            } else {
-              setGameState((prev) => ({ ...prev, status: "menu" }));
             }
           }
         } else {
-          if (e.code === "Enter") {
-            if (st.playerName.length > 0) saveHighscore();
+          if (e.code === "Enter" || e.code === "Space") {
+            if (sel === 0 && st.playerName.length > 0) saveHighscore();
           }
         }
       }
     } else if (status === "achievements") {
       if (e.code === "Escape") {
-        setGameState((p) => ({ ...p, status: p.previousStatus || "menu", previousStatus: undefined }));
+        setGameState((p) => ({
+          ...p,
+          status: p.previousStatus || "menu",
+          previousStatus: undefined,
+        }));
       }
     } else if (status === "online_summary") {
       const isHost = onlineService.isHost;
@@ -3571,7 +4067,7 @@ const App: React.FC = () => {
         st.gameState.currentLevelIndex <
           st.gameState.customLevelsQueue.length - 1;
 
-      let maxItems = 1; 
+      let maxItems = 1;
       if (isOnline) {
         if (isHost) {
           maxItems = hasNext ? 3 : 2; // Next (if any), Repeat, Lobby, Menu
@@ -3611,8 +4107,7 @@ const App: React.FC = () => {
           } else {
             if (sel === 1) {
               setGameState((p) => ({ ...p, status: "online_lobby" }));
-            }
-            else if (sel === 2) {
+            } else if (sel === 2) {
               onlineService.disconnect();
               setGameState((p) => ({ ...p, status: "menu" }));
             }
@@ -3621,11 +4116,25 @@ const App: React.FC = () => {
           // Local mode
           if (hasNext) {
             if (sel === 0) handleNextLevel();
-            else if (sel === 1) setGameState((p) => ({ ...p, status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup" }));
+            else if (sel === 1)
+              setGameState((p) => ({
+                ...p,
+                status:
+                  p.previousStatus === "brawler_playing"
+                    ? "brawler_setup"
+                    : "vs_setup",
+              }));
             else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
           } else {
             if (sel === 0) handleRetry();
-            else if (sel === 1) setGameState((p) => ({ ...p, status: p.previousStatus === "brawler_playing" ? "brawler_setup" : "vs_setup" }));
+            else if (sel === 1)
+              setGameState((p) => ({
+                ...p,
+                status:
+                  p.previousStatus === "brawler_playing"
+                    ? "brawler_setup"
+                    : "vs_setup",
+              }));
             else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
           }
         }
@@ -3670,7 +4179,7 @@ const App: React.FC = () => {
         ready: true,
         team: 0, // Team 1
       };
-      
+
       const list = mode === "brawler" ? BRAWLER_LEVELS : INITIAL_LEVELS;
       let initialLevel = list[0];
       if (mode === "editor") {
@@ -3684,18 +4193,23 @@ const App: React.FC = () => {
           isCustom: true,
           isBrawler: false,
           isVerified: false,
-          allowedAbility: "none"
+          allowedAbility: "none",
         };
       }
-      const initialQueue = mode === "brawler" ? BRAWLER_LEVELS : (mode === "editor" ? [] : filterVSLevels(INITIAL_LEVELS));
-      
+      const initialQueue =
+        mode === "brawler"
+          ? BRAWLER_LEVELS
+          : mode === "editor"
+            ? []
+            : filterVSLevels(INITIAL_LEVELS);
+
       const code = await onlineService.createLobby(localPlayer, mode, {
         level: initialLevel,
         levelQueue: initialQueue,
         teamMode: brawlerTeamMode,
         hazardMode: brawlerHazardMode,
         vsCollision: gameState.collisionEnabled,
-        powerups: brawlerPowerups
+        powerups: brawlerPowerups,
       });
       setLevelSource("builtin");
       setHighscoreLevelIndex(0);
@@ -3781,15 +4295,24 @@ const App: React.FC = () => {
       suddenDeath,
       suggestions,
       finishTimerEnabled,
-      comboPowerups
+      comboPowerups,
     ) => {
       // Automatic team assignment for local player if not set
-      if (onlineService.localPlayer && (onlineService.localPlayer.team === undefined || onlineService.localPlayer.team === null)) {
-          const myIdx = players.findIndex(p => p.id === onlineService.localPlayer?.id);
-          if (myIdx !== -1) {
-              const updatedPlayer = { ...onlineService.localPlayer, team: myIdx % 8 };
-              onlineService.updateLocalPlayer(updatedPlayer);
-          }
+      if (
+        onlineService.localPlayer &&
+        (onlineService.localPlayer.team === undefined ||
+          onlineService.localPlayer.team === null)
+      ) {
+        const myIdx = players.findIndex(
+          (p) => p.id === onlineService.localPlayer?.id,
+        );
+        if (myIdx !== -1) {
+          const updatedPlayer = {
+            ...onlineService.localPlayer,
+            team: myIdx % 8,
+          };
+          onlineService.updateLocalPlayer(updatedPlayer);
+        }
       }
 
       setOnlinePlayers([...players]);
@@ -3798,9 +4321,9 @@ const App: React.FC = () => {
 
       // Check if host is still present
       if (onlineService.lobbyCode && !onlineService.isHost) {
-        const hostExists = players.some(p => p.id === onlineService.hostId);
+        const hostExists = players.some((p) => p.id === onlineService.hostId);
         if (!hostExists) {
-          setGameState(prev => ({ ...prev, status: 'online_menu' }));
+          setGameState((prev) => ({ ...prev, status: "online_menu" }));
           setOnlineError("Lobby closed: Host left");
           onlineService.disconnect();
           return;
@@ -3814,9 +4337,9 @@ const App: React.FC = () => {
       }
 
       if (updatedVsCollision !== undefined && !onlineService.isHost) {
-        setGameState(p => ({ ...p, collisionEnabled: updatedVsCollision }));
+        setGameState((p) => ({ ...p, collisionEnabled: updatedVsCollision }));
       }
-      
+
       if (updatedPowerups !== undefined && !onlineService.isHost) {
         setBrawlerPowerups(updatedPowerups as any);
       }
@@ -3826,7 +4349,7 @@ const App: React.FC = () => {
           setLevel(newLevel);
         }
       }
-      
+
       if (mode === "editor" && newLevel && !onlineService.isHost) {
         setEditorData(newLevel);
       }
@@ -3847,7 +4370,10 @@ const App: React.FC = () => {
 
       setGameState((p) => {
         const updates: any = {
-          finishTimerEnabled: finishTimerEnabled !== undefined ? finishTimerEnabled : p.finishTimerEnabled
+          finishTimerEnabled:
+            finishTimerEnabled !== undefined
+              ? finishTimerEnabled
+              : p.finishTimerEnabled,
         };
         if (mode) updates.onlineMode = mode;
         if (levelQueue) {
@@ -3879,13 +4405,13 @@ const App: React.FC = () => {
     ) => {
       lastStartTimeRef.current = Date.now();
       const gameMode = mode || "brawler";
-      
+
       // Clear results from previous round
       setOnlineResults([]);
       setOnlineFinishTimer(null);
 
       if (updatedVsCollision !== undefined) {
-        setGameState(p => ({ ...p, collisionEnabled: updatedVsCollision }));
+        setGameState((p) => ({ ...p, collisionEnabled: updatedVsCollision }));
       }
 
       if (gameMode === "editor" && level) {
@@ -3896,7 +4422,12 @@ const App: React.FC = () => {
 
       setGameState((p) => ({
         ...p,
-        status: gameMode === "editor" ? "editor" : gameMode === "brawler" ? "brawler_playing" : "vs_playing",
+        status:
+          gameMode === "editor"
+            ? "editor"
+            : gameMode === "brawler"
+              ? "brawler_playing"
+              : "vs_playing",
         levelTime: 0,
         levelDeaths: 0,
         collectedCoins: [],
@@ -3932,7 +4463,10 @@ const App: React.FC = () => {
           status: "editor",
         }));
       } else if (status === "testing") {
-        const activeLevel = onlineService.currentLevel || stateRef.current.editorData || stateRef.current.level;
+        const activeLevel =
+          onlineService.currentLevel ||
+          stateRef.current.editorData ||
+          stateRef.current.level;
         if (activeLevel) {
           setLevel(activeLevel);
         }
@@ -3958,19 +4492,28 @@ const App: React.FC = () => {
         setOnlineFinishTimer(null);
       } else if (status === "closed") {
         const isEditor = stateRef.current.gameState.onlineMode === "editor";
-        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
+        setGameState((p) => ({
+          ...p,
+          status: isEditor ? "editor_type_select" : "online_menu",
+        }));
         setOnlineError("Lobby was closed by host");
         onlineService.disconnect();
       } else if (status === "kicked") {
         const isEditor = stateRef.current.gameState.onlineMode === "editor";
-        setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
+        setGameState((p) => ({
+          ...p,
+          status: isEditor ? "editor_type_select" : "online_menu",
+        }));
         setOnlineError(t.kickedMessage || "Du wurdest aus der Lobby gekickt.");
         onlineService.disconnect();
       }
     };
     onlineService.onDisconnect = () => {
       const isEditor = stateRef.current.gameState.onlineMode === "editor";
-      setGameState((p) => ({ ...p, status: isEditor ? "editor_type_select" : "online_menu" }));
+      setGameState((p) => ({
+        ...p,
+        status: isEditor ? "editor_type_select" : "online_menu",
+      }));
       setOnlineError("Disconnected from host");
     };
     onlineService.onError = (msg) => {
@@ -3988,7 +4531,10 @@ const App: React.FC = () => {
       if (onlineService.isHost && onlineService.currentVote) {
         const totalPlayers = Array.from(onlineService.players.values()).length;
         const votesCast = Object.keys(onlineService.currentVote.votes).length;
-        if (Date.now() > onlineService.currentVote.endTime || (votesCast >= totalPlayers && totalPlayers > 0)) {
+        if (
+          Date.now() > onlineService.currentVote.endTime ||
+          (votesCast >= totalPlayers && totalPlayers > 0)
+        ) {
           resolveVote();
         }
       }
@@ -4016,30 +4562,43 @@ const App: React.FC = () => {
         onlineService.handleCastVote(id, data.choice);
       }
       if (event === "editor-sync" && onlineService.lobbyCode) {
-         if (onlineService.isHost) {
-             // Host receives change from a client, broadcasts to all
-             setEditorData(data);
-             setLevel(data);
-             onlineService.broadcastLobbyState("editor", data);
-         } else {
-             // Clients receive update via onLobbyUpdate which already updates level, but if they receive it via app event instead, we can process it here.
-             // Actually, the host broadcasts via broadcastLobbyState, so clients get it via onLobbyUpdate. We just need this for host receiving from clients.
-         }
+        if (onlineService.isHost) {
+          // Host receives change from a client, broadcasts to all
+          setEditorData(data);
+          setLevel(data);
+          onlineService.broadcastLobbyState("editor", data);
+        } else {
+          // Clients receive update via onLobbyUpdate which already updates level, but if they receive it via app event instead, we can process it here.
+          // Actually, the host broadcasts via broadcastLobbyState, so clients get it via onLobbyUpdate. We just need this for host receiving from clients.
+        }
       }
       if (event === "request_vote") {
         if (onlineService.isHost && !onlineService.currentVote) {
           // Initialize it manually so it's synchronous
           onlineService.currentVote = {
             type: data.type,
-            votes: { [id]: 'yes' }, // Requester implicitly votes yes
+            votes: { [id]: "yes" }, // Requester implicitly votes yes
             endTime: Date.now() + 15000,
-            targetId: data.targetId
+            targetId: data.targetId,
           };
-          onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, onlineService.currentVote);
+          onlineService.broadcastLobbyState(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            onlineService.currentVote,
+          );
         }
       }
       if (event === "finish_stats") {
-        const isPlaying = stateRef.current.gameState.status === "vs_playing" || stateRef.current.gameState.status === "brawler_playing" || stateRef.current.gameState.status === "playing";
+        const isPlaying =
+          stateRef.current.gameState.status === "vs_playing" ||
+          stateRef.current.gameState.status === "brawler_playing" ||
+          stateRef.current.gameState.status === "playing";
         if (onlineService.isHost && isPlaying) {
           const prev = stateRef.current.onlineResults || [];
           const existing = prev.findIndex((r) => r.id === data.id);
@@ -4047,26 +4606,37 @@ const App: React.FC = () => {
             const newResults = [...prev, data];
             stateRef.current.onlineResults = newResults;
             setOnlineResults(newResults);
-            
+
             // Get total players from accurate count
             const roomPlayers = onlineService.players.size;
             const status = stateRef.current.gameState.status;
             const isOnlineRoom = !!onlineService.lobbyCode;
-            const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
-            
+            const isMultiSession =
+              isOnlineRoom ||
+              status === "vs_playing" ||
+              status === "brawler_playing";
+
             // Calculate total players expected to finish
             let totalPlayersCount = 1; // Default to 1
             if (isOnlineRoom) {
               totalPlayersCount = Math.max(2, roomPlayers); // Expect all connected players. At least 2 for online multi to prevent instantly ending if roomPlayers is somehow 1.
-            } else if (status === "vs_playing" || status === "brawler_playing") {
+            } else if (
+              status === "vs_playing" ||
+              status === "brawler_playing"
+            ) {
               totalPlayersCount = 2; // Local VS/Brawler
             }
-            
+
             // Check for early finish if everyone is done
             if (newResults.length >= totalPlayersCount) {
               setOnlineFinishTimer(null);
               setTimeout(() => finalizeMatch(newResults), 0);
-            } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled === true && isMultiSession) {
+            } else if (
+              newResults.length === 1 &&
+              onlineFinishTimerRef.current === null &&
+              stateRef.current.gameState.finishTimerEnabled === true &&
+              isMultiSession
+            ) {
               // First person finished, start grace period timer
               onlineService.sendEvent("start_timer", { duration: 20 });
               setOnlineFinishTimer(20);
@@ -4115,27 +4685,32 @@ const App: React.FC = () => {
   const lastStartTimeRef = useRef(0);
 
   // Finalize Match directly
-  const finalizeMatch = useCallback((finalResults: any[]) => {
-    if (
-      stateRef.current.gameState.status === "online_lobby" ||
-      stateRef.current.gameState.status === "menu" ||
-      stateRef.current.gameState.status === "online_menu"
-    ) {
-      setOnlineFinishTimer(null);
-      return;
-    }
-    
-    if (onlineService.lobbyCode) {
-      if (onlineService.isHost) {
-        const currentStatus = stateRef.current.gameState.status;
-        const isGameSession = currentStatus === "vs_playing" || currentStatus === "brawler_playing" || currentStatus === "playing";
-        if (!isGameSession) {
-           setOnlineFinishTimer(null);
-           return;
-        }
+  const finalizeMatch = useCallback(
+    (finalResults: any[]) => {
+      if (
+        stateRef.current.gameState.status === "online_lobby" ||
+        stateRef.current.gameState.status === "menu" ||
+        stateRef.current.gameState.status === "online_menu"
+      ) {
+        setOnlineFinishTimer(null);
+        return;
+      }
 
-        const compiledResults = Array.from(onlineService.players.values()).map(
-          (p) => {
+      if (onlineService.lobbyCode) {
+        if (onlineService.isHost) {
+          const currentStatus = stateRef.current.gameState.status;
+          const isGameSession =
+            currentStatus === "vs_playing" ||
+            currentStatus === "brawler_playing" ||
+            currentStatus === "playing";
+          if (!isGameSession) {
+            setOnlineFinishTimer(null);
+            return;
+          }
+
+          const compiledResults = Array.from(
+            onlineService.players.values(),
+          ).map((p) => {
             const stats = finalResults.find((r) => r.id === p.id);
             const isLocal = p.id === onlineService.localPlayer?.id;
             let localScore = stateRef.current.gameState.score;
@@ -4164,11 +4739,42 @@ const App: React.FC = () => {
                   ? stateRef.current.gameState.levelDeaths
                   : 0,
             };
-          },
-        );
-        compiledResults.sort((a, b) => b.score - a.score || a.time - b.time);
-        onlineService.sendEvent("online_results", { results: compiledResults });
-        onlineService.finishGame(); 
+          });
+          compiledResults.sort((a, b) => b.score - a.score || a.time - b.time);
+          onlineService.sendEvent("online_results", {
+            results: compiledResults,
+          });
+          onlineService.finishGame();
+          setOnlineResults(compiledResults);
+          setGameState((p) => ({
+            ...p,
+            status: "online_summary",
+            previousStatus: p.status,
+          }));
+          setOnlineFinishTimer(null);
+        }
+      } else {
+        // Local VS Mode Fallback
+        const compiledResults = [...finalResults];
+        const p1Finished = compiledResults.find((r) => r.name === "P1");
+        const p2Finished = compiledResults.find((r) => r.name === "P2");
+        if (!p1Finished)
+          compiledResults.push({
+            id: "P1",
+            name: "P1",
+            score: 0,
+            time: 999,
+            deaths: 0,
+          });
+        if (!p2Finished)
+          compiledResults.push({
+            id: "P2",
+            name: "P2",
+            score: 0,
+            time: 999,
+            deaths: 0,
+          });
+        compiledResults.sort((a, b) => a.time - b.time);
         setOnlineResults(compiledResults);
         setGameState((p) => ({
           ...p,
@@ -4177,37 +4783,9 @@ const App: React.FC = () => {
         }));
         setOnlineFinishTimer(null);
       }
-    } else {
-      // Local VS Mode Fallback
-      const compiledResults = [...finalResults];
-      const p1Finished = compiledResults.find((r) => r.name === "P1");
-      const p2Finished = compiledResults.find((r) => r.name === "P2");
-      if (!p1Finished)
-        compiledResults.push({
-          id: "P1",
-          name: "P1",
-          score: 0,
-          time: 999,
-          deaths: 0,
-        });
-      if (!p2Finished)
-        compiledResults.push({
-          id: "P2",
-          name: "P2",
-          score: 0,
-          time: 999,
-          deaths: 0,
-        });
-      compiledResults.sort((a, b) => a.time - b.time);
-      setOnlineResults(compiledResults);
-      setGameState((p) => ({
-        ...p,
-        status: "online_summary",
-        previousStatus: p.status,
-      }));
-      setOnlineFinishTimer(null);
-    }
-  }, [onlineService]);
+    },
+    [onlineService],
+  );
 
   // Online Finish Timer
   useEffect(() => {
@@ -4225,7 +4803,11 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, [onlineFinishTimer, onlineResults, finalizeMatch]);
 
-  const calculateLevelScore = (timeTaken: number, deaths: number, isRun: boolean) => {
+  const calculateLevelScore = (
+    timeTaken: number,
+    deaths: number,
+    isRun: boolean,
+  ) => {
     let s = 1000;
     s -= timeTaken * 5;
     s -= deaths * 50;
@@ -4267,9 +4849,11 @@ const App: React.FC = () => {
       ...prev,
       deaths: newTotalDeaths,
       levelDeaths: prev.levelDeaths + 1,
-      score: (prev.status === "random_run" || !!prev.storyCategoryName)
-        ? prev.score - 50
-        : Math.max(0, prev.score - 50), // Fixed 50 points penalty per death
+      collectedCoins: prev.geometryDashMode ? [] : prev.collectedCoins,
+      score:
+        prev.status === "random_run" || !!prev.storyCategoryName
+          ? prev.score - 50
+          : Math.max(0, prev.score - 50), // Fixed 50 points penalty per death
     }));
 
     setRespawnTrigger((prev) => prev + 1);
@@ -4343,10 +4927,21 @@ const App: React.FC = () => {
         if (onlineService.lobbyCode) {
           if (onlineService.isHost) {
             setEditorVerified(true);
-            setGameState((p) => ({ ...p, status: "editor", collectedCoins: [] }));
-            onlineService.broadcastLobbyState("editor", undefined, undefined, undefined, undefined, "editor");
+            setGameState((p) => ({
+              ...p,
+              status: "editor",
+              collectedCoins: [],
+            }));
+            onlineService.broadcastLobbyState(
+              "editor",
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              "editor",
+            );
           } else {
-             // Let host decide
+            // Let host decide
           }
         } else {
           setEditorVerified(true);
@@ -4361,29 +4956,44 @@ const App: React.FC = () => {
           : gameState.levelTime;
 
       // Online Multiplayer OR Tournament Match
-      if (onlineService.lobbyCode || gameState.status === "vs_playing" || gameState.status === "brawler_playing") {
+      if (
+        onlineService.lobbyCode ||
+        gameState.status === "vs_playing" ||
+        gameState.status === "brawler_playing"
+      ) {
         if (onlineService.lobbyCode) {
-          // Send stats to host 
+          // Send stats to host
           const isLocalName = onlineService.localPlayer?.name;
           // Check if local player is actually the one winning/finishing
           // winnerName can be a team or a specific player name
-          const isLocalFinish = (isLocal === true) || winnerName === isLocalName;
-          
+          const isLocalFinish = isLocal === true || winnerName === isLocalName;
+
           if (isLocalFinish) {
             const playerName = isLocalName || "Unknown";
             const levelPoints = calculateLevelScore(
               finalTime,
-              livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths,
-              gameState.status === "random_run" || !!gameState.storyCategoryName
+              livesStats && isLocalName
+                ? livesStats[isLocalName]
+                : gameState.levelDeaths,
+              gameState.status === "random_run" ||
+                !!gameState.storyCategoryName,
             );
             const myStats = {
               id: onlineService.localPlayer?.id,
               name: playerName,
-              score: gameState.status === "brawler_playing" 
-                ? ((winnerName && winnerName !== "DRAW" && winnerName !== "GAVE UP") ? 1 : 0)
-                : levelPoints,
+              score:
+                gameState.status === "brawler_playing"
+                  ? winnerName &&
+                    winnerName !== "DRAW" &&
+                    winnerName !== "GAVE UP"
+                    ? 1
+                    : 0
+                  : levelPoints,
               time: finalTime,
-              deaths: livesStats && isLocalName ? livesStats[isLocalName] : gameState.levelDeaths,
+              deaths:
+                livesStats && isLocalName
+                  ? livesStats[isLocalName]
+                  : gameState.levelDeaths,
             };
             onlineService.sendEvent("finish_stats", myStats);
 
@@ -4394,25 +5004,36 @@ const App: React.FC = () => {
                 const newResults = [...prev, myStats];
                 stateRef.current.onlineResults = newResults;
                 setOnlineResults(newResults);
-                
+
                 // Get total players from accurate count
                 const roomPlayers = onlineService.players.size;
                 const status = stateRef.current.gameState.status;
                 const isOnlineRoom = !!onlineService.lobbyCode;
-                const isMultiSession = isOnlineRoom || status === "vs_playing" || status === "brawler_playing";
-                
+                const isMultiSession =
+                  isOnlineRoom ||
+                  status === "vs_playing" ||
+                  status === "brawler_playing";
+
                 // Calculate total players expected to finish
-                let totalPlayersCount = 1; // Default to 1 
+                let totalPlayersCount = 1; // Default to 1
                 if (isOnlineRoom) {
                   totalPlayersCount = Math.max(2, roomPlayers); // Expect all connected players.
-                } else if (status === "vs_playing" || status === "brawler_playing") {
+                } else if (
+                  status === "vs_playing" ||
+                  status === "brawler_playing"
+                ) {
                   totalPlayersCount = 2; // Local VS/Brawler
                 }
-                
+
                 if (newResults.length >= totalPlayersCount) {
                   setOnlineFinishTimer(null);
                   setTimeout(() => finalizeMatch(newResults), 0);
-                } else if (newResults.length === 1 && onlineFinishTimerRef.current === null && stateRef.current.gameState.finishTimerEnabled === true && isMultiSession) {
+                } else if (
+                  newResults.length === 1 &&
+                  onlineFinishTimerRef.current === null &&
+                  stateRef.current.gameState.finishTimerEnabled === true &&
+                  isMultiSession
+                ) {
                   onlineService.sendEvent("start_timer", { duration: 20 });
                   setOnlineFinishTimer(20);
                 }
@@ -4422,20 +5043,20 @@ const App: React.FC = () => {
 
           // Transition to spectating ONLY if the local player is the one who finished
           if (isLocalFinish) {
-             setGameState((p) => ({ 
-               ...p, 
-               winner: p.winner || winnerName, 
-               isSpectating: true 
-             }));
+            setGameState((p) => ({
+              ...p,
+              winner: p.winner || winnerName,
+              isSpectating: true,
+            }));
           } else {
-             setGameState((p) => ({ 
-               ...p, 
-               winner: p.winner || winnerName
-             }));
+            setGameState((p) => ({
+              ...p,
+              winner: p.winner || winnerName,
+            }));
           }
 
           if (winnerName === "GAVE UP") {
-             // Just wait for summary
+            // Just wait for summary
           }
           return;
         }
@@ -4443,15 +5064,16 @@ const App: React.FC = () => {
         // Local VS Mode Logic
         if (gameState.status === "vs_playing") {
           setGameState((p) => ({ ...p, winner: p.winner || winnerName }));
-          
+
           const prev = stateRef.current.onlineResults || [];
           if (prev.find((r) => r.name === winnerName)) return;
-          
-          const deaths = livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
+
+          const deaths =
+            livesStats && winnerName ? livesStats[winnerName] || 0 : 0;
           const points = calculateLevelScore(
             finalTime,
             deaths,
-            gameState.status === "random_run" || !!gameState.storyCategoryName
+            gameState.status === "random_run" || !!gameState.storyCategoryName,
           );
           const newResults = [
             ...prev,
@@ -4463,14 +5085,17 @@ const App: React.FC = () => {
               deaths: deaths,
             },
           ];
-          
+
           stateRef.current.onlineResults = newResults;
           setOnlineResults(newResults);
-          
+
           if (newResults.length >= 2) {
             setOnlineFinishTimer(null);
             setTimeout(() => finalizeMatch(newResults), 0);
-          } else if (onlineFinishTimerRef.current === null && gameState.finishTimerEnabled === true) {
+          } else if (
+            onlineFinishTimerRef.current === null &&
+            gameState.finishTimerEnabled === true
+          ) {
             setOnlineFinishTimer(20);
           }
           return;
@@ -4480,9 +5105,8 @@ const App: React.FC = () => {
         const p1Team = brawlerTeamMode === "TEAMS" ? brawlerTeam1 : 0;
         const p1Name = "P1";
         const isWinner =
-          winnerName === p1Name ||
-          winnerName === `TEAM ${p1Team + 1}`;
-        
+          winnerName === p1Name || winnerName === `TEAM ${p1Team + 1}`;
+
         const newWins = isWinner
           ? (gameState.onlineWins || 0) + 1
           : gameState.onlineWins || 0;
@@ -4493,14 +5117,24 @@ const App: React.FC = () => {
           {
             id: p1Name,
             name: p1Name,
-            score: winnerName === "DRAW" ? 0 : (winnerName === p1Name || winnerName === `TEAM ${p1Team + 1}`) ? 1 : 0,
+            score:
+              winnerName === "DRAW"
+                ? 0
+                : winnerName === p1Name || winnerName === `TEAM ${p1Team + 1}`
+                  ? 1
+                  : 0,
             time: finalTime,
             deaths: livesStats ? livesStats[p1Name] || 0 : 0,
           },
           {
             id: p2Name,
             name: p2Name,
-            score: winnerName === "DRAW" ? 0 : (winnerName === p2Name || winnerName === `TEAM ${p2Team + 1}`) ? 1 : 0,
+            score:
+              winnerName === "DRAW"
+                ? 0
+                : winnerName === p2Name || winnerName === `TEAM ${p2Team + 1}`
+                  ? 1
+                  : 0,
             time: finalTime,
             deaths: livesStats ? livesStats[p2Name] || 0 : 0,
           },
@@ -4545,11 +5179,12 @@ const App: React.FC = () => {
         time: gameState.time,
       });
 
-      const isRun = gameState.status === "random_run" || !!gameState.storyCategoryName;
+      const isRun =
+        gameState.status === "random_run" || !!gameState.storyCategoryName;
       const levelBonus = calculateLevelScore(
         gameState.levelTime,
         gameState.levelDeaths,
-        isRun
+        isRun,
       );
 
       // Auto-submit to global leaderboard if it's a story level
@@ -4569,6 +5204,18 @@ const App: React.FC = () => {
           gameState.levelDeaths,
           ghostData,
         );
+      }
+
+      if (gameState.geometryDashMode) {
+        try {
+          const stored = localStorage.getItem("ragecube_highscores");
+          const parsed = stored ? JSON.parse(stored) : {};
+          const currentScore = parsed[level.id] || 0;
+          if (levelBonus > currentScore) {
+            parsed[level.id] = levelBonus;
+            localStorage.setItem("ragecube_highscores", JSON.stringify(parsed));
+          }
+        } catch (e) {}
       }
 
       setGameState((prev) => ({
@@ -4599,7 +5246,10 @@ const App: React.FC = () => {
     if (gameState.storyCategoryName) {
       saveId = gameState.storyCategoryName;
       isStory = true;
-    } else if (gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0) {
+    } else if (
+      gameState.customLevelsQueue &&
+      gameState.customLevelsQueue.length > 0
+    ) {
       saveId = gameState.customLevelsQueue[0].id;
     } else if (gameState.customLevelsQueue) {
       // Should not happen, but fallback
@@ -4626,7 +5276,9 @@ const App: React.FC = () => {
     if (isStory) {
       setLevelSource("builtin");
       if (gameState.storyCategoryName) {
-        const catIdx = storyCategories.findIndex((c) => c.name === gameState.storyCategoryName);
+        const catIdx = storyCategories.findIndex(
+          (c) => c.name === gameState.storyCategoryName,
+        );
         setHighscoreLevelIndex(catIdx >= 0 ? catIdx + 1 : 0);
       } else {
         setHighscoreLevelIndex(0); // Full story run
@@ -4684,7 +5336,7 @@ const App: React.FC = () => {
 
     setLevel(shuffled[0]);
     processedCoins.current.clear();
-    setGameState(prev => ({
+    setGameState((prev) => ({
       ...prev,
       status: "random_run",
       currentLevelIndex: 0,
@@ -4722,11 +5374,12 @@ const App: React.FC = () => {
   const isLastStoryLevel =
     isStoryMode &&
     gameState.currentLevelIndex >= selectedDifficultySet.length - 1;
-  const isLastCustomLevel = 
-    !!gameState.customLevelsQueue && 
+  const isLastCustomLevel =
+    !!gameState.customLevelsQueue &&
     gameState.currentLevelIndex >= gameState.customLevelsQueue.length - 1;
-    
-  const showHighscoreInput = isLastStoryLevel || isLastCustomLevel;
+
+  const showHighscoreInput =
+    !gameState.geometryDashMode && (isLastStoryLevel || isLastCustomLevel);
 
   // Render Helpers
   const renderLock = (type: "eyes" | "accessory" | "trail", id: string) => {
@@ -4772,7 +5425,7 @@ const App: React.FC = () => {
     <>
       <AnimatePresence>
         {!isAssetsLoaded && (
-          <motion.div 
+          <motion.div
             key="loader"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.1 }}
@@ -4781,711 +5434,797 @@ const App: React.FC = () => {
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rage-red/10 via-black to-black animate-pulse" />
             <div className="z-10 flex flex-col items-center">
-                <h1 className="text-5xl font-arcade text-rage-red mb-12 tracking-[0.2em] drop-shadow-[0_0_20px_#ff0000] animate-bounce">LOADING</h1>
-                <div className="w-80 bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-lg">
-                    <motion.div 
-                        className="h-full bg-gradient-to-r from-rage-red to-orange-500 shadow-[0_0_15px_#ff0000]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${assetLoadProgress}%` }}
-                        transition={{ duration: 0.1 }}
-                    />
-                </div>
-                <div className="mt-6 text-[10px] font-mono text-neutral-500 tracking-[0.4em] uppercase">
-                    {Math.round(assetLoadProgress)}% INITIALIZED
-                </div>
+              <h1 className="text-5xl font-arcade text-rage-red mb-12 tracking-[0.2em] drop-shadow-[0_0_20px_#ff0000] animate-bounce">
+                LOADING
+              </h1>
+              <div className="w-80 bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-lg">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-rage-red to-orange-500 shadow-[0_0_15px_#ff0000]"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${assetLoadProgress}%` }}
+                  transition={{ duration: 0.1 }}
+                />
+              </div>
+              <div className="mt-6 text-[10px] font-mono text-neutral-500 tracking-[0.4em] uppercase">
+                {Math.round(assetLoadProgress)}% INITIALIZED
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
 
-      <div className="relative z-10 w-full h-full flex flex-col gap-2">
-        {/* HUD */}
-        {[
-          "playing",
-          "dead",
-          "won",
-          "paused",
-          "random_run",
-          "tutorial",
-          "testing",
-          "brawler_testing",
-          "vs_playing",
-          "brawler_playing",
-        ].includes(gameState.status) && (
-          <div className="w-full shrink-0 bg-neutral-900 border-b border-neutral-700 p-2 flex justify-between items-center z-20">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-yellow-400 text-sm md:text-base leading-none truncate max-w-[40vw] font-bold">
-                {level.name}
-              </span>
-              {gameState.status === "vs_playing" ||
-              gameState.status === "brawler_playing" ||
-              gameState.status === "brawler_testing" ? (
-                <span className="text-[10px] md:text-xs text-rage-red animate-pulse">
-                  {t.vsControls}
+        <div className="relative z-10 w-full h-full flex flex-col gap-2">
+          {/* HUD */}
+          {[
+            "playing",
+            "dead",
+            "won",
+            "paused",
+            "random_run",
+            "tutorial",
+            "testing",
+            "brawler_testing",
+            "vs_playing",
+            "brawler_playing",
+          ].includes(gameState.status) && (
+            <div className="w-full shrink-0 bg-neutral-900 border-b border-neutral-700 p-2 flex justify-between items-center z-20">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-yellow-400 text-sm md:text-base leading-none truncate max-w-[40vw] font-bold">
+                  {level.name}
                 </span>
-              ) : (
-                level?.id !== "tutorial" &&
-                gameState.status !== "testing" &&
-                gameState.status !== "brawler_testing" && (
-                  <span className="text-[10px] text-neutral-500 hidden sm:block">
-                    {t.control}
+                {gameState.status === "vs_playing" ||
+                gameState.status === "brawler_playing" ||
+                gameState.status === "brawler_testing" ? (
+                  <span className="text-[10px] md:text-xs text-rage-red animate-pulse">
+                    {t.vsControls}
                   </span>
-                )
-              )}
-              {gameState.status === "random_run" && (
-                <span className="text-[10px] text-blue-400">
-                  {t.randomRun} {gameState.currentLevelIndex + 1}/
-                  {gameState.customLevelsQueue?.length || 1}
-                </span>
-              )}
-              {(gameState.status === "testing" ||
-                gameState.status === "brawler_testing") && (
-                <span className="text-xs text-blue-300 animate-pulse">
-                  {t.testing}
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex gap-2">
-                {onlineFinishTimer !== null && (
-                  <div className="bg-red-600 text-white px-2 py-0.5 animate-pulse border border-white rounded shadow-lg flex items-center gap-1">
-                    <span className="text-[8px] font-bold uppercase">
-                      Grace:
+                ) : (
+                  level?.id !== "tutorial" &&
+                  gameState.status !== "testing" &&
+                  gameState.status !== "brawler_testing" && (
+                    <span className="text-[10px] text-neutral-500 hidden sm:block">
+                      {t.control}
                     </span>
-                    <span className="text-xs font-bold">
-                      {onlineFinishTimer}s
-                    </span>
-                  </div>
+                  )
                 )}
-                <div className="bg-neutral-800 text-white px-2 py-0.5 text-[10px] md:text-xs border border-neutral-700 flex flex-col items-center">
-                  <div className="flex gap-1">
-                    <span className="opacity-50">LEVEL:</span>
-                    <span>{gameState.levelTime}s</span>
-                  </div>
-                  {onlineService.lobbyCode && (
-                    <div className={`text-[8px] font-black ${GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime < 30 ? 'text-red-500 animate-pulse' : 'text-neutral-500'}`}>
-                      LIMIT: {GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime}s
+                {gameState.status === "random_run" && (
+                  <span className="text-[10px] text-blue-400">
+                    {t.randomRun} {gameState.currentLevelIndex + 1}/
+                    {gameState.customLevelsQueue?.length || 1}
+                  </span>
+                )}
+                {(gameState.status === "testing" ||
+                  gameState.status === "brawler_testing") && (
+                  <span className="text-xs text-blue-300 animate-pulse">
+                    {t.testing}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex gap-2">
+                  {onlineFinishTimer !== null && (
+                    <div className="bg-red-600 text-white px-2 py-0.5 animate-pulse border border-white rounded shadow-lg flex items-center gap-1">
+                      <span className="text-[8px] font-bold uppercase">
+                        Grace:
+                      </span>
+                      <span className="text-xs font-bold">
+                        {onlineFinishTimer}s
+                      </span>
                     </div>
                   )}
-                </div>
-                {(gameState.status === "random_run" || !!gameState.storyCategoryName) && (
-                  <div className="bg-rage-red/20 text-white px-2 py-0.5 text-[10px] md:text-xs border border-rage-red/50 flex flex-col items-center min-w-[60px]">
-                    <div className="flex gap-1 items-center justify-center">
-                      <span className="opacity-70 text-[8px] md:text-[10px] uppercase font-bold text-rage-red">{t.score}:</span>
-                      <span className="font-bold text-rage-red">{gameState.score}</span>
+                  <div className="bg-neutral-800 text-white px-2 py-0.5 text-[10px] md:text-xs border border-neutral-700 flex flex-col items-center">
+                    <div className="flex gap-1">
+                      <span className="opacity-50">LEVEL:</span>
+                      <span>{gameState.levelTime}s</span>
                     </div>
-                  </div>
-                )}
-                {onlineService.lobbyCode && (
-                  <div className="flex gap-1 ml-2">
-                    {onlineService.isHost && (
-                      <button
-                        onClick={() => onlineService.togglePause()}
-                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase transition-all border-b-2 active:translate-y-px ${onlineService.isPaused ? "bg-green-600 border-green-900 text-white" : "bg-yellow-600 border-yellow-900 text-white"}`}
+                    {onlineService.lobbyCode && (
+                      <div
+                        className={`text-[8px] font-black ${GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime < 30 ? "text-red-500 animate-pulse" : "text-neutral-500"}`}
                       >
-                        {onlineService.isPaused ? "RESUME" : "PAUSE"}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        if (currentVote) return;
-                        setVoteConfirmType("restart");
-                      }}
-                      disabled={!!currentVote}
-                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
-                        currentVote 
-                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
-                          : "bg-blue-600 text-white border-blue-900 active:translate-y-px"
-                      }`}
-                      title="Initiate Restart Vote"
-                    >
-                      RESET
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (currentVote) return;
-                        setVoteConfirmType("skip");
-                      }}
-                      disabled={!!currentVote}
-                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
-                        currentVote 
-                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
-                          : "bg-purple-600 text-white border-purple-900 active:translate-y-px"
-                      }`}
-                      title="Initiate Skip Vote"
-                    >
-                      SKIP
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (currentVote) return;
-                        setKickMenuOpen(true);
-                      }}
-                      disabled={!!currentVote}
-                      className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
-                        currentVote 
-                          ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed" 
-                          : "bg-red-600 text-white border-red-900 active:translate-y-px"
-                      }`}
-                      title="Initiate Kick Vote"
-                    >
-                      KICK
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content Area - Maximizes space */}
-        <div className="flex-1 relative flex items-center justify-center min-h-0 min-w-0 w-full">
-          {/* Aspect Ratio Container */}
-          <div 
-             className="aspect-video h-full w-full max-w-full max-h-full bg-black shadow-[0_0_50px_rgba(255,0,68,0.2)] border-4 border-neutral-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center"
-          >
-            {/* Editor Type Select */}
-            {gameState.status === "editor_type_select" && (
-              <div className="flex flex-col items-center justify-center gap-12 w-full p-8">
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-4xl text-white font-arcade tracking-widest text-center">
-                    {t.editorTypeTitle}
-                  </h2>
-                  <div className="h-1 w-24 bg-cyan-500 rounded-full" />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
-                  {/* Normal Level Option */}
-                  <button
-                    onClick={() => startNewEditor(false)}
-                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-cyan-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                      🚩
-                    </div>
-                    <div>
-                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-cyan-400">
-                        {t.editorTypeNormal}
-                      </h3>
-                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                        {t.editorTypeNormalDesc}
-                      </p>
-                    </div>
-                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-cyan-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                      Select
-                    </div>
-                  </button>
-
-                  {/* Brawler Level Option */}
-                  <button
-                    onClick={() => startNewEditor(true)}
-                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-red-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-red-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                      ⚔️
-                    </div>
-                    <div>
-                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-red-400">
-                        {t.editorTypeBrawler}
-                      </h3>
-                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                        {t.editorTypeBrawlerDesc}
-                      </p>
-                    </div>
-                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-red-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                      Select
-                    </div>
-                  </button>
-
-                  {/* Coop Editor Level Option */}
-                  <button
-                    onClick={() => createOnlineLobby("editor")}
-                    className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-purple-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="w-20 h-20 bg-neutral-800 group-hover:bg-purple-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                      🤝
-                    </div>
-                    <div>
-                      <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-purple-400">
-                        COOP EDITOR
-                      </h3>
-                      <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                        CREATE A LOBBY TO BUILD A LEVEL TOGETHER
-                      </p>
-                    </div>
-                    <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-purple-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                      HOST
-                    </div>
-                  </button>
-                </div>
-
-                <div className="flex flex-col items-center gap-4 w-full max-w-md mt-4">
-                   <div className="flex w-full gap-2">
-                     <input
-                       type="text"
-                       value={onlineLobbyInput}
-                       onChange={(e) => setOnlineLobbyInput(e.target.value.toUpperCase())}
-                       onKeyDown={(e) => {
-                         e.stopPropagation();
-                         if (e.key === "Enter") {
-                           e.preventDefault();
-                           if (onlineLobbyInput.trim()) {
-                             joinOnlineLobby(onlineLobbyInput.trim());
-                           }
-                         }
-                       }}
-                       placeholder="ENTER ANY LOBBY CODE"
-                       className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
-                     />
-                     <button
-                       onClick={() => {
-                         if (onlineLobbyInput.trim()) {
-                            joinOnlineLobby(onlineLobbyInput.trim());
-                         }
-                       }}
-                       className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-arcade rounded-lg border-b-4 border-purple-800 hover:border-purple-600 active:border-b-0 active:translate-y-4 transition-all"
-                     >
-                       JOIN
-                     </button>
-                   </div>
-                </div>
-
-                {onlineError && (
-                  <div className="text-red-500 font-arcade text-[10px] md:text-xs mb-3 animate-pulse max-w-sm text-center uppercase tracking-wider">
-                    {onlineError}
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setGameState(p => ({ ...p, status: "menu" }))}
-                  className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
-                >
-                  ← {t.back}
-                </button>
-              </div>
-            )}
-
-            {/* Editor Layer */}
-            {gameState.status === "editor" && (
-              <LevelEditor
-                onSave={handleSaveLevel}
-                onExit={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                onTest={(levelData, history, historyIndex) => {
-                  setEditorData(levelData);
-                  setEditorHistory({
-                    history: history || [],
-                    index: historyIndex || 0,
-                  }); // Preserve History
-                  setLevel(levelData);
-
-                  if (gameState.onlineMode === "editor" && onlineService.lobbyCode) {
-                    if (onlineService.isHost) {
-                      onlineService.broadcastLobbyState("editor", levelData);
-                    } else {
-                      onlineService.sendEvent('editor-sync', levelData);
-                    }
-                    setVoteConfirmType('test_level');
-                    return;
-                  }
-
-                  setRespawnTrigger(0);
-                  processedCoins.current.clear(); // Reset coins for testing session
-                  setGameState((p) => ({
-                    ...p,
-                    status: levelData.isBrawler ? "brawler_testing" : "testing",
-                    collectedCoins: [],
-                  }));
-                }}
-                lang={lang}
-                initialLevel={editorData}
-                isVerified={editorVerified}
-                initialHistory={editorHistory?.history}
-                initialHistoryIndex={editorHistory?.index}
-                showToast={showToast}
-                settings={settings}
-                onSettingsChange={setSettings}
-                externalLevelSync={gameState.onlineMode === "editor" ? editorData : undefined}
-                onLevelChange={(levelData) => {
-                  if (gameState.onlineMode === "editor" && onlineService.lobbyCode) {
-                    if (onlineService.isHost) {
-                      setEditorData(levelData);
-                      setLevel(levelData);
-                      onlineService.broadcastLobbyState("editor", levelData);
-                    } else {
-                      setEditorData(levelData);
-                      onlineService.sendEvent('editor-sync', levelData);
-                    }
-                  }
-                }}
-              />
-            )}
-
-            {/* Custom Level Select Layer */}
-            {gameState.status === "custom_level_select" && (
-              <CustomLevelSelect
-                levels={sortedCustomLevels}
-                storyCategories={storyCategories}
-                onPlay={playSingleCustomLevelHook}
-                onPlayRun={startStoryRun}
-                onEdit={handleEditLevel}
-                onDelete={handleDeleteLevel}
-                onImport={handleImportLevel}
-                onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                lang={lang}
-                selectedIndex={menuSelection}
-                setSelectedIndex={setMenuSelection}
-                sortMode={levelSortMode}
-                onSortChange={(mode) => {
-                  setLevelSortMode(mode);
-                  setMenuSelection(0);
-                }}
-                showToast={showToast}
-                showGhost={settings.showGhost || false}
-                onToggleGhost={() =>
-                  setSettings((p) => ({ ...p, showGhost: !p.showGhost }))
-                }
-              />
-            )}
-
-            {/* Delete Confirm Modal */}
-            {showDeleteConfirm && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50">
-                <h2 className="text-2xl mb-8 text-white">DELETE LEVEL?</h2>
-                <div className="text-neutral-400 mb-8">
-                  This action cannot be undone.
-                </div>
-                <div className="w-72 flex flex-col gap-2">
-                  <MenuButton
-                    index={0}
-                    label="CANCEL"
-                    onClick={() => setShowDeleteConfirm(null)}
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={1}
-                    label="DELETE"
-                    danger
-                    onClick={() => {
-                      handleDeleteLevel(showDeleteConfirm);
-                      setShowDeleteConfirm(null);
-                    }}
-                    isSelected={menuSelection === 1}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Game Layer */}
-            {[
-              "playing",
-              "dead",
-              "won",
-              "paused",
-              "settings",
-              "random_run",
-              "tutorial",
-              "testing",
-              "brawler_testing",
-              "vs_playing",
-              "vs_won",
-              "brawler_playing",
-              "brawler_won",
-              "online_summary",
-            ].includes(gameState.status) && (
-              <GameCanvas
-                level={gamescreenLevel}
-                customization={customization}
-                customizationP2={customizationP2}
-                settings={settings}
-                onDie={handleDie}
-                onWin={handleWin}
-                onCoin={handleCoin}
-                onBlockPlace={handleBlockPlace}
-                onJump={() => {
-                  setGameState((p) => {
-                    const newJumps = p.totalJumps + 1;
-                    checkAchievements({ totalJumps: newJumps });
-                    return { ...p, totalJumps: newJumps };
-                  });
-                }}
-                onHook={() => {
-                  setGameState((p) => {
-                    const newHooks = p.hooksUsed + 1;
-                    checkAchievements({ hooksUsed: newHooks });
-                    return { ...p, hooksUsed: newHooks };
-                  });
-                }}
-                status={gameState.status}
-                collectedCoins={gameState.collectedCoins}
-                paused={
-                  gameState.status === "paused" ||
-                  gameState.status === "won" ||
-                  gameState.status === "vs_won" ||
-                  gameState.status === "brawler_won" ||
-                  gameState.status === "online_summary" ||
-                  onlineService.isPaused
-                }
-                respawnTrigger={respawnTrigger}
-                resetTrigger={resetTrigger}
-                gameMode={
-                  (gameState.status === "paused" ? (gameState.previousStatus || "playing") : gameState.status).includes("vs")
-                    ? "vs"
-                    : (gameState.status === "paused" ? (gameState.previousStatus || "playing") : gameState.status).includes("brawler")
-                      ? "brawler"
-                      : "story"
-                }
-                fpsCap={settings.fpsCap}
-                brawlerPowerups={brawlerPowerups}
-                brawlerTeamMode={brawlerTeamMode}
-                brawlerTeam1={brawlerTeam1}
-                brawlerTeam2={brawlerTeam2}
-                brawlerHazardMode={brawlerHazardMode}
-                brawlerSuddenDeath={brawlerSuddenDeath}
-                brawlerComboPowerups={brawlerComboPowerups}
-                vsCollision={gameState.collisionEnabled}
-                isOnline={!!onlineService.lobbyCode}
-                onlinePing={onlineService.ping}
-                onlinePlayers={onlinePlayers}
-                lang={lang}
-                isSpectating={gameState.isSpectating}
-                spectateTargetId={gameState.spectateTargetId}
-                opponentOpacity={settings.opponentOpacity}
-                geometryDashMode={!!gameState.geometryDashMode}
-              />
-            )}
-
-            {/* Online Pause Overlay */}
-            {onlineService.lobbyCode && onlineService.isPaused && (
-              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-[60] backdrop-blur-sm">
-                <div className="bg-neutral-900 border-4 border-yellow-500 p-10 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(234,179,8,0.3)]">
-                  <div className="text-6xl font-arcade text-yellow-500 tracking-widest drop-shadow-[0_0_20px_#eab308]">GAME PAUSED</div>
-                  <div className="text-neutral-400 font-bold uppercase tracking-[0.3em]">HOST HAS PAUSED THE MATCH</div>
-                  {onlineService.isHost && (
-                    <button
-                      onClick={() => onlineService.togglePause()}
-                      className="mt-4 bg-green-600 hover:bg-green-500 text-white px-10 py-5 font-arcade text-2xl border-b-8 border-green-900 active:translate-y-2 active:border-b-0 transition-all rounded-xl"
-                    >
-                      RESUME GAME
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Votekick Menu */}
-            {kickMenuOpen && (
-              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-md animate-fade-in">
-                <div className="bg-neutral-900 border-4 border-red-600 p-6 rounded-2xl flex flex-col items-center gap-4 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-md w-full">
-                  <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter mb-2">{t.kickPlayer || "VOTE KICK"}</div>
-                  <div className="w-full max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2">
-                    {Array.from(onlineService.players.values())
-                      .filter(p => p.id !== onlineService.localPlayer?.id)
-                      .map(p => (
-                        <button 
-                          key={p.id}
-                          onClick={() => {
-                            setKickConfirmTarget(p);
-                            setKickMenuOpen(false);
-                          }}
-                          className="w-full p-4 bg-neutral-800 hover:bg-red-900/40 border border-neutral-700 hover:border-red-500 text-left flex items-center gap-4 transition-all rounded-xl"
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center border border-neutral-700 p-2">
-                            <CharacterPreview customization={p.customization} scale={1.5} />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-white text-lg leading-none">{p.name}</span>
-                            <span className="text-[8px] text-neutral-500 uppercase tracking-widest mt-1">Player ID: {p.id.slice(0, 8)}</span>
-                          </div>
-                        </button>
-                      ))}
-                    {Array.from(onlineService.players.values()).filter(p => p.id !== onlineService.localPlayer?.id).length === 0 && (
-                      <div className="text-neutral-500 text-center py-10 font-bold uppercase tracking-widest border-2 border-dashed border-neutral-800 rounded-xl">
-                        {t.noPlayersToKick || "NO PLAYERS TO KICK"}
+                        LIMIT: {GLOBAL_LEVEL_TIME_LIMIT - gameState.levelTime}s
                       </div>
                     )}
                   </div>
-                  <button 
-                    onClick={() => setKickMenuOpen(false)}
-                    className="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                  >
-                    {t.back || "BACK"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Votekick Confirmation */}
-            {kickConfirmTarget && (
-              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
-                <div className="bg-neutral-900 border-4 border-red-600 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-sm w-full">
-                  <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter leading-tight">
-                    {t.voteKickFor?.replace('{name}', kickConfirmTarget.name.toUpperCase()) || `KICK ${kickConfirmTarget.name.toUpperCase()}?`}
-                  </div>
-                  <div className="text-neutral-400 text-center text-xs font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
-                    {t.reallyStartVote || "THIS WILL START A VOTE"}
-                  </div>
-                  <div className="flex gap-4 w-full">
-                    <button 
-                      onClick={() => {
-                        onlineService.initiateVote("kick", kickConfirmTarget.id);
-                        setKickConfirmTarget(null);
-                      }}
-                      className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 font-arcade border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(220,38,38,0.4)]"
-                    >
-                      {t.yes || "YES"}
-                    </button>
-                    <button 
-                      onClick={() => setKickConfirmTarget(null)}
-                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                    >
-                      {t.no || "NO"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Generic Vote Confirmation (Restart, Skip) */}
-            {voteConfirmType && (
-              <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
-                <div className="bg-neutral-900 border-4 border-cyan-500 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-sm w-full">
-                  <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
-                    {voteConfirmType === 'restart' ? 'RESTART VOTE?' : 
-                     voteConfirmType === 'skip' ? 'SKIP VOTE?' : 
-                     voteConfirmType === 'test_level' ? 'TEST LEVEL VOTE?' : 
-                     'START VOTE?'}
-                  </div>
-                  <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
-                    {t.reallyStartVote || "THIS WILL START A VOTE"}
-                  </div>
-                  <div className="flex gap-4 w-full">
-                    <button 
-                      onClick={() => {
-                        onlineService.initiateVote(voteConfirmType);
-                        setVoteConfirmType(null);
-                      }}
-                      className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 font-arcade border-b-4 border-cyan-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.4)]"
-                    >
-                      {t.yes || "YES"}
-                    </button>
-                    <button 
-                      onClick={() => setVoteConfirmType(null)}
-                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                    >
-                      {t.no || "NO"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Voting UI Overlay */}
-            {onlineService.lobbyCode && currentVote && (
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[70] w-full max-w-md pt-2">
-                <div className="bg-black/90 border-b-2 border-x-2 border-cyan-500 p-4 rounded-b-2xl shadow-[0_10px_30px_rgba(6,182,212,0.5)] flex flex-col items-center animate-in slide-in-from-top duration-500 ease-out backdrop-blur-md">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
-                    <span className="text-cyan-400 text-xs font-black uppercase tracking-[0.3em] drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
-                      {t.voteRunning || "VOTING IN PROGRESS"}
-                    </span>
-                    <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
-                  </div>
-                  
-                  <div className="text-white text-lg font-arcade mb-4 uppercase tracking-tight text-center px-4 leading-tight">
-                    {currentVote.type === 'restart' || currentVote.type === 'repeat' ? 'RESTART LEVEL?' : 
-                     currentVote.type === 'skip' || currentVote.type === 'next' ? 'SKIP LEVEL?' : 
-                     currentVote.type === 'kick' ? `KICK ${onlineService.players.get(currentVote.targetId || '')?.name.toUpperCase() || 'PLAYER'}?` : 'CALL A VOTE?'}
-                  </div>
-                  
-                  <div className="flex gap-4 w-full px-6 mb-4">
-                    <button 
-                      onClick={() => onlineService.castVote('yes')}
-                      className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
-                        ${(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id] === 'yes')
-                          ? "bg-green-700 text-white border-green-950 scale-105 opacity-100" 
-                          : "bg-green-600 hover:bg-green-500 text-white/80 border-green-900 active:translate-y-1 active:border-b-0 opacity-80"
+                  {(gameState.status === "random_run" ||
+                    !!gameState.storyCategoryName) && (
+                    <div className="bg-rage-red/20 text-white px-2 py-0.5 text-[10px] md:text-xs border border-rage-red/50 flex flex-col items-center min-w-[60px]">
+                      <div className="flex gap-1 items-center justify-center">
+                        <span className="opacity-70 text-[8px] md:text-[10px] uppercase font-bold text-rage-red">
+                          {t.score}:
+                        </span>
+                        <span className="font-bold text-rage-red">
+                          {gameState.score}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {onlineService.lobbyCode && (
+                    <div className="flex gap-1 ml-2">
+                      {onlineService.isHost && (
+                        <button
+                          onClick={() => onlineService.togglePause()}
+                          className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase transition-all border-b-2 active:translate-y-px ${onlineService.isPaused ? "bg-green-600 border-green-900 text-white" : "bg-yellow-600 border-yellow-900 text-white"}`}
+                        >
+                          {onlineService.isPaused ? "RESUME" : "PAUSE"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (currentVote) return;
+                          setVoteConfirmType("restart");
+                        }}
+                        disabled={!!currentVote}
+                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                          currentVote
+                            ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed"
+                            : "bg-blue-600 text-white border-blue-900 active:translate-y-px"
                         }`}
-                    >
-                      <span className="block mb-1">JA [1]</span>
-                      <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
-                        {Object.values(currentVote.votes).filter(v => v === 'yes').length}
-                      </span>
-                    </button>
-                    <button 
-                      onClick={() => onlineService.castVote('no')}
-                      className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
-                        ${(onlineService.localPlayer && currentVote.votes[onlineService.localPlayer.id] === 'no')
-                          ? "bg-red-700 text-white border-red-950 scale-105 opacity-100" 
-                          : "bg-red-600 hover:bg-red-500 text-white/80 border-red-900 active:translate-y-1 active:border-b-0 opacity-80"
+                        title="Initiate Restart Vote"
+                      >
+                        RESET
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (currentVote) return;
+                          setVoteConfirmType("skip");
+                        }}
+                        disabled={!!currentVote}
+                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                          currentVote
+                            ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed"
+                            : "bg-purple-600 text-white border-purple-900 active:translate-y-px"
                         }`}
+                        title="Initiate Skip Vote"
+                      >
+                        SKIP
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (currentVote) return;
+                          setKickMenuOpen(true);
+                        }}
+                        disabled={!!currentVote}
+                        className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase border-b-2 ${
+                          currentVote
+                            ? "bg-neutral-600 text-neutral-400 border-neutral-700 cursor-not-allowed"
+                            : "bg-red-600 text-white border-red-900 active:translate-y-px"
+                        }`}
+                        title="Initiate Kick Vote"
+                      >
+                        KICK
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Area - Maximizes space */}
+          <div className="flex-1 relative flex items-center justify-center min-h-0 min-w-0 w-full">
+            {/* Aspect Ratio Container */}
+            <div className="aspect-video h-full w-full max-w-full max-h-full bg-black shadow-[0_0_50px_rgba(255,0,68,0.2)] border-4 border-neutral-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center">
+              {/* Editor Type Select */}
+              {gameState.status === "editor_type_select" && (
+                <div className="flex flex-col items-center justify-center gap-12 w-full p-8">
+                  <div className="flex flex-col items-center gap-4">
+                    <h2 className="text-4xl text-white font-arcade tracking-widest text-center">
+                      {t.editorTypeTitle}
+                    </h2>
+                    <div className="h-1 w-24 bg-cyan-500 rounded-full" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+                    {/* Normal Level Option */}
+                    <button
+                      onClick={() => startNewEditor(false)}
+                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
                     >
-                      <span className="block mb-1">NEIN [2]</span>
-                      <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
-                        {Object.values(currentVote.votes).filter(v => v === 'no').length}
-                      </span>
+                      <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-cyan-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                        🚩
+                      </div>
+                      <div>
+                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-cyan-400">
+                          {t.editorTypeNormal}
+                        </h3>
+                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                          {t.editorTypeNormalDesc}
+                        </p>
+                      </div>
+                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-cyan-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                        Select
+                      </div>
+                    </button>
+
+                    {/* Brawler Level Option */}
+                    <button
+                      onClick={() => startNewEditor(true)}
+                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-red-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-red-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                        ⚔️
+                      </div>
+                      <div>
+                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-red-400">
+                          {t.editorTypeBrawler}
+                        </h3>
+                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                          {t.editorTypeBrawlerDesc}
+                        </p>
+                      </div>
+                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-red-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                        Select
+                      </div>
+                    </button>
+
+                    {/* Coop Editor Level Option */}
+                    <button
+                      onClick={() => createOnlineLobby("editor")}
+                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-purple-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-purple-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                        🤝
+                      </div>
+                      <div>
+                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-purple-400">
+                          COOP EDITOR
+                        </h3>
+                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                          CREATE A LOBBY TO BUILD A LEVEL TOGETHER
+                        </p>
+                      </div>
+                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-purple-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                        HOST
+                      </div>
                     </button>
                   </div>
-                  
-                  <div className="w-full px-6">
-                    <div className="relative h-2 bg-neutral-800/80 rounded-full w-full overflow-hidden border border-white/5">
-                      <div 
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-100 linear"
-                        style={{ width: `${Math.max(0, (currentVote.endTime - Date.now()) / 15000 * 100)}%` }}
+
+                  <div className="flex flex-col items-center gap-4 w-full max-w-md mt-4">
+                    <div className="flex w-full gap-2">
+                      <input
+                        type="text"
+                        value={onlineLobbyInput}
+                        onChange={(e) =>
+                          setOnlineLobbyInput(e.target.value.toUpperCase())
+                        }
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (onlineLobbyInput.trim()) {
+                              joinOnlineLobby(onlineLobbyInput.trim());
+                            }
+                          }
+                        }}
+                        placeholder="ENTER ANY LOBBY CODE"
+                        className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
                       />
+                      <button
+                        onClick={() => {
+                          if (onlineLobbyInput.trim()) {
+                            joinOnlineLobby(onlineLobbyInput.trim());
+                          }
+                        }}
+                        className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-arcade rounded-lg border-b-4 border-purple-800 hover:border-purple-600 active:border-b-0 active:translate-y-4 transition-all"
+                      >
+                        JOIN
+                      </button>
                     </div>
                   </div>
 
-                  <div className="mt-3 text-[10px] text-neutral-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
-                     <span>{Object.keys(currentVote.votes).length}</span>
-                     <span className="opacity-30">/</span>
-                     <span>{Array.from(onlineService.players.values()).length} {t.players?.toUpperCase() || 'PLAYERS'}</span>
+                  {onlineError && (
+                    <div className="text-red-500 font-arcade text-[10px] md:text-xs mb-3 animate-pulse max-w-sm text-center uppercase tracking-wider">
+                      {onlineError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      setGameState((p) => ({ ...p, status: "menu" }))
+                    }
+                    className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
+                  >
+                    ← {t.back}
+                  </button>
+                </div>
+              )}
+
+              {/* Editor Layer */}
+              {gameState.status === "editor" && (
+                <LevelEditor
+                  onSave={handleSaveLevel}
+                  onExit={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                  onTest={(levelData, history, historyIndex) => {
+                    setEditorData(levelData);
+                    setEditorHistory({
+                      history: history || [],
+                      index: historyIndex || 0,
+                    }); // Preserve History
+                    setLevel(levelData);
+
+                    if (
+                      gameState.onlineMode === "editor" &&
+                      onlineService.lobbyCode
+                    ) {
+                      if (onlineService.isHost) {
+                        onlineService.broadcastLobbyState("editor", levelData);
+                      } else {
+                        onlineService.sendEvent("editor-sync", levelData);
+                      }
+                      setVoteConfirmType("test_level");
+                      return;
+                    }
+
+                    setRespawnTrigger(0);
+                    processedCoins.current.clear(); // Reset coins for testing session
+                    setGameState((p) => ({
+                      ...p,
+                      status: levelData.isBrawler
+                        ? "brawler_testing"
+                        : "testing",
+                      collectedCoins: [],
+                    }));
+                  }}
+                  lang={lang}
+                  initialLevel={editorData}
+                  isVerified={editorVerified}
+                  initialHistory={editorHistory?.history}
+                  initialHistoryIndex={editorHistory?.index}
+                  showToast={showToast}
+                  settings={settings}
+                  onSettingsChange={setSettings}
+                  externalLevelSync={
+                    gameState.onlineMode === "editor" ? editorData : undefined
+                  }
+                  onLevelChange={(levelData) => {
+                    if (
+                      gameState.onlineMode === "editor" &&
+                      onlineService.lobbyCode
+                    ) {
+                      if (onlineService.isHost) {
+                        setEditorData(levelData);
+                        setLevel(levelData);
+                        onlineService.broadcastLobbyState("editor", levelData);
+                      } else {
+                        setEditorData(levelData);
+                        onlineService.sendEvent("editor-sync", levelData);
+                      }
+                    }
+                  }}
+                />
+              )}
+
+              {/* Custom Level Select Layer */}
+              {gameState.status === "custom_level_select" && (
+                <CustomLevelSelect
+                  levels={sortedCustomLevels}
+                  storyCategories={storyCategories}
+                  onPlay={playSingleCustomLevelHook}
+                  onPlayRun={startStoryRun}
+                  onEdit={handleEditLevel}
+                  onDelete={handleDeleteLevel}
+                  onImport={handleImportLevel}
+                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                  lang={lang}
+                  selectedIndex={menuSelection}
+                  setSelectedIndex={setMenuSelection}
+                  sortMode={levelSortMode}
+                  onSortChange={(mode) => {
+                    setLevelSortMode(mode);
+                    setMenuSelection(0);
+                  }}
+                  showToast={showToast}
+                  showGhost={settings.showGhost || false}
+                  onToggleGhost={() =>
+                    setSettings((p) => ({ ...p, showGhost: !p.showGhost }))
+                  }
+                />
+              )}
+
+              {/* Delete Confirm Modal */}
+              {showDeleteConfirm && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50">
+                  <h2 className="text-2xl mb-8 text-white">DELETE LEVEL?</h2>
+                  <div className="text-neutral-400 mb-8">
+                    This action cannot be undone.
+                  </div>
+                  <div className="w-72 flex flex-col gap-2">
+                    <MenuButton
+                      index={0}
+                      label="CANCEL"
+                      onClick={() => setShowDeleteConfirm(null)}
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={1}
+                      label="DELETE"
+                      danger
+                      onClick={() => {
+                        handleDeleteLevel(showDeleteConfirm);
+                        setShowDeleteConfirm(null);
+                      }}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Difficulty Select */}
-            {gameState.status === "difficulty_select" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30 overflow-y-auto py-10">
-                <h2 className="text-2xl mb-8 text-white uppercase tracking-widest">{t.selectDifficulty || "SELECT DIFFICULTY"}</h2>
-                <div className="w-72 flex flex-col gap-2">
-                  <MenuButton
-                    index={0}
-                    label={`${t.beginner || "BEGINNER"} (${INITIAL_LEVELS.length})`}
-                    onClick={() => startStoryRun(INITIAL_LEVELS, t.beginner || "BEGINNER")}
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={1}
-                    label={`${t.advanced || "ADVANCED"} (${ADVANCED_LEVELS.length})`}
-                    onClick={() => startStoryRun(ADVANCED_LEVELS, t.advanced || "ADVANCED")}
-                    isSelected={menuSelection === 1}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={2}
-                    label={`${t.expert || "EXPERT"} (${EXPERT_LEVELS.length})`}
-                    onClick={() => startStoryRun(EXPERT_LEVELS, t.expert || "EXPERT")}
-                    isSelected={menuSelection === 2}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={3}
-                    label={`${t.god || "JUMP GOD"} (${GOD_LEVELS.length})`}
-                    onClick={() => startStoryRun(GOD_LEVELS, t.god || "GOD")}
-                    danger
-                    isSelected={menuSelection === 3}
-                    onHover={setMenuSelection}
-                  />
+              {/* Game Layer */}
+              {[
+                "playing",
+                "dead",
+                "won",
+                "paused",
+                "settings",
+                "random_run",
+                "tutorial",
+                "testing",
+                "brawler_testing",
+                "vs_playing",
+                "vs_won",
+                "brawler_playing",
+                "brawler_won",
+                "online_summary",
+              ].includes(gameState.status) && (
+                <GameCanvas
+                  level={gamescreenLevel}
+                  customization={customization}
+                  customizationP2={customizationP2}
+                  settings={settings}
+                  gdSpeedMode={gameState.gdSpeedMode || 1}
+                  onDie={handleDie}
+                  onWin={handleWin}
+                  onCoin={handleCoin}
+                  onBlockPlace={handleBlockPlace}
+                  onJump={() => {
+                    setGameState((p) => {
+                      const newJumps = p.totalJumps + 1;
+                      checkAchievements({ totalJumps: newJumps });
+                      return { ...p, totalJumps: newJumps };
+                    });
+                  }}
+                  onHook={() => {
+                    setGameState((p) => {
+                      const newHooks = p.hooksUsed + 1;
+                      checkAchievements({ hooksUsed: newHooks });
+                      return { ...p, hooksUsed: newHooks };
+                    });
+                  }}
+                  status={gameState.status}
+                  collectedCoins={gameState.collectedCoins}
+                  paused={
+                    gameState.status === "paused" ||
+                    gameState.status === "won" ||
+                    gameState.status === "vs_won" ||
+                    gameState.status === "brawler_won" ||
+                    gameState.status === "online_summary" ||
+                    onlineService.isPaused
+                  }
+                  respawnTrigger={respawnTrigger}
+                  resetTrigger={resetTrigger}
+                  gameMode={
+                    (gameState.status === "paused"
+                      ? gameState.previousStatus || "playing"
+                      : gameState.status
+                    ).includes("vs")
+                      ? "vs"
+                      : (gameState.status === "paused"
+                            ? gameState.previousStatus || "playing"
+                            : gameState.status
+                          ).includes("brawler")
+                        ? "brawler"
+                        : "story"
+                  }
+                  fpsCap={settings.fpsCap}
+                  brawlerPowerups={brawlerPowerups}
+                  brawlerTeamMode={brawlerTeamMode}
+                  brawlerTeam1={brawlerTeam1}
+                  brawlerTeam2={brawlerTeam2}
+                  brawlerHazardMode={brawlerHazardMode}
+                  brawlerSuddenDeath={brawlerSuddenDeath}
+                  brawlerComboPowerups={brawlerComboPowerups}
+                  vsCollision={gameState.collisionEnabled}
+                  isOnline={!!onlineService.lobbyCode}
+                  onlinePing={onlineService.ping}
+                  onlinePlayers={onlinePlayers}
+                  lang={lang}
+                  isSpectating={gameState.isSpectating}
+                  spectateTargetId={gameState.spectateTargetId}
+                  opponentOpacity={settings.opponentOpacity}
+                  geometryDashMode={!!gameState.geometryDashMode}
+                  levelDeaths={gameState.levelDeaths}
+                />
+              )}
+
+              {/* Online Pause Overlay */}
+              {onlineService.lobbyCode && onlineService.isPaused && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-[60] backdrop-blur-sm">
+                  <div className="bg-neutral-900 border-4 border-yellow-500 p-10 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(234,179,8,0.3)]">
+                    <div className="text-6xl font-arcade text-yellow-500 tracking-widest drop-shadow-[0_0_20px_#eab308]">
+                      GAME PAUSED
+                    </div>
+                    <div className="text-neutral-400 font-bold uppercase tracking-[0.3em]">
+                      HOST HAS PAUSED THE MATCH
+                    </div>
+                    {onlineService.isHost && (
+                      <button
+                        onClick={() => onlineService.togglePause()}
+                        className="mt-4 bg-green-600 hover:bg-green-500 text-white px-10 py-5 font-arcade text-2xl border-b-8 border-green-900 active:translate-y-2 active:border-b-0 transition-all rounded-xl"
+                      >
+                        RESUME GAME
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Votekick Menu */}
+              {kickMenuOpen && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-red-600 p-6 rounded-2xl flex flex-col items-center gap-4 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-md w-full">
+                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter mb-2">
+                      {t.kickPlayer || "VOTE KICK"}
+                    </div>
+                    <div className="w-full max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                      {Array.from(onlineService.players.values())
+                        .filter((p) => p.id !== onlineService.localPlayer?.id)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setKickConfirmTarget(p);
+                              setKickMenuOpen(false);
+                            }}
+                            className="w-full p-4 bg-neutral-800 hover:bg-red-900/40 border border-neutral-700 hover:border-red-500 text-left flex items-center gap-4 transition-all rounded-xl"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center border border-neutral-700 p-2">
+                              <CharacterPreview
+                                customization={p.customization}
+                                scale={1.5}
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-white text-lg leading-none">
+                                {p.name}
+                              </span>
+                              <span className="text-[8px] text-neutral-500 uppercase tracking-widest mt-1">
+                                Player ID: {p.id.slice(0, 8)}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      {Array.from(onlineService.players.values()).filter(
+                        (p) => p.id !== onlineService.localPlayer?.id,
+                      ).length === 0 && (
+                        <div className="text-neutral-500 text-center py-10 font-bold uppercase tracking-widest border-2 border-dashed border-neutral-800 rounded-xl">
+                          {t.noPlayersToKick || "NO PLAYERS TO KICK"}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setKickMenuOpen(false)}
+                      className="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                    >
+                      {t.back || "BACK"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Votekick Confirmation */}
+              {kickConfirmTarget && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-red-600 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-sm w-full">
+                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter leading-tight">
+                      {t.voteKickFor?.replace(
+                        "{name}",
+                        kickConfirmTarget.name.toUpperCase(),
+                      ) || `KICK ${kickConfirmTarget.name.toUpperCase()}?`}
+                    </div>
+                    <div className="text-neutral-400 text-center text-xs font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                      {t.reallyStartVote || "THIS WILL START A VOTE"}
+                    </div>
+                    <div className="flex gap-4 w-full">
+                      <button
+                        onClick={() => {
+                          onlineService.initiateVote(
+                            "kick",
+                            kickConfirmTarget.id,
+                          );
+                          setKickConfirmTarget(null);
+                        }}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 font-arcade border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(220,38,38,0.4)]"
+                      >
+                        {t.yes || "YES"}
+                      </button>
+                      <button
+                        onClick={() => setKickConfirmTarget(null)}
+                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                      >
+                        {t.no || "NO"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic Vote Confirmation (Restart, Skip) */}
+              {voteConfirmType && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-cyan-500 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-sm w-full">
+                    <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
+                      {voteConfirmType === "restart"
+                        ? "RESTART VOTE?"
+                        : voteConfirmType === "skip"
+                          ? "SKIP VOTE?"
+                          : voteConfirmType === "test_level"
+                            ? "TEST LEVEL VOTE?"
+                            : "START VOTE?"}
+                    </div>
+                    <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                      {t.reallyStartVote || "THIS WILL START A VOTE"}
+                    </div>
+                    <div className="flex gap-4 w-full">
+                      <button
+                        onClick={() => {
+                          onlineService.initiateVote(voteConfirmType);
+                          setVoteConfirmType(null);
+                        }}
+                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 font-arcade border-b-4 border-cyan-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.4)]"
+                      >
+                        {t.yes || "YES"}
+                      </button>
+                      <button
+                        onClick={() => setVoteConfirmType(null)}
+                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                      >
+                        {t.no || "NO"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Voting UI Overlay */}
+              {onlineService.lobbyCode && currentVote && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[70] w-full max-w-md pt-2">
+                  <div className="bg-black/90 border-b-2 border-x-2 border-cyan-500 p-4 rounded-b-2xl shadow-[0_10px_30px_rgba(6,182,212,0.5)] flex flex-col items-center animate-in slide-in-from-top duration-500 ease-out backdrop-blur-md">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+                      <span className="text-cyan-400 text-xs font-black uppercase tracking-[0.3em] drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
+                        {t.voteRunning || "VOTING IN PROGRESS"}
+                      </span>
+                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+                    </div>
+
+                    <div className="text-white text-lg font-arcade mb-4 uppercase tracking-tight text-center px-4 leading-tight">
+                      {currentVote.type === "restart" ||
+                      currentVote.type === "repeat"
+                        ? "RESTART LEVEL?"
+                        : currentVote.type === "skip" ||
+                            currentVote.type === "next"
+                          ? "SKIP LEVEL?"
+                          : currentVote.type === "kick"
+                            ? `KICK ${onlineService.players.get(currentVote.targetId || "")?.name.toUpperCase() || "PLAYER"}?`
+                            : "CALL A VOTE?"}
+                    </div>
+
+                    <div className="flex gap-4 w-full px-6 mb-4">
+                      <button
+                        onClick={() => onlineService.castVote("yes")}
+                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${
+                          onlineService.localPlayer &&
+                          currentVote.votes[onlineService.localPlayer.id] ===
+                            "yes"
+                            ? "bg-green-700 text-white border-green-950 scale-105 opacity-100"
+                            : "bg-green-600 hover:bg-green-500 text-white/80 border-green-900 active:translate-y-1 active:border-b-0 opacity-80"
+                        }`}
+                      >
+                        <span className="block mb-1">JA [1]</span>
+                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                          {
+                            Object.values(currentVote.votes).filter(
+                              (v) => v === "yes",
+                            ).length
+                          }
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => onlineService.castVote("no")}
+                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${
+                          onlineService.localPlayer &&
+                          currentVote.votes[onlineService.localPlayer.id] ===
+                            "no"
+                            ? "bg-red-700 text-white border-red-950 scale-105 opacity-100"
+                            : "bg-red-600 hover:bg-red-500 text-white/80 border-red-900 active:translate-y-1 active:border-b-0 opacity-80"
+                        }`}
+                      >
+                        <span className="block mb-1">NEIN [2]</span>
+                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                          {
+                            Object.values(currentVote.votes).filter(
+                              (v) => v === "no",
+                            ).length
+                          }
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="w-full px-6">
+                      <div className="relative h-2 bg-neutral-800/80 rounded-full w-full overflow-hidden border border-white/5">
+                        <div
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-100 linear"
+                          style={{
+                            width: `${Math.max(0, ((currentVote.endTime - Date.now()) / 15000) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-[10px] text-neutral-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                      <span>{Object.keys(currentVote.votes).length}</span>
+                      <span className="opacity-30">/</span>
+                      <span>
+                        {Array.from(onlineService.players.values()).length}{" "}
+                        {t.players?.toUpperCase() || "PLAYERS"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Difficulty Select */}
+              {gameState.status === "difficulty_select" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30 overflow-y-auto py-10">
+                  <h2 className="text-2xl mb-8 text-white uppercase tracking-widest">
+                    {t.selectDifficulty || "SELECT DIFFICULTY"}
+                  </h2>
+                  <div className="w-72 flex flex-col gap-2">
+                    <MenuButton
+                      index={0}
+                      label={`${t.beginner || "BEGINNER"} (${INITIAL_LEVELS.length})`}
+                      onClick={() =>
+                        startStoryRun(INITIAL_LEVELS, t.beginner || "BEGINNER")
+                      }
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={1}
+                      label={`${t.advanced || "ADVANCED"} (${ADVANCED_LEVELS.length})`}
+                      onClick={() =>
+                        startStoryRun(ADVANCED_LEVELS, t.advanced || "ADVANCED")
+                      }
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={2}
+                      label={`${t.expert || "EXPERT"} (${EXPERT_LEVELS.length})`}
+                      onClick={() =>
+                        startStoryRun(EXPERT_LEVELS, t.expert || "EXPERT")
+                      }
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={3}
+                      label={`${t.god || "JUMP GOD"} (${GOD_LEVELS.length})`}
+                      onClick={() => startStoryRun(GOD_LEVELS, t.god || "GOD")}
+                      danger
+                      isSelected={menuSelection === 3}
+                      onHover={setMenuSelection}
+                    />
                     <MenuButton
                       index={4}
                       label={t.back}
@@ -5496,20 +6235,28 @@ const App: React.FC = () => {
                       onHover={setMenuSelection}
                     />
                     <button
-                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "difficulty_select" }))}
+                      onClick={() =>
+                        setGameState((p) => ({
+                          ...p,
+                          status: "settings",
+                          previousStatus: "difficulty_select",
+                        }))
+                      }
                       className="mt-4 px-6 py-2 bg-neutral-800 text-white hover:bg-neutral-700 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-px active:border-b-0 flex items-center justify-center gap-2"
                     >
                       ⚙️ {t.settings || "SETTINGS"}
                     </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Random Run Setup Screen */}
-            {gameState.status === "random_run_setup" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
-                <h2 className="text-3xl mb-8 text-white uppercase">{t.randomRun || "ZUFALLS-LAUF"}</h2>
-                <div className="w-72 flex flex-col gap-2">
+              {/* Random Run Setup Screen */}
+              {gameState.status === "random_run_setup" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
+                  <h2 className="text-3xl mb-8 text-white uppercase">
+                    {t.randomRun || "ZUFALLS-LAUF"}
+                  </h2>
+                  <div className="w-72 flex flex-col gap-2">
                     <MenuButton
                       index={0}
                       label={t.startRun || "START RUN"}
@@ -5520,1502 +6267,2061 @@ const App: React.FC = () => {
                     <MenuButton
                       index={1}
                       label={t.back}
-                      onClick={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                      onClick={() =>
+                        setGameState((p) => ({ ...p, status: "menu" }))
+                      }
                       isSelected={menuSelection === 1}
                       onHover={setMenuSelection}
                     />
                     <button
-                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "random_run_setup" }))}
+                      onClick={() =>
+                        setGameState((p) => ({
+                          ...p,
+                          status: "settings",
+                          previousStatus: "random_run_setup",
+                        }))
+                      }
                       className="mt-4 px-6 py-2 bg-neutral-800 text-white hover:bg-neutral-700 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-px active:border-b-0 flex items-center justify-center gap-2"
                     >
                       ⚙️ {t.settings || "SETTINGS"}
                     </button>
-                </div>
-              </div>
-            )}
-
-            {/* VS Setup Screen - IMPROVED */}
-            {(gameState.status === "vs_setup" ||
-              gameState.status === "brawler_setup") && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-10">
-                <h2 className="text-3xl mb-4 text-rage-red">
-                  {gameState.status === "brawler_setup"
-                    ? "BRAWLER MODE"
-                    : t.vsTitle}
-                </h2>
-
-                <div className="flex gap-8 w-full max-w-4xl px-4 mb-6">
-                  {/* Player 1 Config */}
-                  <div className="flex-1 border border-neutral-700 p-4 bg-neutral-900/50 flex flex-col items-center">
-                    <h3 className="text-xl font-bold text-red-500 mb-2">
-                      {t.player1}
-                    </h3>
-                    {/* Preview */}
-                    <div className="w-48 h-48 bg-black border border-neutral-600 mb-2 flex items-center justify-center relative shrink-0">
-                      <CharacterPreview
-                        customization={customization}
-                        scale={6}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 h-56 overflow-y-auto custom-scrollbar w-full">
-                      <SliderRow
-                        label={t.red}
-                        value={hexToRgb(customization.color).r}
-                        index={0}
-                        colorClass="bg-red-500"
-                        onChange={(v: number) =>
-                          setExactRGB(1, "color", "r", v)
-                        }
-                        isSelected={menuSelection === 0}
-                        onHover={setMenuSelection}
-                      />
-                      <SliderRow
-                        label={t.green}
-                        value={hexToRgb(customization.color).g}
-                        index={1}
-                        colorClass="bg-green-500"
-                        onChange={(v: number) =>
-                          setExactRGB(1, "color", "g", v)
-                        }
-                        isSelected={menuSelection === 1}
-                        onHover={setMenuSelection}
-                      />
-                      <SliderRow
-                        label={t.blue}
-                        value={hexToRgb(customization.color).b}
-                        index={2}
-                        colorClass="bg-blue-500"
-                        onChange={(v: number) =>
-                          setExactRGB(1, "color", "b", v)
-                        }
-                        isSelected={menuSelection === 2}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={3}
-                        label={`${t.eyes}: ${t.eye_names?.[customization.eyes] || customization.eyes}`}
-                        onClick={() => rotateOption(1, "eyes", 1)}
-                        isSelected={menuSelection === 3}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={4}
-                        label={`${t.hat || 'ITEM'}: ${t.acc_names?.[customization.accessory] || customization.accessory}`}
-                        onClick={() => rotateOption(1, "accessory", 1)}
-                        isSelected={menuSelection === 4}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={5}
-                        label={`${t.trail || 'SCHWEIF'}: ${TRAIL_PRESETS.find(p => p.val === customization.trailColor)?.name || 'CUSTOM'}`}
-                        onClick={() => rotateOption(1, "trail", 1)}
-                        isSelected={menuSelection === 5}
-                        onHover={setMenuSelection}
-                      />
-                      <div className="flex gap-1 w-full">
-                        <button
-                          onClick={() => toggleFavorite('skin', `${customization.eyes}_${customization.accessory}`)}
-                          className={`flex-1 py-1 text-[8px] font-black uppercase tracking-tighter border transition-all ${
-                            (settings.favoriteSkins || []).includes(`${customization.eyes}_${customization.accessory}`)
-                              ? "bg-yellow-600 border-yellow-400 text-white"
-                              : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-white"
-                          }`}
-                        >
-                          ⭐ SKIN FAVORITE
-                        </button>
-                        <button
-                          onClick={() => toggleFavorite('trail', customization.trailColor)}
-                          className={`flex-1 py-1 text-[8px] font-black uppercase tracking-tighter border transition-all ${
-                            (settings.favoriteTrails || []).includes(customization.trailColor)
-                              ? "bg-yellow-600 border-yellow-400 text-white"
-                              : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-white"
-                          }`}
-                        >
-                          ⭐ TRAIL FAVORITE
-                        </button>
-                      </div>
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full flex justify-center">
-                          <button
-                            onClick={() => rotateOption(1, "brawlerClass", 1)}
-                            className="w-full py-1.5 bg-neutral-900 border border-neutral-700 text-white font-black uppercase text-[10px] tracking-widest mt-1 hover:bg-neutral-800 transition-colors"
-                          >
-                            {t.class || 'CLASS'}: {customization.brawlerClass?.toUpperCase() || "FIGHTER"}
-                          </button>
-                        </div>
-                      )}
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full bg-black/40 p-2 rounded border border-white/5 mt-1 flex flex-col gap-1.5">
-                          <StatBar label="HP" value={BRAWLER_STATS[customization.brawlerClass || "standard"].hp} max={15} color="bg-red-500" />
-                          <StatBar label="SPD" value={BRAWLER_STATS[customization.brawlerClass || "standard"].speed} max={15} color="bg-blue-500" />
-                          <StatBar label="JMP" value={BRAWLER_STATS[customization.brawlerClass || "standard"].jump} max={15} color="bg-green-500" />
-                        </div>
-                      )}
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full text-center flex flex-col gap-0.5 mt-1">
-                          <div className="text-[7px] text-green-400 uppercase font-bold tracking-wider">{t.brawlerClasses[customization.brawlerClass || "standard"]?.pos}</div>
-                          <div className="text-[7px] text-red-500 uppercase font-bold tracking-wider">{t.brawlerClasses[customization.brawlerClass || "standard"]?.neg}</div>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-                          const eyesPool = EYE_OPTIONS.filter(opt => isUnlocked('eyes', opt));
-                          const accPool = ACC_OPTIONS.filter(opt => isUnlocked('accessory', opt) && opt !== 'unicorn');
-                          const trailPool = TRAIL_PRESETS.filter(opt => isUnlocked('trail', opt.val));
-                          const randomEyes = eyesPool[Math.floor(Math.random() * eyesPool.length)] || 'normal';
-                          const randomAcc = accPool[Math.floor(Math.random() * accPool.length)] || 'none';
-                          const randomTrail = trailPool[Math.floor(Math.random() * trailPool.length)]?.val || randomColor;
-                          setCustomization(prev => ({ ...prev, color: randomColor, eyes: randomEyes, accessory: randomAcc, trailColor: randomTrail }));
-                        }}
-                        className="w-full py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] text-white font-black uppercase tracking-widest mt-1 transition-all active:scale-95"
-                      >
-                        🎲 {t.random}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Player 2 Config */}
-                  <div className="flex-1 border border-neutral-700 p-4 bg-neutral-900/50 flex flex-col items-center">
-                    <h3 className="text-xl font-bold text-green-500 mb-2">
-                      {t.player2}
-                    </h3>
-                    {/* Preview */}
-                    <div className="w-48 h-48 bg-black border border-neutral-600 mb-2 flex items-center justify-center relative shrink-0">
-                      <CharacterPreview
-                        customization={customizationP2}
-                        scale={6}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 h-56 overflow-y-auto custom-scrollbar w-full">
-                      <SliderRow
-                        label={t.red}
-                        value={hexToRgb(customizationP2.color).r}
-                        index={6}
-                        colorClass="bg-red-500"
-                        onChange={(v: number) =>
-                          setExactRGB(2, "color", "r", v)
-                        }
-                        isSelected={menuSelection === 6}
-                        onHover={setMenuSelection}
-                      />
-                      <SliderRow
-                        label={t.green}
-                        value={hexToRgb(customizationP2.color).g}
-                        index={7}
-                        colorClass="bg-green-500"
-                        onChange={(v: number) =>
-                          setExactRGB(2, "color", "g", v)
-                        }
-                        isSelected={menuSelection === 7}
-                        onHover={setMenuSelection}
-                      />
-                      <SliderRow
-                        label={t.blue}
-                        value={hexToRgb(customizationP2.color).b}
-                        index={8}
-                        colorClass="bg-blue-500"
-                        onChange={(v: number) =>
-                          setExactRGB(2, "color", "b", v)
-                        }
-                        isSelected={menuSelection === 8}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={9}
-                        label={`${t.eyes}: ${t.eye_names?.[customizationP2.eyes] || customizationP2.eyes}`}
-                        onClick={() => rotateOption(2, "eyes", 1)}
-                        isSelected={menuSelection === 9}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={10}
-                        label={`${t.hat || 'ITEM'}: ${t.acc_names?.[customizationP2.accessory] || customizationP2.accessory}`}
-                        onClick={() => rotateOption(2, "accessory", 1)}
-                        isSelected={menuSelection === 10}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={11}
-                        label={`${t.trail || 'SCHWEIF'}: ${TRAIL_PRESETS.find(p => p.val === customizationP2.trailColor)?.name || 'CUSTOM'}`}
-                        onClick={() => rotateOption(2, "trail", 1)}
-                        isSelected={menuSelection === 11}
-                        onHover={setMenuSelection}
-                      />
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full flex justify-center">
-                          <button
-                            onClick={() => rotateOption(2, "brawlerClass", 1)}
-                            className="w-full py-1.5 bg-neutral-900 border border-neutral-700 text-white font-black uppercase text-[10px] tracking-widest mt-1 hover:bg-neutral-800 transition-colors"
-                          >
-                            {t.class || 'CLASS'}: {customizationP2.brawlerClass?.toUpperCase() || "FIGHTER"}
-                          </button>
-                        </div>
-                      )}
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full bg-black/40 p-2 rounded border border-white/5 mt-1 flex flex-col gap-1.5">
-                          <StatBar label="HP" value={BRAWLER_STATS[customizationP2.brawlerClass || "standard"].hp} max={15} color="bg-red-500" />
-                          <StatBar label="SPD" value={BRAWLER_STATS[customizationP2.brawlerClass || "standard"].speed} max={15} color="bg-blue-500" />
-                          <StatBar label="JMP" value={BRAWLER_STATS[customizationP2.brawlerClass || "standard"].jump} max={15} color="bg-green-500" />
-                        </div>
-                      )}
-                      {gameState.status === "brawler_setup" && (
-                        <div className="w-full text-center flex flex-col gap-0.5 mt-1">
-                          <div className="text-[7px] text-green-400 uppercase font-bold tracking-wider">{t.brawlerClasses[customizationP2.brawlerClass || "standard"]?.pos}</div>
-                          <div className="text-[7px] text-red-500 uppercase font-bold tracking-wider">{t.brawlerClasses[customizationP2.brawlerClass || "standard"]?.neg}</div>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-                          const eyesPool = EYE_OPTIONS.filter(opt => isUnlocked('eyes', opt));
-                          const accPool = ACC_OPTIONS.filter(opt => isUnlocked('accessory', opt) && opt !== 'unicorn');
-                          const trailPool = TRAIL_PRESETS.filter(opt => isUnlocked('trail', opt.val));
-                          const randomEyes = eyesPool[Math.floor(Math.random() * eyesPool.length)] || 'normal';
-                          const randomAcc = accPool[Math.floor(Math.random() * accPool.length)] || 'none';
-                          const randomTrail = trailPool[Math.floor(Math.random() * trailPool.length)]?.val || randomColor;
-                          setCustomizationP2(prev => ({ ...prev, color: randomColor, eyes: randomEyes, accessory: randomAcc, trailColor: randomTrail }));
-                        }}
-                        className="w-full py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] text-white font-black uppercase tracking-widest mt-1 transition-all active:scale-95"
-                      >
-                        🎲 ZUFALL
-                      </button>
-                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Level Select */}
-                <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center">
-                  <div className="flex gap-2 w-72 mb-4">
-                    <MenuButton
-                      index={12}
-                      label={t.levelMenu || "LEVEL MENU"}
-                      onClick={() => setShowLevelMenu(true)}
-                      isSelected={menuSelection === 12}
-                      onHover={setMenuSelection}
-                    />
-                  </div>
+              {/* VS Setup Screen - IMPROVED */}
+              {(gameState.status === "vs_setup" ||
+                gameState.status === "brawler_setup") && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-10">
+                  <h2 className="text-3xl mb-4 text-rage-red">
+                    {gameState.status === "brawler_setup"
+                      ? "BRAWLER MODE"
+                      : t.vsTitle}
+                  </h2>
 
-                  {selectedLevels.length > 0 && (
-                    <div className="mb-6 flex flex-col items-center">
-                      <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
-                        Ausgewählte Level
-                      </div>
-                      <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
-                        <LevelPreview
-                          level={selectedLevels[0]}
-                          width={192}
-                          height={108}
-                          className="w-full h-full"
+                  <div className="flex gap-8 w-full max-w-4xl px-4 mb-6">
+                    {/* Player 1 Config */}
+                    <div className="flex-1 border border-neutral-700 p-4 bg-neutral-900/50 flex flex-col items-center">
+                      <h3 className="text-xl font-bold text-red-500 mb-2">
+                        {t.player1}
+                      </h3>
+                      {/* Preview */}
+                      <div className="w-48 h-48 bg-black border border-neutral-600 mb-2 flex items-center justify-center relative shrink-0">
+                        <CharacterPreview
+                          customization={customization}
+                          scale={6}
                         />
-                        {selectedLevels.length > 1 && (
-                          <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
-                            <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
-                              Queue Active
+                      </div>
+                      <div className="flex flex-col gap-1 h-56 overflow-y-auto custom-scrollbar w-full">
+                        <SliderRow
+                          label={t.red}
+                          value={hexToRgb(customization.color).r}
+                          index={0}
+                          colorClass="bg-red-500"
+                          onChange={(v: number) =>
+                            setExactRGB(1, "color", "r", v)
+                          }
+                          isSelected={menuSelection === 0}
+                          onHover={setMenuSelection}
+                        />
+                        <SliderRow
+                          label={t.green}
+                          value={hexToRgb(customization.color).g}
+                          index={1}
+                          colorClass="bg-green-500"
+                          onChange={(v: number) =>
+                            setExactRGB(1, "color", "g", v)
+                          }
+                          isSelected={menuSelection === 1}
+                          onHover={setMenuSelection}
+                        />
+                        <SliderRow
+                          label={t.blue}
+                          value={hexToRgb(customization.color).b}
+                          index={2}
+                          colorClass="bg-blue-500"
+                          onChange={(v: number) =>
+                            setExactRGB(1, "color", "b", v)
+                          }
+                          isSelected={menuSelection === 2}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={3}
+                          label={`${t.eyes}: ${t.eye_names?.[customization.eyes] || customization.eyes}`}
+                          onClick={() => rotateOption(1, "eyes", 1)}
+                          isSelected={menuSelection === 3}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={4}
+                          label={`${t.hat || "ITEM"}: ${t.acc_names?.[customization.accessory] || customization.accessory}`}
+                          onClick={() => rotateOption(1, "accessory", 1)}
+                          isSelected={menuSelection === 4}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={5}
+                          label={`${t.trail || "SCHWEIF"}: ${TRAIL_PRESETS.find((p) => p.val === customization.trailColor)?.name || "CUSTOM"}`}
+                          onClick={() => rotateOption(1, "trail", 1)}
+                          isSelected={menuSelection === 5}
+                          onHover={setMenuSelection}
+                        />
+                        <div className="flex gap-1 w-full">
+                          <button
+                            onClick={() =>
+                              toggleFavorite(
+                                "skin",
+                                `${customization.eyes}_${customization.accessory}`,
+                              )
+                            }
+                            className={`flex-1 py-1 text-[8px] font-black uppercase tracking-tighter border transition-all ${
+                              (settings.favoriteSkins || []).includes(
+                                `${customization.eyes}_${customization.accessory}`,
+                              )
+                                ? "bg-yellow-600 border-yellow-400 text-white"
+                                : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-white"
+                            }`}
+                          >
+                            ⭐ SKIN FAVORITE
+                          </button>
+                          <button
+                            onClick={() =>
+                              toggleFavorite("trail", customization.trailColor)
+                            }
+                            className={`flex-1 py-1 text-[8px] font-black uppercase tracking-tighter border transition-all ${
+                              (settings.favoriteTrails || []).includes(
+                                customization.trailColor,
+                              )
+                                ? "bg-yellow-600 border-yellow-400 text-white"
+                                : "bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-white"
+                            }`}
+                          >
+                            ⭐ TRAIL FAVORITE
+                          </button>
+                        </div>
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full flex justify-center">
+                            <button
+                              onClick={() => rotateOption(1, "brawlerClass", 1)}
+                              className="w-full py-1.5 bg-neutral-900 border border-neutral-700 text-white font-black uppercase text-[10px] tracking-widest mt-1 hover:bg-neutral-800 transition-colors"
+                            >
+                              {t.class || "CLASS"}:{" "}
+                              {customization.brawlerClass?.toUpperCase() ||
+                                "FIGHTER"}
+                            </button>
+                          </div>
+                        )}
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full bg-black/40 p-2 rounded border border-white/5 mt-1 flex flex-col gap-1.5">
+                            <StatBar
+                              label="HP"
+                              value={
+                                BRAWLER_STATS[
+                                  customization.brawlerClass || "standard"
+                                ].hp
+                              }
+                              max={15}
+                              color="bg-red-500"
+                            />
+                            <StatBar
+                              label="SPD"
+                              value={
+                                BRAWLER_STATS[
+                                  customization.brawlerClass || "standard"
+                                ].speed
+                              }
+                              max={15}
+                              color="bg-blue-500"
+                            />
+                            <StatBar
+                              label="JMP"
+                              value={
+                                BRAWLER_STATS[
+                                  customization.brawlerClass || "standard"
+                                ].jump
+                              }
+                              max={15}
+                              color="bg-green-500"
+                            />
+                          </div>
+                        )}
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full text-center flex flex-col gap-0.5 mt-1">
+                            <div className="text-[7px] text-green-400 uppercase font-bold tracking-wider">
+                              {
+                                t.brawlerClasses[
+                                  customization.brawlerClass || "standard"
+                                ]?.pos
+                              }
                             </div>
-                            <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
-                              {selectedLevels.slice(0, 4).map((sl, i) => (
-                                <div
-                                  key={sl.id}
-                                  className="truncate px-1 bg-white/10 rounded"
-                                >
-                                  {i + 1}. {sl.name}
-                                </div>
-                              ))}
-                              {selectedLevels.length > 4 && (
-                                <div>+ {selectedLevels.length - 4} MORE</div>
-                              )}
+                            <div className="text-[7px] text-red-500 uppercase font-bold tracking-wider">
+                              {
+                                t.brawlerClasses[
+                                  customization.brawlerClass || "standard"
+                                ]?.neg
+                              }
                             </div>
                           </div>
                         )}
-                      </div>
-                      <div className="mt-2 font-bold truncate max-w-[200px] text-white text-sm text-center">
-                        {selectedLevels.length > 1
-                          ? `${selectedLevels.length} ${t.levels || "LEVELS"} ${t.selected || "SELECTED"}`
-                          : selectedLevels[0].name}
+                        <button
+                          onClick={() => {
+                            const randomColor =
+                              "#" +
+                              Math.floor(Math.random() * 16777215)
+                                .toString(16)
+                                .padStart(6, "0");
+                            const eyesPool = EYE_OPTIONS.filter((opt) =>
+                              isUnlocked("eyes", opt),
+                            );
+                            const accPool = ACC_OPTIONS.filter(
+                              (opt) =>
+                                isUnlocked("accessory", opt) &&
+                                opt !== "unicorn",
+                            );
+                            const trailPool = TRAIL_PRESETS.filter((opt) =>
+                              isUnlocked("trail", opt.val),
+                            );
+                            const randomEyes =
+                              eyesPool[
+                                Math.floor(Math.random() * eyesPool.length)
+                              ] || "normal";
+                            const randomAcc =
+                              accPool[
+                                Math.floor(Math.random() * accPool.length)
+                              ] || "none";
+                            const randomTrail =
+                              trailPool[
+                                Math.floor(Math.random() * trailPool.length)
+                              ]?.val || randomColor;
+                            setCustomization((prev) => ({
+                              ...prev,
+                              color: randomColor,
+                              eyes: randomEyes,
+                              accessory: randomAcc,
+                              trailColor: randomTrail,
+                            }));
+                          }}
+                          className="w-full py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] text-white font-black uppercase tracking-widest mt-1 transition-all active:scale-95"
+                        >
+                          🎲 {t.random}
+                        </button>
                       </div>
                     </div>
-                  )}
 
-                  <div className="w-72 flex flex-col gap-2">
-                    {gameState.status === "vs_setup" && (
+                    {/* Player 2 Config */}
+                    <div className="flex-1 border border-neutral-700 p-4 bg-neutral-900/50 flex flex-col items-center">
+                      <h3 className="text-xl font-bold text-green-500 mb-2">
+                        {t.player2}
+                      </h3>
+                      {/* Preview */}
+                      <div className="w-48 h-48 bg-black border border-neutral-600 mb-2 flex items-center justify-center relative shrink-0">
+                        <CharacterPreview
+                          customization={customizationP2}
+                          scale={6}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 h-56 overflow-y-auto custom-scrollbar w-full">
+                        <SliderRow
+                          label={t.red}
+                          value={hexToRgb(customizationP2.color).r}
+                          index={6}
+                          colorClass="bg-red-500"
+                          onChange={(v: number) =>
+                            setExactRGB(2, "color", "r", v)
+                          }
+                          isSelected={menuSelection === 6}
+                          onHover={setMenuSelection}
+                        />
+                        <SliderRow
+                          label={t.green}
+                          value={hexToRgb(customizationP2.color).g}
+                          index={7}
+                          colorClass="bg-green-500"
+                          onChange={(v: number) =>
+                            setExactRGB(2, "color", "g", v)
+                          }
+                          isSelected={menuSelection === 7}
+                          onHover={setMenuSelection}
+                        />
+                        <SliderRow
+                          label={t.blue}
+                          value={hexToRgb(customizationP2.color).b}
+                          index={8}
+                          colorClass="bg-blue-500"
+                          onChange={(v: number) =>
+                            setExactRGB(2, "color", "b", v)
+                          }
+                          isSelected={menuSelection === 8}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={9}
+                          label={`${t.eyes}: ${t.eye_names?.[customizationP2.eyes] || customizationP2.eyes}`}
+                          onClick={() => rotateOption(2, "eyes", 1)}
+                          isSelected={menuSelection === 9}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={10}
+                          label={`${t.hat || "ITEM"}: ${t.acc_names?.[customizationP2.accessory] || customizationP2.accessory}`}
+                          onClick={() => rotateOption(2, "accessory", 1)}
+                          isSelected={menuSelection === 10}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={11}
+                          label={`${t.trail || "SCHWEIF"}: ${TRAIL_PRESETS.find((p) => p.val === customizationP2.trailColor)?.name || "CUSTOM"}`}
+                          onClick={() => rotateOption(2, "trail", 1)}
+                          isSelected={menuSelection === 11}
+                          onHover={setMenuSelection}
+                        />
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full flex justify-center">
+                            <button
+                              onClick={() => rotateOption(2, "brawlerClass", 1)}
+                              className="w-full py-1.5 bg-neutral-900 border border-neutral-700 text-white font-black uppercase text-[10px] tracking-widest mt-1 hover:bg-neutral-800 transition-colors"
+                            >
+                              {t.class || "CLASS"}:{" "}
+                              {customizationP2.brawlerClass?.toUpperCase() ||
+                                "FIGHTER"}
+                            </button>
+                          </div>
+                        )}
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full bg-black/40 p-2 rounded border border-white/5 mt-1 flex flex-col gap-1.5">
+                            <StatBar
+                              label="HP"
+                              value={
+                                BRAWLER_STATS[
+                                  customizationP2.brawlerClass || "standard"
+                                ].hp
+                              }
+                              max={15}
+                              color="bg-red-500"
+                            />
+                            <StatBar
+                              label="SPD"
+                              value={
+                                BRAWLER_STATS[
+                                  customizationP2.brawlerClass || "standard"
+                                ].speed
+                              }
+                              max={15}
+                              color="bg-blue-500"
+                            />
+                            <StatBar
+                              label="JMP"
+                              value={
+                                BRAWLER_STATS[
+                                  customizationP2.brawlerClass || "standard"
+                                ].jump
+                              }
+                              max={15}
+                              color="bg-green-500"
+                            />
+                          </div>
+                        )}
+                        {gameState.status === "brawler_setup" && (
+                          <div className="w-full text-center flex flex-col gap-0.5 mt-1">
+                            <div className="text-[7px] text-green-400 uppercase font-bold tracking-wider">
+                              {
+                                t.brawlerClasses[
+                                  customizationP2.brawlerClass || "standard"
+                                ]?.pos
+                              }
+                            </div>
+                            <div className="text-[7px] text-red-500 uppercase font-bold tracking-wider">
+                              {
+                                t.brawlerClasses[
+                                  customizationP2.brawlerClass || "standard"
+                                ]?.neg
+                              }
+                            </div>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => {
+                            const randomColor =
+                              "#" +
+                              Math.floor(Math.random() * 16777215)
+                                .toString(16)
+                                .padStart(6, "0");
+                            const eyesPool = EYE_OPTIONS.filter((opt) =>
+                              isUnlocked("eyes", opt),
+                            );
+                            const accPool = ACC_OPTIONS.filter(
+                              (opt) =>
+                                isUnlocked("accessory", opt) &&
+                                opt !== "unicorn",
+                            );
+                            const trailPool = TRAIL_PRESETS.filter((opt) =>
+                              isUnlocked("trail", opt.val),
+                            );
+                            const randomEyes =
+                              eyesPool[
+                                Math.floor(Math.random() * eyesPool.length)
+                              ] || "normal";
+                            const randomAcc =
+                              accPool[
+                                Math.floor(Math.random() * accPool.length)
+                              ] || "none";
+                            const randomTrail =
+                              trailPool[
+                                Math.floor(Math.random() * trailPool.length)
+                              ]?.val || randomColor;
+                            setCustomizationP2((prev) => ({
+                              ...prev,
+                              color: randomColor,
+                              eyes: randomEyes,
+                              accessory: randomAcc,
+                              trailColor: randomTrail,
+                            }));
+                          }}
+                          className="w-full py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] text-white font-black uppercase tracking-widest mt-1 transition-all active:scale-95"
+                        >
+                          🎲 ZUFALL
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Level Select */}
+                  <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center">
+                    <div className="flex gap-2 w-72 mb-4">
                       <MenuButton
-                        index={13}
-                        label={`${t.collisionLabel || "COLLISION"}: ${gameState.collisionEnabled ? (t.onLabel || "ON") : (t.offLabel || "OFF")}`}
-                        onClick={() => setGameState(p => ({ ...p, collisionEnabled: !p.collisionEnabled }))}
-                        isSelected={menuSelection === 13}
+                        index={12}
+                        label={t.levelMenu || "LEVEL MENU"}
+                        onClick={() => setShowLevelMenu(true)}
+                        isSelected={menuSelection === 12}
                         onHover={setMenuSelection}
                       />
+                    </div>
+
+                    {selectedLevels.length > 0 && (
+                      <div className="mb-6 flex flex-col items-center">
+                        <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
+                          Ausgewählte Level
+                        </div>
+                        <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
+                          <LevelPreview
+                            level={selectedLevels[0]}
+                            width={192}
+                            height={108}
+                            className="w-full h-full"
+                          />
+                          {selectedLevels.length > 1 && (
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
+                              <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
+                                Queue Active
+                              </div>
+                              <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
+                                {selectedLevels.slice(0, 4).map((sl, i) => (
+                                  <div
+                                    key={sl.id}
+                                    className="truncate px-1 bg-white/10 rounded"
+                                  >
+                                    {i + 1}. {sl.name}
+                                  </div>
+                                ))}
+                                {selectedLevels.length > 4 && (
+                                  <div>+ {selectedLevels.length - 4} MORE</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-2 font-bold truncate max-w-[200px] text-white text-sm text-center">
+                          {selectedLevels.length > 1
+                            ? `${selectedLevels.length} ${t.levels || "LEVELS"} ${t.selected || "SELECTED"}`
+                            : selectedLevels[0].name}
+                        </div>
+                      </div>
                     )}
-                    {(gameState.status === "vs_setup" || gameState.status === "brawler_setup") && (
+
+                    <div className="w-72 flex flex-col gap-2">
+                      {gameState.status === "vs_setup" && (
+                        <MenuButton
+                          index={13}
+                          label={`${t.collisionLabel || "COLLISION"}: ${gameState.collisionEnabled ? t.onLabel || "ON" : t.offLabel || "OFF"}`}
+                          onClick={() =>
+                            setGameState((p) => ({
+                              ...p,
+                              collisionEnabled: !p.collisionEnabled,
+                            }))
+                          }
+                          isSelected={menuSelection === 13}
+                          onHover={setMenuSelection}
+                        />
+                      )}
+                      {(gameState.status === "vs_setup" ||
+                        gameState.status === "brawler_setup") && (
+                        <MenuButton
+                          index={14}
+                          label={`${t.finishTimerLabel || "LEVEL-TIMER"}: ${gameState.finishTimerEnabled === true ? t.onLabel || "ON" : t.offLabel || "OFF"}`}
+                          onClick={() =>
+                            setGameState((p) => ({
+                              ...p,
+                              finishTimerEnabled:
+                                p.finishTimerEnabled === true ? false : true,
+                            }))
+                          }
+                          isSelected={menuSelection === 14}
+                          onHover={setMenuSelection}
+                        />
+                      )}
                       <MenuButton
-                        index={14}
-                        label={`${t.finishTimerLabel || "LEVEL-TIMER"}: ${gameState.finishTimerEnabled === true ? (t.onLabel || "ON") : (t.offLabel || "OFF")}`}
-                        onClick={() => setGameState(p => ({ ...p, finishTimerEnabled: p.finishTimerEnabled === true ? false : true }))}
-                        isSelected={menuSelection === 14}
+                        index={15}
+                        label={t.play}
+                        onClick={() => {
+                          let currentList =
+                            levelSource === "builtin"
+                              ? gameState.status === "brawler_setup"
+                                ? BRAWLER_LEVELS
+                                : INITIAL_LEVELS
+                              : customLevels;
+                          if (gameState.status === "vs_setup") {
+                            currentList = filterVSLevels(currentList);
+                          }
+                          if (gameState.status === "brawler_setup") {
+                            currentList = filterBrawlerLevels(currentList);
+                          }
+                          if (currentList.length > 0) {
+                            const idx = Math.min(
+                              Math.max(0, highscoreLevelIndex),
+                              Math.max(0, currentList.length - 1),
+                            );
+                            setLevel(currentList[idx]);
+                            setGameState((p) => ({
+                              ...p,
+                              status:
+                                gameState.status === "brawler_setup"
+                                  ? "brawler_powerup_setup"
+                                  : "vs_playing",
+                              levelDeaths: 0,
+                              levelTime: 0,
+                              collectedCoins: [],
+                              deaths: 0,
+                              blocksPlaced: 0,
+                            }));
+                            if (gameState.status !== "brawler_setup") {
+                              setRespawnTrigger(0);
+                              checkAchievements({ mode: "vs" });
+                            } else {
+                              setMenuSelection(0);
+                            }
+                          }
+                        }}
+                        isSelected={menuSelection === 15}
                         onHover={setMenuSelection}
                       />
-                    )}
-                    <MenuButton
-                      index={15}
-                      label={t.play}
-                      onClick={() => {
-                        let currentList =
-                          levelSource === "builtin"
-                            ? gameState.status === "brawler_setup"
-                              ? BRAWLER_LEVELS
-                              : INITIAL_LEVELS
-                            : customLevels;
-                        if (gameState.status === "vs_setup") {
-                          currentList = filterVSLevels(currentList);
+                      <MenuButton
+                        index={16}
+                        label={t.back}
+                        danger
+                        onClick={() =>
+                          setGameState((p) => ({ ...p, status: "menu" }))
                         }
-                        if (gameState.status === "brawler_setup") {
-                          currentList = filterBrawlerLevels(currentList);
-                        }
-                        if (currentList.length > 0) {
-                          const idx = Math.min(
-                            Math.max(0, highscoreLevelIndex),
-                            Math.max(0, currentList.length - 1),
-                          );
-                          setLevel(currentList[idx]);
+                        isSelected={menuSelection === 16}
+                        onHover={setMenuSelection}
+                      />
+                      <button
+                        onClick={() =>
                           setGameState((p) => ({
                             ...p,
-                            status:
-                              gameState.status === "brawler_setup"
-                                ? "brawler_powerup_setup"
-                                : "vs_playing",
-                            levelDeaths: 0,
-                            levelTime: 0,
-                            collectedCoins: [],
-                            deaths: 0,
-                            blocksPlaced: 0,
-                          }));
-                          if (gameState.status !== "brawler_setup") {
-                            setRespawnTrigger(0);
-                            checkAchievements({ mode: "vs" });
-                          } else {
-                            setMenuSelection(0);
-                          }
+                            status: "settings",
+                            previousStatus: gameState.status,
+                          }))
                         }
-                      }}
-                      isSelected={menuSelection === 15}
-                      onHover={setMenuSelection}
-                    />
-                    <MenuButton
-                      index={16}
-                      label={t.back}
-                      danger
-                      onClick={() =>
-                        setGameState((p) => ({ ...p, status: "menu" }))
-                      }
-                      isSelected={menuSelection === 16}
-                      onHover={setMenuSelection}
-                    />
-                    <button
-                      onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: gameState.status }))}
-                      className="mt-2 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
-                    >
-                      ⚙️ {t.settings || "SETTINGS"}
-                    </button>
+                        className="mt-2 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
+                      >
+                        ⚙️ {t.settings || "SETTINGS"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Brawler Powerup Setup Screen */}
-            {gameState.status === "brawler_powerup_setup" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
-                <h2 className="text-3xl mb-4 text-rage-red">
-                  {t.brawlerSettings || "BRAWLER SETTINGS"}
-                </h2>
+              {/* Brawler Powerup Setup Screen */}
+              {gameState.status === "brawler_powerup_setup" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
+                  <h2 className="text-3xl mb-4 text-rage-red">
+                    {t.brawlerSettings || "BRAWLER SETTINGS"}
+                  </h2>
 
-                <div className="flex flex-col gap-4 w-full max-w-lg px-4 mb-6 h-96 overflow-y-auto custom-scrollbar">
-                  {/* Sudden Death Toggle */}
-                  <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">
-                        SUDDEN DEATH
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (gameState.onlineMode && !onlineService.isHost) return;
-                          const newVal = !brawlerSuddenDeath;
-                          setBrawlerSuddenDeath(newVal);
-                          if (onlineService.isHost) {
-                            onlineService.broadcastLobbyState(
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              newVal
-                            );
-                          }
-                        }}
-                        className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerSuddenDeath ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerSuddenDeath ? "translate-x-7" : "translate-x-1"}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Combo Powerups (Fusion) Toggle */}
-                  <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
+                  <div className="flex flex-col gap-4 w-full max-w-lg px-4 mb-6 h-96 overflow-y-auto custom-scrollbar">
+                    {/* Sudden Death Toggle */}
+                    <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                      <div className="flex items-center justify-between">
                         <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">
-                          {lang === "de" ? "KOMBI-POWERUPS (FUSION)" : "COMBO POWERUPS (FUSION)"}
+                          SUDDEN DEATH
                         </div>
-                        <div className="text-[8px] text-neutral-400 mt-1 max-w-[280px] leading-relaxed">
-                          {lang === "de" 
-                            ? "Sammle ein Powerup, wenn du bereits eins besitzt, um ein extrem starkes fusions-basiertes Powerup zu erschaffen!"
-                            : "Collect a second powerup while holding one to fuse them into an extremely powerful combo tier powerup!"}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (gameState.onlineMode && !onlineService.isHost) return;
-                          const newVal = !brawlerComboPowerups;
-                          setBrawlerComboPowerups(newVal);
-                          if (onlineService.isHost) {
-                            onlineService.broadcastLobbyState(
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              newVal
-                            );
-                          }
-                        }}
-                        className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerComboPowerups ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
-                      >
-                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerComboPowerups ? "translate-x-7" : "translate-x-1"}`} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Hazard Mode Selection */}
-                  <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
-                    <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest mb-3">
-                      UMGEBUNGS-GEFAHREN
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      {(
-                        ["none", "collapsing_platforms"] as BrawlerHazardMode[]
-                      ).map((mode) => (
                         <button
-                          key={mode}
                           onClick={() => {
-                            if (gameState.onlineMode && !onlineService.isHost) return;
-                            setBrawlerHazardMode(mode);
-                            if (onlineService.isHost)
+                            if (gameState.onlineMode && !onlineService.isHost)
+                              return;
+                            const newVal = !brawlerSuddenDeath;
+                            setBrawlerSuddenDeath(newVal);
+                            if (onlineService.isHost) {
                               onlineService.broadcastLobbyState(
                                 undefined,
                                 undefined,
                                 undefined,
-                                brawlerTeamMode,
-                                mode,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                newVal,
                               );
-                          }}
-                          className={`py-2 text-[10px] font-arcade border transition-all ${brawlerHazardMode === mode ? "bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]" : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700"}`}
-                        >
-                          {mode === "none"
-                            ? "KEINE"
-                            : mode.replace("_", " ").toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="h-[1px] bg-neutral-800 my-2"></div>
-                  <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest px-2">
-                    POWERUPS
-                  </div>
-
-                  {Object.keys(brawlerPowerups).map((key, idx) => {
-                    const label = key
-                      .replace("powerup_", "")
-                      .replace(/_/g, " ")
-                      .toUpperCase();
-                    const isOn = brawlerPowerups[key] > 0;
-                    return (
-                      <div key={key} className="flex items-center gap-2">
-                        <button
-                          className={`w-16 py-2 text-xs font-bold border transition-colors ${isOn ? "bg-green-600 border-green-500 text-white hover:bg-green-500" : "bg-red-900/50 border-red-800 text-red-300 hover:bg-red-800/50"}`}
-                          onClick={() => {
-                            if (gameState.onlineMode && !onlineService.isHost) return;
-                            const newPowerups = { ...brawlerPowerups, [key]: isOn ? 0 : 100 };
-                            setBrawlerPowerups(newPowerups);
-                            if (gameState.onlineMode && onlineService.isHost) {
-                                onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, newPowerups);
                             }
                           }}
+                          className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerSuddenDeath ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
-                          {isOn ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
+                          <div
+                            className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerSuddenDeath ? "translate-x-7" : "translate-x-1"}`}
+                          />
                         </button>
-                        <div className="flex-1">
-                          <SliderRow
-                            label={label}
-                            value={brawlerPowerups[key]}
-                            index={idx}
-                            colorClass="bg-yellow-500"
-                            onChange={(v: number) => {
-                              if (gameState.onlineMode && !onlineService.isHost) return;
-                              const newPowerups = { ...brawlerPowerups, [key]: v };
+                      </div>
+                    </div>
+
+                    {/* Combo Powerups (Fusion) Toggle */}
+                    <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">
+                            {lang === "de"
+                              ? "KOMBI-POWERUPS (FUSION)"
+                              : "COMBO POWERUPS (FUSION)"}
+                          </div>
+                          <div className="text-[8px] text-neutral-400 mt-1 max-w-[280px] leading-relaxed">
+                            {lang === "de"
+                              ? "Sammle ein Powerup, wenn du bereits eins besitzt, um ein extrem starkes fusions-basiertes Powerup zu erschaffen!"
+                              : "Collect a second powerup while holding one to fuse them into an extremely powerful combo tier powerup!"}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (gameState.onlineMode && !onlineService.isHost)
+                              return;
+                            const newVal = !brawlerComboPowerups;
+                            setBrawlerComboPowerups(newVal);
+                            if (onlineService.isHost) {
+                              onlineService.broadcastLobbyState(
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                undefined,
+                                newVal,
+                              );
+                            }
+                          }}
+                          className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerComboPowerups ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <div
+                            className={`w-4 h-4 bg-white rounded-full transition-transform ${brawlerComboPowerups ? "translate-x-7" : "translate-x-1"}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Hazard Mode Selection */}
+                    <div className="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                      <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest mb-3">
+                        UMGEBUNGS-GEFAHREN
+                      </div>
+                      <div className="grid grid-cols-1 gap-2">
+                        {(
+                          [
+                            "none",
+                            "collapsing_platforms",
+                          ] as BrawlerHazardMode[]
+                        ).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => {
+                              if (gameState.onlineMode && !onlineService.isHost)
+                                return;
+                              setBrawlerHazardMode(mode);
+                              if (onlineService.isHost)
+                                onlineService.broadcastLobbyState(
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  brawlerTeamMode,
+                                  mode,
+                                );
+                            }}
+                            className={`py-2 text-[10px] font-arcade border transition-all ${brawlerHazardMode === mode ? "bg-orange-600 border-orange-400 text-white shadow-[0_0_10px_rgba(249,115,22,0.3)]" : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:bg-neutral-700"}`}
+                          >
+                            {mode === "none"
+                              ? "KEINE"
+                              : mode.replace("_", " ").toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="h-[1px] bg-neutral-800 my-2"></div>
+                    <div className="text-[10px] text-neutral-500 font-black uppercase tracking-widest px-2">
+                      POWERUPS
+                    </div>
+
+                    {Object.keys(brawlerPowerups).map((key, idx) => {
+                      const label = key
+                        .replace("powerup_", "")
+                        .replace(/_/g, " ")
+                        .toUpperCase();
+                      const isOn = brawlerPowerups[key] > 0;
+                      return (
+                        <div key={key} className="flex items-center gap-2">
+                          <button
+                            className={`w-16 py-2 text-xs font-bold border transition-colors ${isOn ? "bg-green-600 border-green-500 text-white hover:bg-green-500" : "bg-red-900/50 border-red-800 text-red-300 hover:bg-red-800/50"}`}
+                            onClick={() => {
+                              if (gameState.onlineMode && !onlineService.isHost)
+                                return;
+                              const newPowerups = {
+                                ...brawlerPowerups,
+                                [key]: isOn ? 0 : 100,
+                              };
                               setBrawlerPowerups(newPowerups);
-                              if (gameState.onlineMode && onlineService.isHost) {
-                                  onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, newPowerups);
+                              if (
+                                gameState.onlineMode &&
+                                onlineService.isHost
+                              ) {
+                                onlineService.broadcastLobbyState(
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  newPowerups,
+                                );
                               }
                             }}
-                            isSelected={menuSelection === idx}
-                            onHover={setMenuSelection}
-                            max={100}
-                          />
+                          >
+                            {isOn ? t.onLabel || "ON" : t.offLabel || "OFF"}
+                          </button>
+                          <div className="flex-1">
+                            <SliderRow
+                              label={label}
+                              value={brawlerPowerups[key]}
+                              index={idx}
+                              colorClass="bg-yellow-500"
+                              onChange={(v: number) => {
+                                if (
+                                  gameState.onlineMode &&
+                                  !onlineService.isHost
+                                )
+                                  return;
+                                const newPowerups = {
+                                  ...brawlerPowerups,
+                                  [key]: v,
+                                };
+                                setBrawlerPowerups(newPowerups);
+                                if (
+                                  gameState.onlineMode &&
+                                  onlineService.isHost
+                                ) {
+                                  onlineService.broadcastLobbyState(
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    newPowerups,
+                                  );
+                                }
+                              }}
+                              isSelected={menuSelection === idx}
+                              onHover={setMenuSelection}
+                              max={100}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
 
-                <div className="w-72 flex flex-col gap-2">
-                  {!gameState.onlineMode && (
+                  <div className="w-72 flex flex-col gap-2">
+                    {!gameState.onlineMode && (
                       <MenuButton
                         index={Object.keys(brawlerPowerups).length}
                         label="START BRAWL"
                         onClick={() => {
-                            setGameState((p) => ({
-                              ...p,
-                              status: "brawler_playing",
-                            }));
-                            setRespawnTrigger(0);
-                            checkAchievements({ mode: "vs" });
+                          setGameState((p) => ({
+                            ...p,
+                            status: "brawler_playing",
+                          }));
+                          setRespawnTrigger(0);
+                          checkAchievements({ mode: "vs" });
                         }}
                         isSelected={
                           menuSelection === Object.keys(brawlerPowerups).length
                         }
                         onHover={setMenuSelection}
                       />
-                  )}
-                  <MenuButton
-                    index={Object.keys(brawlerPowerups).length + 1}
-                    label={t.back}
-                    danger
-                    onClick={() =>
-                      setGameState((p) => ({ ...p, status: p.previousStatus === "online_lobby" ? "online_lobby" : "brawler_setup" }))
-                    }
-                    isSelected={
-                      menuSelection === Object.keys(brawlerPowerups).length + 1
-                    }
-                    onHover={setMenuSelection}
-                  />
+                    )}
+                    <MenuButton
+                      index={Object.keys(brawlerPowerups).length + 1}
+                      label={t.back}
+                      danger
+                      onClick={() =>
+                        setGameState((p) => ({
+                          ...p,
+                          status:
+                            p.previousStatus === "online_lobby"
+                              ? "online_lobby"
+                              : "brawler_setup",
+                        }))
+                      }
+                      isSelected={
+                        menuSelection ===
+                        Object.keys(brawlerPowerups).length + 1
+                      }
+                      onHover={setMenuSelection}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Achievements Menu */}
-            {gameState.status === "achievements" && (
-              <AchievementsView 
-                 t={t}
-                 gameState={gameState}
-                 onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                 ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
-                 MenuButton={MenuButton}
-              />
-            )}
-
-            {/* Comic Intro & Menu Transition */}
-            <AnimatePresence mode="wait">
-              {gameState.status === "intro" && (
-                <motion.div
-                  key="intro"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute inset-0 z-50"
-                >
-                  <ComicIntro 
-                    onComplete={() => {
-                      localStorage.setItem("ragecube_intro_seen", "true");
-                      setGameState((p) => ({ ...p, status: "menu" }));
-                    }}
-                  />
-                </motion.div>
               )}
 
-              {gameState.status === "menu" && (
-                <motion.div
-                  key="menu"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.8 }}
-                  className="absolute inset-0 flex flex-col items-center justify-between p-8 z-30 overflow-hidden bg-neutral-950"
-                >
-                  {/* Volcanic Background */}
-                  <div className="absolute inset-0 z-[-1]">
-                    <img 
-                      src="https://picsum.photos/seed/volcano/1920/1080?blur=2" 
-                      alt="Volcanic Background" 
-                      className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-110"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-red-950 via-transparent to-red-950 opacity-80"></div>
-                    <div className="absolute inset-0 bg-black/40"></div>
-                  </div>
+              {/* Achievements Menu */}
+              {gameState.status === "achievements" && (
+                <AchievementsView
+                  t={t}
+                  gameState={gameState}
+                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                  ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+                  MenuButton={MenuButton}
+                />
+              )}
 
-                {/* Split Logo */}
-                <div className="mt-8 md:mt-12 flex flex-col md:flex-row gap-4 md:gap-16 relative items-center">
-                  <h1 className="text-5xl sm:text-7xl md:text-9xl lava-text font-arcade tracking-[-0.15em] relative">
-                    RAGE
-                    <div className="absolute -inset-2 blur-xl bg-orange-600/30 -z-10 animate-pulse"></div>
-                  </h1>
-                  <h1 className="text-5xl sm:text-7xl md:text-9xl lava-text font-arcade tracking-[-0.15em] relative">
-                    CUBE
-                    <div className="absolute -inset-2 blur-xl bg-orange-600/30 -z-10 animate-pulse"></div>
-                    <button
-                      id="secret-gd-mode-btn"
-                      onClick={() => {
-                        try {
-                          audio.playSfx("secret");
-                        } catch (e) {}
-                        setGameState((p) => ({
-                          ...p,
-                          status: "geometry_dash_menu",
-                        }));
-                      }}
-                      className="absolute -right-2 top-0 w-8 h-8 flex items-center justify-center text-xs text-yellow-500/10 hover:text-yellow-400 hover:scale-125 transition-all cursor-pointer z-50 animate-pulse"
-                      title="⭐"
-                    >
-                      ⭐
-                    </button>
-                  </h1>
-                </div>
-
-                {/* Quick Customizer (Stone Frame) - Hidden on very small screens or repositioned */}
-                <div className="hidden lg:flex absolute left-8 bottom-8 z-20 flex-col items-center lava-btn-bg p-5 rounded-sm lava-border min-w-[220px] max-w-[240px] scale-90 origin-bottom-left transition-all hover:scale-95 duration-300">
-                  <div className="text-[10px] font-black text-yellow-500 mb-6 tracking-[0.3em] uppercase drop-shadow-[0_2px_2px_#000]">{t.quickCustomizer}</div>
-
-                  <div className="grid grid-cols-1 gap-3 w-full h-[320px] overflow-y-auto pr-2 custom-scrollbar">
-                      <div className="flex flex-col gap-2 w-full">
-                        <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">{t.colorLabel}</span>
-                        <div className="flex gap-2 justify-center py-2">
-                           {['#ff3300', '#00ff88', '#00ccff', '#fbbf24', '#ff00ff'].map(c => (
-                             <button 
-                               key={c}
-                               onClick={() => setCustomization(p => ({ ...p, color: c }))}
-                               className={`w-8 h-8 rounded-full border-2 ${customization.color === c ? 'border-white scale-125 shadow-[0_0_10px_#fff]' : 'border-black/50 opacity-60 hover:opacity-100 hover:scale-110'} transition-all`}
-                               style={{ backgroundColor: c }}
-                             />
-                           ))}
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <SliderRow label="R" value={hexToRgb(customization.color).r} index={100} colorClass="bg-red-600" onChange={(v: number) => setExactRGB(1, "color", "r", v)} isSelected={false} onHover={() => {}} />
-                          <SliderRow label="G" value={hexToRgb(customization.color).g} index={101} colorClass="bg-green-600" onChange={(v: number) => setExactRGB(1, "color", "g", v)} isSelected={false} onHover={() => {}} />
-                          <SliderRow label="B" value={hexToRgb(customization.color).b} index={102} colorClass="bg-blue-600" onChange={(v: number) => setExactRGB(1, "color", "b", v)} isSelected={false} onHover={() => {}} />
-                        </div>
-                      </div>
-
-                     <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">{t.eyesLabel}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                           <button onClick={() => rotateOption(1, "eyes", -1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">◀</button>
-                           <div className="flex-1 text-center">
-                              <div className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] ${!isUnlocked('eyes', customization.eyes) ? 'opacity-50 text-red-500' : ''}`}>
-                                {t.eye_names?.[customization.eyes] || customization.eyes}
-                                {!isUnlocked('eyes', customization.eyes) && ' 🔒'}
-                              </div>
-                              {!isUnlocked('eyes', customization.eyes) && (
-                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
-                                   {getLockReason('eyes', customization.eyes)}
-                                </div>
-                              )}
-                           </div>
-                           <button onClick={() => rotateOption(1, "eyes", 1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">▶</button>
-                        </div>
-                     </div>
-
-                     <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">{t.accLabel}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                           <button onClick={() => rotateOption(1, "accessory", -1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">◀</button>
-                           <div className="flex-1 text-center">
-                              <div className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] truncate ${!isUnlocked('accessory', customization.accessory) ? 'opacity-50 text-red-500' : ''}`}>
-                                {t.acc_names?.[customization.accessory] || customization.accessory}
-                                {!isUnlocked('accessory', customization.accessory) && ' 🔒'}
-                              </div>
-                              {!isUnlocked('accessory', customization.accessory) && (
-                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
-                                   {getLockReason('accessory', customization.accessory)}
-                                </div>
-                              )}
-                           </div>
-                           <button onClick={() => rotateOption(1, "accessory", 1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">▶</button>
-                        </div>
-                     </div>
-
-                     <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">{t.trailLabel}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                           <button onClick={() => rotateOption(1, "trail", -1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">◀</button>
-                           <div className="flex-1 text-center">
-                              <div className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] truncate ${!isUnlocked("trail", customization.trailColor) ? 'opacity-50 text-red-500' : ''}`}>
-                                {TRAIL_PRESETS.find(p => p.val === customization.trailColor)?.name || (customization.trailColor === "" ? (t.offLabelShort || 'OFF') : (t.customLabel || 'CUSTOM'))}
-                                {!isUnlocked("trail", customization.trailColor) && ' 🔒'}
-                              </div>
-                              {!isUnlocked('trail', customization.trailColor) && (
-                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
-                                   {getLockReason('trail', customization.trailColor)}
-                                </div>
-                              )}
-                           </div>
-                           <button onClick={() => rotateOption(1, "trail", 1)} className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs">▶</button>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="flex gap-2 w-full mt-4">
-                    <button 
-                      onClick={() => {
-                        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-                        
-                        const eyesPool = EYE_OPTIONS.filter(opt => isUnlocked('eyes', opt));
-                        const accPool = ACC_OPTIONS.filter(opt => isUnlocked('accessory', opt) && opt !== 'unicorn');
-                        const trailPool = TRAIL_PRESETS.filter(opt => isUnlocked('trail', opt.val));
-
-                        const randomEyes = eyesPool[Math.floor(Math.random() * eyesPool.length)] || 'normal';
-                        const randomAcc = accPool[Math.floor(Math.random() * accPool.length)] || 'none';
-                        const randomTrail = trailPool[Math.floor(Math.random() * trailPool.length)]?.val || randomColor;
-                        
-                        setCustomization(prev => ({ ...prev, color: randomColor, eyes: randomEyes, accessory: randomAcc, trailColor: randomTrail }));
-                      }}
-                      className="flex-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[7px] text-white font-black uppercase tracking-widest transition-all active:scale-95"
-                    >
-                      🎲 {t.random || "ZUFALL"}
-                    </button>
-                    <button 
-                      onClick={() => setCustomization(p => ({
-                        ...p,
-                        color: DEFAULT_CUSTOMIZATION.color,
-                        eyes: DEFAULT_CUSTOMIZATION.eyes,
-                        accessory: DEFAULT_CUSTOMIZATION.accessory,
-                        trailColor: DEFAULT_CUSTOMIZATION.trailColor,
-                        deathAnim: "blood",
-                        trailType: "normal"
-                      }))}
-                      className="flex-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[7px] text-white font-black uppercase tracking-widest transition-all active:scale-95"
-                    >
-                      🔄 RESET
-                    </button>
-                  </div>
-                </div>
-
-                {/* Center Content (Character Preview) */}
-                <div className="flex-1 w-full flex items-center justify-center pointer-events-none z-10 relative mt-2 md:mt-4 lg:-mt-8 mb-4 min-h-0">
-                  <div className="w-[30vh] h-[30vh] sm:w-[40vh] sm:h-[40vh] md:w-[50vh] md:h-[50vh] lg:w-[60vh] lg:h-[60vh] aspect-square max-h-full max-w-full drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)] relative">
-                     <CharacterPreview customization={customization} scale={16} />
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center justify-end w-full max-w-6xl mt-auto pb-6 z-10 scale-[0.85] sm:scale-100 origin-bottom">
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-2 sm:gap-y-3 w-full max-w-3xl mb-3">
-                    <div className="space-y-3">
-                      <MenuButton
-                        index={0}
-                        label={t.start}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() =>
-                          setGameState((p) => ({
-                            ...p,
-                            status: "difficulty_select",
-                          }))
-                        }
-                        isSelected={menuSelection === 0}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={2}
-                        label={t.customLevels}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() =>
-                          setGameState((p) => ({
-                            ...p,
-                            status: "custom_level_select",
-                          }))
-                        }
-                        isSelected={menuSelection === 2}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={4}
-                        label={t.editor}
-                        onClick={() => {
-                          setGameState((p) => ({ ...p, status: "editor_type_select" }));
-                        }}
-                        isSelected={menuSelection === 4}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={6}
-                        label={t.highscores}
-                        onClick={() => {
-                          setLevelSource("builtin");
-                          setHighscoreLevelIndex(0);
-                          setGameState((p) => ({ ...p, status: "highscores" }));
-                        }}
-                        isSelected={menuSelection === 6}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={8}
-                        label={t.shop || "SHOP"}
-                        disabled={false}
-                        onClick={() => {
-                          setMenuSelection(0);
-                          setGameState((p) => ({ ...p, status: "shop" }));
-                        }}
-                        isSelected={menuSelection === 8}
-                        onHover={setMenuSelection}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <MenuButton
-                        index={1}
-                        label={t.vsMode}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() => {
-                          setLevelSource("builtin");
-                          setHighscoreLevelIndex(0);
-                          setMenuSelection(0);
-                          setGameState((p) => ({ ...p, status: "vs_setup" }));
-                        }}
-                        isSelected={menuSelection === 1}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={3}
-                        label={t.brawlerMode}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() => {
-                          setLevelSource("builtin");
-                          setHighscoreLevelIndex(0);
-                          setMenuSelection(0);
-                          setGameState((p) => ({
-                            ...p,
-                            status: "brawler_setup",
-                          }));
-                        }}
-                        isSelected={menuSelection === 3}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={5}
-                        label={t.randomRun}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() => {
-                          setMenuSelection(0);
-                          setGameState((p) => ({ ...p, status: "random_run_setup" }));
-                        }}
-                        isSelected={menuSelection === 5}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={7}
-                        label={t.achievements}
-                        onClick={() =>
-                          setGameState((p) => ({ ...p, status: "achievements" }))
-                        }
-                        isSelected={menuSelection === 7}
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={9}
-                        label={t.onlineMultiplayer}
-                        disabled={!isUnlocked("eyes", customization.eyes) || !isUnlocked("accessory", customization.accessory) || !isUnlocked("trail", customization.trailColor)}
-                        onClick={() => {
-                          setMenuSelection(0);
-                          setGameState((p) => ({ ...p, status: "online_menu" }));
-                        }}
-                        isSelected={menuSelection === 9}
-                        onHover={setMenuSelection}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-3 w-full max-w-3xl mb-12">
-                    <MenuButton
-                      index={10}
-                      label={t.settings}
-                      onClick={() =>
-                        setGameState((p) => ({ ...p, status: "settings", previousStatus: "menu" }))
-                      }
-                      isSelected={menuSelection === 10}
-                      onHover={setMenuSelection}
-                    />
-                    <MenuButton
-                      index={11}
-                      label={t.book}
-                      onClick={() =>
-                        setGameState((p) => ({ ...p, status: "book" }))
-                      }
-                      isSelected={menuSelection === 11}
-                      onHover={setMenuSelection}
-                    />
-                  </div>
-
-                  <div className="flex gap-4 text-[10px] text-white uppercase font-black tracking-[0.2em] mb-4">
-                    {Object.keys(Language).map((l) => (
-                      <button
-                        key={l}
-                        onClick={() =>
-                          setLang(Language[l as keyof typeof Language])
-                        }
-                        className={`w-12 h-12 flex items-center justify-center lava-btn-bg lava-border rounded-full hover:scale-110 hover:lava-border-active transition-all transform-gpu will-change-transform box-border ${lang === Language[l as keyof typeof Language] ? "lava-border-active text-yellow-400 scale-110 shadow-[0_0_15px_#ff4400]" : "opacity-60"}`}
-                      >
-                        <span className="tracking-normal">{l}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-            </AnimatePresence>
-
-            {/* Online Menu */}
-            {gameState.status === "online_menu" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30">
-                <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 font-bold font-arcade mb-8">
-                  {t.onlineMultiplayer}
-                </h1>
-
-                <div className="mb-8 flex flex-col items-center gap-4">
-                  <div className="w-48 h-48 bg-neutral-900 border-2 border-neutral-700 relative flex items-center justify-center">
-                    <CharacterPreview customization={customization} scale={6} />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder={t.enterName}
-                    maxLength={12}
-                    value={playerName}
-                    onChange={(e) =>
-                      setPlayerName(e.target.value.toUpperCase())
-                    }
-                    className="bg-black border border-white p-2 text-center text-white w-48 font-bold"
-                  />
-                  <div className="w-48">
-                  </div>
-                </div>
-
-                {onlineError && (
-                  <div className="text-red-500 mb-4 font-bold animate-pulse">
-                    {onlineError}
-                  </div>
-                )}
-                <div className="flex flex-col gap-3 w-full max-w-[320px]">
-                  <MenuButton
-                    index={1}
-                    label={t.createBrawlerLobby}
-                    onClick={() => createOnlineLobby("brawler")}
-                    isSelected={menuSelection === 1}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={2}
-                    label={t.createVsLobby}
-                    onClick={() => createOnlineLobby("vs")}
-                    isSelected={menuSelection === 2}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={3}
-                    label={t.joinLobby}
-                    onClick={() => {
-                      setShowJoinPrompt(true);
-                      setOnlineError("");
-                      setOnlineLobbyInput("");
-                    }}
-                    isSelected={menuSelection === 3}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={4}
-                    label={t.back}
-                    onClick={() =>
-                      setGameState((p) => ({ ...p, status: "menu" }))
-                    }
-                    danger
-                    isSelected={menuSelection === 4}
-                    onHover={setMenuSelection}
-                  />
-                  <button
-                    onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "online_menu" }))}
-                    className="mt-4 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-xs transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
+              {/* Comic Intro & Menu Transition */}
+              <AnimatePresence mode="wait">
+                {gameState.status === "intro" && (
+                  <motion.div
+                    key="intro"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="absolute inset-0 z-50"
                   >
-                    ⚙️ {t.settings || "SETTINGS"}
-                  </button>
-                </div>
-
-                {showJoinPrompt && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-40">
-                    <form 
-                      className="bg-neutral-900 p-8 border-2 border-cyan-500 flex flex-col items-center"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (onlineLobbyInput.length === 4) {
-                          setShowJoinPrompt(false);
-                          joinOnlineLobby(onlineLobbyInput);
-                        } else {
-                          setOnlineError(t.codeLengthError || "Code must be 4 characters");
-                        }
+                    <ComicIntro
+                      onComplete={() => {
+                        localStorage.setItem("ragecube_intro_seen", "true");
+                        setGameState((p) => ({ ...p, status: "menu" }));
                       }}
-                    >
-                      <h2 className="text-2xl text-cyan-400 mb-4 font-arcade">
-                        {t.enterLobbyCode}
-                      </h2>
-                      <input
-                        type="text"
-                        autoFocus
-                        maxLength={4}
-                        value={onlineLobbyInput}
-                        onChange={(e) =>
-                          setOnlineLobbyInput(e.target.value.toUpperCase())
-                        }
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (onlineLobbyInput.length === 4) {
-                              setShowJoinPrompt(false);
-                              joinOnlineLobby(onlineLobbyInput);
-                            } else {
-                              setOnlineError(t.codeLengthError || "Code must be 4 characters");
-                            }
-                          }
-                          if (e.key === "Escape") {
-                            setShowJoinPrompt(false);
-                          }
-                        }}
-                        className="bg-black border border-white p-2 text-center text-white w-48 font-bold text-2xl tracking-widest mb-4"
+                    />
+                  </motion.div>
+                )}
+
+                {gameState.status === "menu" && (
+                  <motion.div
+                    key="menu"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="absolute inset-0 flex flex-col items-center justify-between p-8 z-30 overflow-hidden bg-neutral-950"
+                  >
+                    {/* Volcanic Background */}
+                    <div className="absolute inset-0 z-[-1]">
+                      <img
+                        src="https://picsum.photos/seed/volcano/1920/1080?blur=2"
+                        alt="Volcanic Background"
+                        className="w-full h-full object-cover opacity-60 mix-blend-overlay scale-110"
+                        referrerPolicy="no-referrer"
                       />
-                      <div className="flex gap-4 w-full">
-                        <button
-                          type="button"
-                          className="flex-1 bg-neutral-800 p-2 hover:bg-neutral-700"
-                          onClick={() => setShowJoinPrompt(false)}
-                        >
-                          {t.cancel || "CANCEL"}
-                        </button>
-                        <button
-                          type="submit"
-                          className="flex-1 bg-cyan-600 p-2 hover:bg-cyan-500 text-white font-bold"
-                        >
-                          {t.join || "JOIN"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Online Lobby Screen */}
-            {gameState.status === "online_lobby" && (
-              <div className="absolute inset-0 flex flex-col items-center p-4 md:p-8 bg-black/95 z-30 overflow-y-auto">
-                <div className="w-full max-w-4xl flex flex-col min-h-full">
-                  {/* Lobby Header */}
-                  <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-neutral-900/50 p-6 rounded-2xl border border-neutral-800">
-                    <div>
-                      <h2 className="text-3xl font-black text-white flex items-center gap-3">
-                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        {onlineService.currentMode === 'editor' ? "COOP EDITOR" : (onlineService.currentMode === 'vs' ? t.vsTitle : t.brawlerMode)}
-                      </h2>
-                      <p className="text-neutral-500 font-bold uppercase tracking-tighter text-sm mt-1">
-                        {t.lobby}: <span className="text-rage-red font-arcade">{onlineService.lobbyCode}</span>
-                      </p>
-                    </div>
-                    {onlineService.isHost && (
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {onlineService.currentMode === 'vs' && (
-                          <button
-                            onClick={() => {
-                              const newValue = !gameState.collisionEnabled;
-                              setGameState(p => ({ ...p, collisionEnabled: newValue }));
-                              onlineService.broadcastLobbyState(
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                undefined,
-                                newValue
-                              );
-                            }}
-                            className={`px-4 py-2 rounded-lg font-arcade text-[10px] transition-all border-b-4 ${
-                              gameState.collisionEnabled 
-                                ? "bg-green-600 border-green-900 text-white" 
-                                : "bg-neutral-700 border-neutral-900 text-neutral-400"
-                            }`}
-                          >
-                            {(t.collisionLabel || "COLLISION")}: {gameState.collisionEnabled ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
-                          </button>
-                        )}
-                        {onlineService.currentMode === 'vs' && (
-                          <button
-                            onClick={() => onlineService.toggleFinishTimer()}
-                            className={`px-4 py-2 rounded-lg font-arcade text-[10px] transition-all border-b-4 ${
-                              gameState.finishTimerEnabled === true 
-                                ? "bg-green-600 border-green-900 text-white" 
-                                : "bg-neutral-700 border-neutral-900 text-neutral-400"
-                            }`}
-                          >
-                            {(t.finishTimerLabel || "LEVEL-TIMER")}: {gameState.finishTimerEnabled === true ? (t.onLabel || "ON") : (t.offLabel || "OFF")}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setGameState(p => ({ ...p, status: "settings", previousStatus: "online_lobby" }))}
-                          className="px-6 py-2 bg-neutral-700 text-white hover:bg-neutral-600 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0"
-                        >
-                          ⚙️ {t.settings || "SETTINGS"}
-                        </button>
-                        <button
-                          onClick={() => setShowLevelMenu(true)}
-                          className="px-6 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-400 active:translate-y-1 active:border-b-0"
-                        >
-                          {t.openLevelMenu || "LEVEL MENÜ"}
-                        </button>
-                        {gameState.onlineMode === "brawler" && (
-                          <button
-                            onClick={() => setGameState(p => ({ ...p, status: "brawler_powerup_setup", previousStatus: "online_lobby" }))}
-                            className="px-6 py-2 bg-orange-600 text-white hover:bg-orange-500 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-orange-900 active:translate-y-1 active:border-b-0"
-                          >
-                            {t.brawlerSettings || "POWERUPS"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {!onlineService.isHost && (
-                      <div className="flex flex-wrap justify-center gap-2">
-                      </div>
-                    )}
-                  </div>
-                <h2 className="text-xl text-neutral-400 mb-2 uppercase">
-                  {gameState.onlineMode} MODE
-                </h2>
-                {onlineError && (
-                  <div className="text-red-500 mb-4 font-bold animate-pulse">
-                    {onlineError}
-                  </div>
-                )}
-
-                <div className="flex flex-col md:flex-row gap-8 w-full max-w-6xl flex-1 overflow-hidden">
-                  <div className="flex-1 flex flex-col items-center overflow-y-auto pr-2 custom-scrollbar">
-                    <div className="flex flex-wrap justify-center gap-4 mb-8">
-                      {onlinePlayers.map((p, idx) => {
-                        const isLocal = p.id === onlineService.localPlayer?.id;
-                        const teamColors = [
-                          "#ff0044",
-                          "#00ff88",
-                          "#00ccff",
-                          "#fbbf24",
-                          "#9c27b0",
-                          "#ff4400",
-                          "#607d8b",
-                          "#795548",
-                        ];
-
-                        return (
-                          <div
-                            key={p.id}
-                            className="flex flex-col items-center bg-neutral-900 p-4 border-2 border-neutral-700 rounded-lg w-40 relative group"
-                          >
-                            <div
-                              className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg border-2 border-white/20"
-                              style={{
-                                backgroundColor: teamColors[(p.team || 0) % 8],
-                              }}
-                            >
-                              {((p.team || 0) % 8) + 1}
-                            </div>
-
-                            <div className="w-40 h-40 mb-4 relative flex items-center justify-center">
-                              <CharacterPreview
-                                customization={p.customization}
-                                scale={5}
-                              />
-                            </div>
-                             <div className="text-white font-bold mb-2 truncate w-full text-center text-sm">
-                              {p.name} {p.isHost ? `(${t.host || "HOST"})` : ""}
-                            </div>
-
-                            {onlineService.isHost && !p.isHost && (
-                              <button
-                                onClick={() => onlineService.kickPlayer(p.id)}
-                                className="mb-2 w-full py-1 bg-red-600 hover:bg-red-500 text-white text-[8px] font-black uppercase rounded shadow-lg border-b-2 border-red-900 active:translate-y-0.5 active:border-b-0 transition-all scale-90 group-hover:scale-100"
-                              >
-                                {t.kick || "KICK"}
-                              </button>
-                            )}
-
-                            <div className="flex flex-col items-center gap-1 mb-2">
-                              {isLocal && (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[8px] text-neutral-500 font-bold uppercase">
-                                    Team
-                                  </span>
-                                  <select
-                                    value={p.team || 0}
-                                    onChange={(e) => {
-                                      const newTeam = parseInt(e.target.value);
-                                      const updatedPlayer = {
-                                        ...onlineService.localPlayer!,
-                                        team: newTeam,
-                                      };
-                                      onlineService.updateLocalPlayer(
-                                        updatedPlayer,
-                                      );
-                                    }}
-                                    className="bg-neutral-800 text-white text-[10px] rounded border border-neutral-700 outline-none px-1"
-                                  >
-                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((t) => (
-                                      <option key={t} value={t}>
-                                        Team {t + 1}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
-                              {!isLocal && (
-                                <div className="flex flex-col items-center">
-                                  <div className="text-[8px] text-neutral-400 font-bold uppercase">
-                                    Team {(p.team || 0) + 1}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div
-                              className={`text-[10px] font-bold ${p.ready ? "text-green-500" : "text-red-500"}`}
-                            >
-                              {p.ready ? (t.ready || "READY") : (t.notReady || "NOT READY")}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      <div className="absolute inset-0 bg-gradient-to-t from-red-950 via-transparent to-red-950 opacity-80"></div>
+                      <div className="absolute inset-0 bg-black/40"></div>
                     </div>
 
-                    {gameState.onlineMode !== "editor" && (
-                      <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
-                        <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
-                          {t.selectedLevels || "Selected Level(s)"}
-                        </div>
+                    {/* Split Logo */}
+                    <div className="mt-8 md:mt-12 flex flex-col md:flex-row gap-4 md:gap-16 relative items-center">
+                      <h1 className="text-5xl sm:text-7xl md:text-9xl lava-text font-arcade tracking-[-0.15em] relative">
+                        RAGE
+                        <div className="absolute -inset-2 blur-xl bg-orange-600/30 -z-10 animate-pulse"></div>
+                      </h1>
+                      <h1 className="text-5xl sm:text-7xl md:text-9xl lava-text font-arcade tracking-[-0.15em] relative">
+                        CUBE
+                        <div className="absolute -inset-2 blur-xl bg-orange-600/30 -z-10 animate-pulse"></div>
+                        <button
+                          id="secret-gd-mode-btn"
+                          onClick={() => {
+                            try {
+                              audio.playSfx("secret");
+                            } catch (e) {}
+                            setGameState((p) => ({
+                              ...p,
+                              status: "geometry_dash_menu",
+                            }));
+                          }}
+                          className="absolute -right-2 top-0 w-8 h-8 flex items-center justify-center text-xs text-yellow-500/10 hover:text-yellow-400 hover:scale-125 transition-all cursor-pointer z-50 animate-pulse"
+                          title="⭐"
+                        >
+                          ⭐
+                        </button>
+                      </h1>
+                    </div>
 
-                        {/* Suggestions notification for Host */}
-                        {onlineService.isHost && onlineSuggestions.length > 0 && (
-                          <div className="w-full bg-blue-900/30 border border-blue-500/50 rounded-lg p-2 mb-4 animate-pulse">
-                            <div className="flex justify-between items-center text-[10px] text-blue-400 font-black uppercase mb-2">
-                               <span>{onlineSuggestions.filter(s => s.status === 'pending').length} NEUE VORSCHLÄGE</span>
-                               <button 
-                                 onClick={() => onlineService.clearSuggestions()}
-                                 className="text-neutral-500 hover:text-white"
-                               >
-                                 CLEAR
-                               </button>
-                            </div>
-                            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
-                              {onlineSuggestions.map((s, idx) => (
-                                <div key={s.id} className="flex items-center justify-between bg-black/40 p-2 rounded border border-white/5">
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-white text-xs font-bold truncate">{s.level.name}</span>
-                                    <span className="text-[8px] text-neutral-500 uppercase">VON {s.playerName}</span>
-                                  </div>
-                                  <div className="flex gap-2 shrink-0">
-                                    {s.status === 'pending' ? (
-                                      <>
-                                        <button 
-                                          onClick={() => onlineService.handleSuggestion(s.id, 'accept')}
-                                          className="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white hover:bg-green-500"
-                                        >
-                                          ✓
-                                        </button>
-                                        <button 
-                                          onClick={() => onlineService.handleSuggestion(s.id, 'decline')}
-                                          className="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white hover:bg-red-500"
-                                        >
-                                          ✕
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <span className={`text-[8px] font-black ${s.status === 'accepted' ? 'text-green-500' : 'text-red-500'}`}>
-                                        {s.status.toUpperCase()}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                    {/* Quick Customizer (Stone Frame) - Hidden on very small screens or repositioned */}
+                    <div className="hidden lg:flex absolute left-8 bottom-8 z-20 flex-col items-center lava-btn-bg p-5 rounded-sm lava-border min-w-[220px] max-w-[240px] scale-90 origin-bottom-left transition-all hover:scale-95 duration-300">
+                      <div className="text-[10px] font-black text-yellow-500 mb-6 tracking-[0.3em] uppercase drop-shadow-[0_2px_2px_#000]">
+                        {t.quickCustomizer}
+                      </div>
 
-                        {/* Suggestion button for Players */}
-                        {!onlineService.isHost && (
-                          <div className="w-full mb-4">
-                             <button 
-                               onClick={() => setShowSuggestionMenu(!showSuggestionMenu)}
-                               className="w-full py-2 bg-blue-600 text-white rounded-lg font-arcade text-[10px] border-b-4 border-blue-900 active:translate-y-1 active:border-b-0"
-                             >
-                               {t.suggestLevel || "LEVEL VORSCHLAGEN"} ({onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length}/5)
-                             </button>
-                             
-                             {showSuggestionMenu && (
-                               <div className="mt-2 p-4 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl">
-                                  <div className="text-white font-bold mb-4 text-center">{t.yourLevels || "DEINE LEVEL"}</div>
-                                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                                     {customLevels.filter(l => l.isVerified).map(l => (
-                                       <button 
-                                         key={l.id}
-                                         onClick={() => {
-                                           onlineService.suggestLevel(l);
-                                           setShowSuggestionMenu(false);
-                                         }}
-                                         className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-600 text-left text-xs text-white truncate"
-                                       >
-                                         {l.name}
-                                       </button>
-                                     ))}
-                                     {customLevels.filter(l => l.isVerified).length === 0 && (
-                                       <div className="col-span-2 text-center text-neutral-500 py-4 text-[10px]">
-                                         Keine veröffentlichten Level gefunden.
-                                       </div>
-                                     )}
-                                  </div>
-                               </div>
-                             )}
-
-                             {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).length > 0 && (
-                               <div className="mt-2 text-[8px] text-neutral-500 font-bold uppercase text-center">
-                                  DEINE VORSCHLÄGE: {onlineSuggestions.filter(s => s.playerId === onlineService.localPlayer?.id).map(s => (
-                                    <span key={s.id} className={`ml-2 ${s.status === 'accepted' ? 'text-green-500' : s.status === 'declined' ? 'text-red-500' : 'text-blue-400'}`}>
-                                      {s.level.name}
-                                    </span>
-                                  ))}
-                               </div>
-                             )}
-                          </div>
-                        )}
-
-                        <div className="text-white font-bold text-xl flex flex-col items-center gap-2">
-                          <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
-                            {gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0 && (
-                              <LevelPreview
-                                level={gameState.customLevelsQueue[0]}
-                                width={192}
-                                height={108}
-                                className="w-full h-full"
-                              />
-                            )}
-                            {gameState.customLevelsQueue &&
-                              gameState.customLevelsQueue.length > 1 && (
-                                <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
-                                  <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
-                                    {t.activeQueue || "Active Queue"}
-                                  </div>
-                                  <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
-                                    {gameState.customLevelsQueue
-                                      .slice(0, 4)
-                                      .map((sl, i) => (
-                                        <div
-                                          key={sl.id || i}
-                                          className="truncate px-1 bg-white/10 rounded"
-                                        >
-                                          {i + 1}. {sl.name}
-                                        </div>
-                                      ))}
-                                    {gameState.customLevelsQueue.length > 4 && (
-                                      <div>
-                                        + {gameState.customLevelsQueue.length - 4}{" "}
-                                        {t.more || "MORE"}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                          </div>
-                          <span className="text-center text-sm md:text-base">
-                            {!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0
-                              ? (t.noLevelSelected || "NO LEVEL SELECTED")
-                              : gameState.customLevelsQueue.length > 1
-                              ? `${gameState.customLevelsQueue.length} ${t.levels} SELECTED`
-                              : gameState.customLevelsQueue[0].name}
+                      <div className="grid grid-cols-1 gap-3 w-full h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="flex flex-col gap-2 w-full">
+                          <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">
+                            {t.colorLabel}
                           </span>
+                          <div className="flex gap-2 justify-center py-2">
+                            {[
+                              "#ff3300",
+                              "#00ff88",
+                              "#00ccff",
+                              "#fbbf24",
+                              "#ff00ff",
+                            ].map((c) => (
+                              <button
+                                key={c}
+                                onClick={() =>
+                                  setCustomization((p) => ({ ...p, color: c }))
+                                }
+                                className={`w-8 h-8 rounded-full border-2 ${customization.color === c ? "border-white scale-125 shadow-[0_0_10px_#fff]" : "border-black/50 opacity-60 hover:opacity-100 hover:scale-110"} transition-all`}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+
+                          <div className="space-y-1">
+                            <SliderRow
+                              label="R"
+                              value={hexToRgb(customization.color).r}
+                              index={100}
+                              colorClass="bg-red-600"
+                              onChange={(v: number) =>
+                                setExactRGB(1, "color", "r", v)
+                              }
+                              isSelected={false}
+                              onHover={() => {}}
+                            />
+                            <SliderRow
+                              label="G"
+                              value={hexToRgb(customization.color).g}
+                              index={101}
+                              colorClass="bg-green-600"
+                              onChange={(v: number) =>
+                                setExactRGB(1, "color", "g", v)
+                              }
+                              isSelected={false}
+                              onHover={() => {}}
+                            />
+                            <SliderRow
+                              label="B"
+                              value={hexToRgb(customization.color).b}
+                              index={102}
+                              colorClass="bg-blue-600"
+                              onChange={(v: number) =>
+                                setExactRGB(1, "color", "b", v)
+                              }
+                              isSelected={false}
+                              onHover={() => {}}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">
+                            {t.eyesLabel}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={() => rotateOption(1, "eyes", -1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ◀
+                            </button>
+                            <div className="flex-1 text-center">
+                              <div
+                                className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] ${!isUnlocked("eyes", customization.eyes) ? "opacity-50 text-red-500" : ""}`}
+                              >
+                                {t.eye_names?.[customization.eyes] ||
+                                  customization.eyes}
+                                {!isUnlocked("eyes", customization.eyes) &&
+                                  " 🔒"}
+                              </div>
+                              {!isUnlocked("eyes", customization.eyes) && (
+                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
+                                  {getLockReason("eyes", customization.eyes)}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => rotateOption(1, "eyes", 1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">
+                            {t.accLabel}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={() => rotateOption(1, "accessory", -1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ◀
+                            </button>
+                            <div className="flex-1 text-center">
+                              <div
+                                className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] truncate ${!isUnlocked("accessory", customization.accessory) ? "opacity-50 text-red-500" : ""}`}
+                              >
+                                {t.acc_names?.[customization.accessory] ||
+                                  customization.accessory}
+                                {!isUnlocked(
+                                  "accessory",
+                                  customization.accessory,
+                                ) && " 🔒"}
+                              </div>
+                              {!isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) && (
+                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
+                                  {getLockReason(
+                                    "accessory",
+                                    customization.accessory,
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => rotateOption(1, "accessory", 1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-red-700 font-black uppercase tracking-widest border-b border-red-900/50 pb-1">
+                            {t.trailLabel}
+                          </span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={() => rotateOption(1, "trail", -1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ◀
+                            </button>
+                            <div className="flex-1 text-center">
+                              <div
+                                className={`text-[9px] text-white font-black uppercase drop-shadow-[0_1px_1px_#000] truncate ${!isUnlocked("trail", customization.trailColor) ? "opacity-50 text-red-500" : ""}`}
+                              >
+                                {TRAIL_PRESETS.find(
+                                  (p) => p.val === customization.trailColor,
+                                )?.name ||
+                                  (customization.trailColor === ""
+                                    ? t.offLabelShort || "OFF"
+                                    : t.customLabel || "CUSTOM")}
+                                {!isUnlocked(
+                                  "trail",
+                                  customization.trailColor,
+                                ) && " 🔒"}
+                              </div>
+                              {!isUnlocked(
+                                "trail",
+                                customization.trailColor,
+                              ) && (
+                                <div className="text-[7px] text-red-400 font-bold uppercase leading-none mt-0.5 opacity-80">
+                                  {getLockReason(
+                                    "trail",
+                                    customization.trailColor,
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => rotateOption(1, "trail", 1)}
+                              className="w-8 h-8 flex items-center justify-center bg-black/40 hover:bg-white/10 rounded-full text-white active:scale-95 text-xs"
+                            >
+                              ▶
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    )}
+
+                      <div className="flex gap-2 w-full mt-4">
+                        <button
+                          onClick={() => {
+                            const randomColor =
+                              "#" +
+                              Math.floor(Math.random() * 16777215)
+                                .toString(16)
+                                .padStart(6, "0");
+
+                            const eyesPool = EYE_OPTIONS.filter((opt) =>
+                              isUnlocked("eyes", opt),
+                            );
+                            const accPool = ACC_OPTIONS.filter(
+                              (opt) =>
+                                isUnlocked("accessory", opt) &&
+                                opt !== "unicorn",
+                            );
+                            const trailPool = TRAIL_PRESETS.filter((opt) =>
+                              isUnlocked("trail", opt.val),
+                            );
+
+                            const randomEyes =
+                              eyesPool[
+                                Math.floor(Math.random() * eyesPool.length)
+                              ] || "normal";
+                            const randomAcc =
+                              accPool[
+                                Math.floor(Math.random() * accPool.length)
+                              ] || "none";
+                            const randomTrail =
+                              trailPool[
+                                Math.floor(Math.random() * trailPool.length)
+                              ]?.val || randomColor;
+
+                            setCustomization((prev) => ({
+                              ...prev,
+                              color: randomColor,
+                              eyes: randomEyes,
+                              accessory: randomAcc,
+                              trailColor: randomTrail,
+                            }));
+                          }}
+                          className="flex-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[7px] text-white font-black uppercase tracking-widest transition-all active:scale-95"
+                        >
+                          🎲 {t.random || "ZUFALL"}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCustomization((p) => ({
+                              ...p,
+                              color: DEFAULT_CUSTOMIZATION.color,
+                              eyes: DEFAULT_CUSTOMIZATION.eyes,
+                              accessory: DEFAULT_CUSTOMIZATION.accessory,
+                              trailColor: DEFAULT_CUSTOMIZATION.trailColor,
+                              deathAnim: "blood",
+                              trailType: "normal",
+                            }))
+                          }
+                          className="flex-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[7px] text-white font-black uppercase tracking-widest transition-all active:scale-95"
+                        >
+                          🔄 RESET
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Center Content (Character Preview) */}
+                    <div className="flex-1 w-full flex items-center justify-center pointer-events-none z-10 relative mt-2 md:mt-4 lg:-mt-8 mb-4 min-h-0">
+                      <div className="w-[30vh] h-[30vh] sm:w-[40vh] sm:h-[40vh] md:w-[50vh] md:h-[50vh] lg:w-[60vh] lg:h-[60vh] aspect-square max-h-full max-w-full drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)] relative">
+                        <CharacterPreview
+                          customization={customization}
+                          scale={16}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-end w-full max-w-6xl mt-auto pb-6 z-10 scale-[0.85] sm:scale-100 origin-bottom">
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-2 sm:gap-y-3 w-full max-w-3xl mb-3">
+                        <div className="space-y-3">
+                          <MenuButton
+                            index={0}
+                            label={t.start}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() =>
+                              setGameState((p) => ({
+                                ...p,
+                                status: "difficulty_select",
+                              }))
+                            }
+                            isSelected={menuSelection === 0}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={2}
+                            label={t.customLevels}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() =>
+                              setGameState((p) => ({
+                                ...p,
+                                status: "custom_level_select",
+                              }))
+                            }
+                            isSelected={menuSelection === 2}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={4}
+                            label={t.editor}
+                            onClick={() => {
+                              setGameState((p) => ({
+                                ...p,
+                                status: "editor_type_select",
+                              }));
+                            }}
+                            isSelected={menuSelection === 4}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={6}
+                            label={t.highscores}
+                            onClick={() => {
+                              setLevelSource("builtin");
+                              setHighscoreLevelIndex(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "highscores",
+                              }));
+                            }}
+                            isSelected={menuSelection === 6}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={8}
+                            label={t.shop || "SHOP"}
+                            disabled={false}
+                            onClick={() => {
+                              setMenuSelection(0);
+                              setGameState((p) => ({ ...p, status: "shop" }));
+                            }}
+                            isSelected={menuSelection === 8}
+                            onHover={setMenuSelection}
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <MenuButton
+                            index={1}
+                            label={t.vsMode}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() => {
+                              setLevelSource("builtin");
+                              setHighscoreLevelIndex(0);
+                              setMenuSelection(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "vs_setup",
+                              }));
+                            }}
+                            isSelected={menuSelection === 1}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={3}
+                            label={t.brawlerMode}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() => {
+                              setLevelSource("builtin");
+                              setHighscoreLevelIndex(0);
+                              setMenuSelection(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "brawler_setup",
+                              }));
+                            }}
+                            isSelected={menuSelection === 3}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={5}
+                            label={t.randomRun}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() => {
+                              setMenuSelection(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "random_run_setup",
+                              }));
+                            }}
+                            isSelected={menuSelection === 5}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={7}
+                            label={t.achievements}
+                            onClick={() =>
+                              setGameState((p) => ({
+                                ...p,
+                                status: "achievements",
+                              }))
+                            }
+                            isSelected={menuSelection === 7}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={9}
+                            label={t.onlineMultiplayer}
+                            disabled={
+                              !isUnlocked("eyes", customization.eyes) ||
+                              !isUnlocked(
+                                "accessory",
+                                customization.accessory,
+                              ) ||
+                              !isUnlocked("trail", customization.trailColor)
+                            }
+                            onClick={() => {
+                              setMenuSelection(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "online_menu",
+                              }));
+                            }}
+                            isSelected={menuSelection === 9}
+                            onHover={setMenuSelection}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-3 w-full max-w-3xl mb-12">
+                        <MenuButton
+                          index={10}
+                          label={t.settings}
+                          onClick={() =>
+                            setGameState((p) => ({
+                              ...p,
+                              status: "settings",
+                              previousStatus: "menu",
+                            }))
+                          }
+                          isSelected={menuSelection === 10}
+                          onHover={setMenuSelection}
+                        />
+                        <MenuButton
+                          index={11}
+                          label={t.book}
+                          onClick={() =>
+                            setGameState((p) => ({ ...p, status: "book" }))
+                          }
+                          isSelected={menuSelection === 11}
+                          onHover={setMenuSelection}
+                        />
+                      </div>
+
+                      <div className="flex gap-4 text-[10px] text-white uppercase font-black tracking-[0.2em] mb-4">
+                        {Object.keys(Language).map((l) => (
+                          <button
+                            key={l}
+                            onClick={() =>
+                              setLang(Language[l as keyof typeof Language])
+                            }
+                            className={`w-12 h-12 flex items-center justify-center lava-btn-bg lava-border rounded-full hover:scale-110 hover:lava-border-active transition-all transform-gpu will-change-transform box-border ${lang === Language[l as keyof typeof Language] ? "lava-border-active text-yellow-400 scale-110 shadow-[0_0_15px_#ff4400]" : "opacity-60"}`}
+                          >
+                            <span className="tracking-normal">{l}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Online Menu */}
+              {gameState.status === "online_menu" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30">
+                  <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 font-bold font-arcade mb-8">
+                    {t.onlineMultiplayer}
+                  </h1>
+
+                  <div className="mb-8 flex flex-col items-center gap-4">
+                    <div className="w-48 h-48 bg-neutral-900 border-2 border-neutral-700 relative flex items-center justify-center">
+                      <CharacterPreview
+                        customization={customization}
+                        scale={6}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={t.enterName}
+                      maxLength={12}
+                      value={playerName}
+                      onChange={(e) =>
+                        setPlayerName(e.target.value.toUpperCase())
+                      }
+                      className="bg-black border border-white p-2 text-center text-white w-48 font-bold"
+                    />
+                    <div className="w-48"></div>
                   </div>
 
-                  <div className="w-full md:w-80 flex flex-col gap-4">
-                    <Chat
-                      messages={chatMessages}
-                      onSendMessage={(text) => {
-                        onlineService.sendChatMessage(text);
-                        const newCount = (gameState.chatMessagesSent || 0) + 1;
+                  {onlineError && (
+                    <div className="text-red-500 mb-4 font-bold animate-pulse">
+                      {onlineError}
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-3 w-full max-w-[320px]">
+                    <MenuButton
+                      index={1}
+                      label={t.createBrawlerLobby}
+                      onClick={() => createOnlineLobby("brawler")}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={2}
+                      label={t.createVsLobby}
+                      onClick={() => createOnlineLobby("vs")}
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={3}
+                      label={t.joinLobby}
+                      onClick={() => {
+                        setShowJoinPrompt(true);
+                        setOnlineError("");
+                        setOnlineLobbyInput("");
+                      }}
+                      isSelected={menuSelection === 3}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={4}
+                      label={t.back}
+                      onClick={() =>
+                        setGameState((p) => ({ ...p, status: "menu" }))
+                      }
+                      danger
+                      isSelected={menuSelection === 4}
+                      onHover={setMenuSelection}
+                    />
+                    <button
+                      onClick={() =>
                         setGameState((p) => ({
                           ...p,
-                          chatMessagesSent: newCount,
-                        }));
-                        checkAchievements({ chatMessagesSent: newCount });
-                      }}
-                      isHost={gameState.isHost || false}
-                      lang={lang}
-                      unlockedAchievements={gameState.unlockedAchievements}
-                    />
-                    
-                    {/* Quick Chat Pings */}
-                    <div className="grid grid-cols-3 gap-1 bg-neutral-900/80 p-2 rounded-lg border border-neutral-800">
-                      {PINGS.map(ping => (
-                        <button
-                          key={ping}
-                          onClick={() => onlineService.sendChatMessage(ping)}
-                          className="py-1 px-2 text-[9px] font-arcade bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded border border-neutral-700 transition-colors truncate"
-                        >
-                          {ping}
-                        </button>
-                      ))}
-                    </div>
+                          status: "settings",
+                          previousStatus: "online_menu",
+                        }))
+                      }
+                      className="mt-4 px-6 py-3 bg-neutral-800 text-white hover:bg-neutral-700 rounded-xl font-arcade text-xs transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-3 w-full"
+                    >
+                      ⚙️ {t.settings || "SETTINGS"}
+                    </button>
+                  </div>
 
-                    <div className="flex flex-col gap-3">
-                      <MenuButton
-                        index={gameState.isHost ? 2 : 0}
-                        label={
-                          gameState.isHost
-                            ? (t.startGame || "START GAME")
-                            : onlinePlayers.find(
-                                  (p) => p.id === onlineService.localPlayer?.id,
-                                )?.ready
-                              ? (t.unready || "UNREADY")
-                              : (t.ready || "READY")
-                        }
+                  {showJoinPrompt && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-40">
+                      <form
+                        className="bg-neutral-900 p-8 border-2 border-cyan-500 flex flex-col items-center"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (onlineLobbyInput.length === 4) {
+                            setShowJoinPrompt(false);
+                            joinOnlineLobby(onlineLobbyInput);
+                          } else {
+                            setOnlineError(
+                              t.codeLengthError || "Code must be 4 characters",
+                            );
+                          }
+                        }}
+                      >
+                        <h2 className="text-2xl text-cyan-400 mb-4 font-arcade">
+                          {t.enterLobbyCode}
+                        </h2>
+                        <input
+                          type="text"
+                          autoFocus
+                          maxLength={4}
+                          value={onlineLobbyInput}
+                          onChange={(e) =>
+                            setOnlineLobbyInput(e.target.value.toUpperCase())
+                          }
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (onlineLobbyInput.length === 4) {
+                                setShowJoinPrompt(false);
+                                joinOnlineLobby(onlineLobbyInput);
+                              } else {
+                                setOnlineError(
+                                  t.codeLengthError ||
+                                    "Code must be 4 characters",
+                                );
+                              }
+                            }
+                            if (e.key === "Escape") {
+                              setShowJoinPrompt(false);
+                            }
+                          }}
+                          className="bg-black border border-white p-2 text-center text-white w-48 font-bold text-2xl tracking-widest mb-4"
+                        />
+                        <div className="flex gap-4 w-full">
+                          <button
+                            type="button"
+                            className="flex-1 bg-neutral-800 p-2 hover:bg-neutral-700"
+                            onClick={() => setShowJoinPrompt(false)}
+                          >
+                            {t.cancel || "CANCEL"}
+                          </button>
+                          <button
+                            type="submit"
+                            className="flex-1 bg-cyan-600 p-2 hover:bg-cyan-500 text-white font-bold"
+                          >
+                            {t.join || "JOIN"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Online Lobby Screen */}
+              {gameState.status === "online_lobby" && (
+                <div className="absolute inset-0 flex flex-col items-center p-4 md:p-8 bg-black/95 z-30 overflow-y-auto">
+                  <div className="w-full max-w-4xl flex flex-col min-h-full">
+                    {/* Lobby Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-neutral-900/50 p-6 rounded-2xl border border-neutral-800">
+                      <div>
+                        <h2 className="text-3xl font-black text-white flex items-center gap-3">
+                          <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                          {onlineService.currentMode === "editor"
+                            ? "COOP EDITOR"
+                            : onlineService.currentMode === "vs"
+                              ? t.vsTitle
+                              : t.brawlerMode}
+                        </h2>
+                        <p className="text-neutral-500 font-bold uppercase tracking-tighter text-sm mt-1">
+                          {t.lobby}:{" "}
+                          <span className="text-rage-red font-arcade">
+                            {onlineService.lobbyCode}
+                          </span>
+                        </p>
+                      </div>
+                      {onlineService.isHost && (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {onlineService.currentMode === "vs" && (
+                            <button
+                              onClick={() => {
+                                const newValue = !gameState.collisionEnabled;
+                                setGameState((p) => ({
+                                  ...p,
+                                  collisionEnabled: newValue,
+                                }));
+                                onlineService.broadcastLobbyState(
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  undefined,
+                                  newValue,
+                                );
+                              }}
+                              className={`px-4 py-2 rounded-lg font-arcade text-[10px] transition-all border-b-4 ${
+                                gameState.collisionEnabled
+                                  ? "bg-green-600 border-green-900 text-white"
+                                  : "bg-neutral-700 border-neutral-900 text-neutral-400"
+                              }`}
+                            >
+                              {t.collisionLabel || "COLLISION"}:{" "}
+                              {gameState.collisionEnabled
+                                ? t.onLabel || "ON"
+                                : t.offLabel || "OFF"}
+                            </button>
+                          )}
+                          {onlineService.currentMode === "vs" && (
+                            <button
+                              onClick={() => onlineService.toggleFinishTimer()}
+                              className={`px-4 py-2 rounded-lg font-arcade text-[10px] transition-all border-b-4 ${
+                                gameState.finishTimerEnabled === true
+                                  ? "bg-green-600 border-green-900 text-white"
+                                  : "bg-neutral-700 border-neutral-900 text-neutral-400"
+                              }`}
+                            >
+                              {t.finishTimerLabel || "LEVEL-TIMER"}:{" "}
+                              {gameState.finishTimerEnabled === true
+                                ? t.onLabel || "ON"
+                                : t.offLabel || "OFF"}
+                            </button>
+                          )}
+                          <button
+                            onClick={() =>
+                              setGameState((p) => ({
+                                ...p,
+                                status: "settings",
+                                previousStatus: "online_lobby",
+                              }))
+                            }
+                            className="px-6 py-2 bg-neutral-700 text-white hover:bg-neutral-600 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-900 active:translate-y-1 active:border-b-0"
+                          >
+                            ⚙️ {t.settings || "SETTINGS"}
+                          </button>
+                          <button
+                            onClick={() => setShowLevelMenu(true)}
+                            className="px-6 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-400 active:translate-y-1 active:border-b-0"
+                          >
+                            {t.openLevelMenu || "LEVEL MENÜ"}
+                          </button>
+                          {gameState.onlineMode === "brawler" && (
+                            <button
+                              onClick={() =>
+                                setGameState((p) => ({
+                                  ...p,
+                                  status: "brawler_powerup_setup",
+                                  previousStatus: "online_lobby",
+                                }))
+                              }
+                              className="px-6 py-2 bg-orange-600 text-white hover:bg-orange-500 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-orange-900 active:translate-y-1 active:border-b-0"
+                            >
+                              {t.brawlerSettings || "POWERUPS"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {!onlineService.isHost && (
+                        <div className="flex flex-wrap justify-center gap-2"></div>
+                      )}
+                    </div>
+                    <h2 className="text-xl text-neutral-400 mb-2 uppercase">
+                      {gameState.onlineMode} MODE
+                    </h2>
+                    {onlineError && (
+                      <div className="text-red-500 mb-4 font-bold animate-pulse">
+                        {onlineError}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row gap-8 w-full max-w-6xl flex-1 overflow-hidden">
+                      <div className="flex-1 flex flex-col items-center overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="flex flex-wrap justify-center gap-4 mb-8">
+                          {onlinePlayers.map((p, idx) => {
+                            const isLocal =
+                              p.id === onlineService.localPlayer?.id;
+                            const teamColors = [
+                              "#ff0044",
+                              "#00ff88",
+                              "#00ccff",
+                              "#fbbf24",
+                              "#9c27b0",
+                              "#ff4400",
+                              "#607d8b",
+                              "#795548",
+                            ];
+
+                            return (
+                              <div
+                                key={p.id}
+                                className="flex flex-col items-center bg-neutral-900 p-4 border-2 border-neutral-700 rounded-lg w-40 relative group"
+                              >
+                                <div
+                                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg border-2 border-white/20"
+                                  style={{
+                                    backgroundColor:
+                                      teamColors[(p.team || 0) % 8],
+                                  }}
+                                >
+                                  {((p.team || 0) % 8) + 1}
+                                </div>
+
+                                <div className="w-40 h-40 mb-4 relative flex items-center justify-center">
+                                  <CharacterPreview
+                                    customization={p.customization}
+                                    scale={5}
+                                  />
+                                </div>
+                                <div className="text-white font-bold mb-2 truncate w-full text-center text-sm">
+                                  {p.name}{" "}
+                                  {p.isHost ? `(${t.host || "HOST"})` : ""}
+                                </div>
+
+                                {onlineService.isHost && !p.isHost && (
+                                  <button
+                                    onClick={() =>
+                                      onlineService.kickPlayer(p.id)
+                                    }
+                                    className="mb-2 w-full py-1 bg-red-600 hover:bg-red-500 text-white text-[8px] font-black uppercase rounded shadow-lg border-b-2 border-red-900 active:translate-y-0.5 active:border-b-0 transition-all scale-90 group-hover:scale-100"
+                                  >
+                                    {t.kick || "KICK"}
+                                  </button>
+                                )}
+
+                                <div className="flex flex-col items-center gap-1 mb-2">
+                                  {isLocal && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[8px] text-neutral-500 font-bold uppercase">
+                                        Team
+                                      </span>
+                                      <select
+                                        value={p.team || 0}
+                                        onChange={(e) => {
+                                          const newTeam = parseInt(
+                                            e.target.value,
+                                          );
+                                          const updatedPlayer = {
+                                            ...onlineService.localPlayer!,
+                                            team: newTeam,
+                                          };
+                                          onlineService.updateLocalPlayer(
+                                            updatedPlayer,
+                                          );
+                                        }}
+                                        className="bg-neutral-800 text-white text-[10px] rounded border border-neutral-700 outline-none px-1"
+                                      >
+                                        {[0, 1, 2, 3, 4, 5, 6, 7].map((t) => (
+                                          <option key={t} value={t}>
+                                            Team {t + 1}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+                                  {!isLocal && (
+                                    <div className="flex flex-col items-center">
+                                      <div className="text-[8px] text-neutral-400 font-bold uppercase">
+                                        Team {(p.team || 0) + 1}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div
+                                  className={`text-[10px] font-bold ${p.ready ? "text-green-500" : "text-red-500"}`}
+                                >
+                                  {p.ready
+                                    ? t.ready || "READY"
+                                    : t.notReady || "NOT READY"}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {gameState.onlineMode !== "editor" && (
+                          <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
+                            <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
+                              {t.selectedLevels || "Selected Level(s)"}
+                            </div>
+
+                            {/* Suggestions notification for Host */}
+                            {onlineService.isHost &&
+                              onlineSuggestions.length > 0 && (
+                                <div className="w-full bg-blue-900/30 border border-blue-500/50 rounded-lg p-2 mb-4 animate-pulse">
+                                  <div className="flex justify-between items-center text-[10px] text-blue-400 font-black uppercase mb-2">
+                                    <span>
+                                      {
+                                        onlineSuggestions.filter(
+                                          (s) => s.status === "pending",
+                                        ).length
+                                      }{" "}
+                                      NEUE VORSCHLÄGE
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        onlineService.clearSuggestions()
+                                      }
+                                      className="text-neutral-500 hover:text-white"
+                                    >
+                                      CLEAR
+                                    </button>
+                                  </div>
+                                  <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                                    {onlineSuggestions.map((s, idx) => (
+                                      <div
+                                        key={s.id}
+                                        className="flex items-center justify-between bg-black/40 p-2 rounded border border-white/5"
+                                      >
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="text-white text-xs font-bold truncate">
+                                            {s.level.name}
+                                          </span>
+                                          <span className="text-[8px] text-neutral-500 uppercase">
+                                            VON {s.playerName}
+                                          </span>
+                                        </div>
+                                        <div className="flex gap-2 shrink-0">
+                                          {s.status === "pending" ? (
+                                            <>
+                                              <button
+                                                onClick={() =>
+                                                  onlineService.handleSuggestion(
+                                                    s.id,
+                                                    "accept",
+                                                  )
+                                                }
+                                                className="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white hover:bg-green-500"
+                                              >
+                                                ✓
+                                              </button>
+                                              <button
+                                                onClick={() =>
+                                                  onlineService.handleSuggestion(
+                                                    s.id,
+                                                    "decline",
+                                                  )
+                                                }
+                                                className="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white hover:bg-red-500"
+                                              >
+                                                ✕
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <span
+                                              className={`text-[8px] font-black ${s.status === "accepted" ? "text-green-500" : "text-red-500"}`}
+                                            >
+                                              {s.status.toUpperCase()}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                            {/* Suggestion button for Players */}
+                            {!onlineService.isHost && (
+                              <div className="w-full mb-4">
+                                <button
+                                  onClick={() =>
+                                    setShowSuggestionMenu(!showSuggestionMenu)
+                                  }
+                                  className="w-full py-2 bg-blue-600 text-white rounded-lg font-arcade text-[10px] border-b-4 border-blue-900 active:translate-y-1 active:border-b-0"
+                                >
+                                  {t.suggestLevel || "LEVEL VORSCHLAGEN"} (
+                                  {
+                                    onlineSuggestions.filter(
+                                      (s) =>
+                                        s.playerId ===
+                                        onlineService.localPlayer?.id,
+                                    ).length
+                                  }
+                                  /5)
+                                </button>
+
+                                {showSuggestionMenu && (
+                                  <div className="mt-2 p-4 bg-neutral-900 border border-neutral-700 rounded-lg shadow-2xl">
+                                    <div className="text-white font-bold mb-4 text-center">
+                                      {t.yourLevels || "DEINE LEVEL"}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                                      {customLevels
+                                        .filter((l) => l.isVerified)
+                                        .map((l) => (
+                                          <button
+                                            key={l.id}
+                                            onClick={() => {
+                                              onlineService.suggestLevel(l);
+                                              setShowSuggestionMenu(false);
+                                            }}
+                                            className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded border border-neutral-600 text-left text-xs text-white truncate"
+                                          >
+                                            {l.name}
+                                          </button>
+                                        ))}
+                                      {customLevels.filter((l) => l.isVerified)
+                                        .length === 0 && (
+                                        <div className="col-span-2 text-center text-neutral-500 py-4 text-[10px]">
+                                          Keine veröffentlichten Level gefunden.
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {onlineSuggestions.filter(
+                                  (s) =>
+                                    s.playerId ===
+                                    onlineService.localPlayer?.id,
+                                ).length > 0 && (
+                                  <div className="mt-2 text-[8px] text-neutral-500 font-bold uppercase text-center">
+                                    DEINE VORSCHLÄGE:{" "}
+                                    {onlineSuggestions
+                                      .filter(
+                                        (s) =>
+                                          s.playerId ===
+                                          onlineService.localPlayer?.id,
+                                      )
+                                      .map((s) => (
+                                        <span
+                                          key={s.id}
+                                          className={`ml-2 ${s.status === "accepted" ? "text-green-500" : s.status === "declined" ? "text-red-500" : "text-blue-400"}`}
+                                        >
+                                          {s.level.name}
+                                        </span>
+                                      ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="text-white font-bold text-xl flex flex-col items-center gap-2">
+                              <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg relative">
+                                {gameState.customLevelsQueue &&
+                                  gameState.customLevelsQueue.length > 0 && (
+                                    <LevelPreview
+                                      level={gameState.customLevelsQueue[0]}
+                                      width={192}
+                                      height={108}
+                                      className="w-full h-full"
+                                    />
+                                  )}
+                                {gameState.customLevelsQueue &&
+                                  gameState.customLevelsQueue.length > 1 && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-2">
+                                      <div className="text-[10px] text-yellow-400 font-black uppercase mb-1 tracking-tighter">
+                                        {t.activeQueue || "Active Queue"}
+                                      </div>
+                                      <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
+                                        {gameState.customLevelsQueue
+                                          .slice(0, 4)
+                                          .map((sl, i) => (
+                                            <div
+                                              key={sl.id || i}
+                                              className="truncate px-1 bg-white/10 rounded"
+                                            >
+                                              {i + 1}. {sl.name}
+                                            </div>
+                                          ))}
+                                        {gameState.customLevelsQueue.length >
+                                          4 && (
+                                          <div>
+                                            +{" "}
+                                            {gameState.customLevelsQueue
+                                              .length - 4}{" "}
+                                            {t.more || "MORE"}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                              </div>
+                              <span className="text-center text-sm md:text-base">
+                                {!gameState.customLevelsQueue ||
+                                gameState.customLevelsQueue.length === 0
+                                  ? t.noLevelSelected || "NO LEVEL SELECTED"
+                                  : gameState.customLevelsQueue.length > 1
+                                    ? `${gameState.customLevelsQueue.length} ${t.levels} SELECTED`
+                                    : gameState.customLevelsQueue[0].name}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="w-full md:w-80 flex flex-col gap-4">
+                        <Chat
+                          messages={chatMessages}
+                          onSendMessage={(text) => {
+                            onlineService.sendChatMessage(text);
+                            const newCount =
+                              (gameState.chatMessagesSent || 0) + 1;
+                            setGameState((p) => ({
+                              ...p,
+                              chatMessagesSent: newCount,
+                            }));
+                            checkAchievements({ chatMessagesSent: newCount });
+                          }}
+                          isHost={gameState.isHost || false}
+                          lang={lang}
+                          unlockedAchievements={gameState.unlockedAchievements}
+                        />
+
+                        {/* Quick Chat Pings */}
+                        <div className="grid grid-cols-3 gap-1 bg-neutral-900/80 p-2 rounded-lg border border-neutral-800">
+                          {PINGS.map((ping) => (
+                            <button
+                              key={ping}
+                              onClick={() =>
+                                onlineService.sendChatMessage(ping)
+                              }
+                              className="py-1 px-2 text-[9px] font-arcade bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded border border-neutral-700 transition-colors truncate"
+                            >
+                              {ping}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-col gap-3">
+                          <MenuButton
+                            index={gameState.isHost ? 2 : 0}
+                            label={
+                              gameState.isHost
+                                ? t.startGame || "START GAME"
+                                : onlinePlayers.find(
+                                      (p) =>
+                                        p.id === onlineService.localPlayer?.id,
+                                    )?.ready
+                                  ? t.unready || "UNREADY"
+                                  : t.ready || "READY"
+                            }
                             onClick={() => {
                               if (gameState.isHost) {
-                                if (gameState.onlineMode !== "editor" && (!gameState.customLevelsQueue || gameState.customLevelsQueue.length === 0)) {
-                                  setOnlineError("PLEASE SELECT LEVEL(S) FIRST!");
+                                if (
+                                  gameState.onlineMode !== "editor" &&
+                                  (!gameState.customLevelsQueue ||
+                                    gameState.customLevelsQueue.length === 0)
+                                ) {
+                                  setOnlineError(
+                                    "PLEASE SELECT LEVEL(S) FIRST!",
+                                  );
                                   setTimeout(() => setOnlineError(""), 3000);
                                   return;
                                 }
@@ -7029,7 +8335,9 @@ const App: React.FC = () => {
                                 const requiredPlayers =
                                   gameState.onlineMode === "brawler"
                                     ? teamModeRequirements[brawlerTeamMode]
-                                    : (gameState.onlineMode === "editor" ? 1 : 2);
+                                    : gameState.onlineMode === "editor"
+                                      ? 1
+                                      : 2;
 
                                 if (onlinePlayers.length < requiredPlayers) {
                                   setOnlineError(
@@ -7040,7 +8348,15 @@ const App: React.FC = () => {
                                 }
 
                                 if (gameState.onlineMode === "brawler") {
-                                  const occupiedTeams = new Set(onlinePlayers.filter(p => p.team !== undefined && p.team !== null).map(p => p.team));
+                                  const occupiedTeams = new Set(
+                                    onlinePlayers
+                                      .filter(
+                                        (p) =>
+                                          p.team !== undefined &&
+                                          p.team !== null,
+                                      )
+                                      .map((p) => p.team),
+                                  );
                                   if (occupiedTeams.size < 2) {
                                     setOnlineError(
                                       "ERROR: At least two teams must be occupied!",
@@ -7060,897 +8376,657 @@ const App: React.FC = () => {
                                   setTimeout(() => setOnlineError(""), 2000);
                                 }
                               } else {
-                            const localP = onlinePlayers.find(
-                              (p) => p.id === onlineService.localPlayer?.id,
-                            );
-                            if (localP) onlineService.setReady(!localP.ready);
-                          }
-                        }}
-                        isSelected={
-                          gameState.isHost
-                            ? menuSelection === 2
-                            : menuSelection === 0
-                        }
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={gameState.isHost ? 3 : 1}
-                        label={t.customize || "CUSTOMIZE"}
-                        onClick={() =>
-                          setGameState((p) => ({
-                            ...p,
-                            status: "customizing",
-                            previousStatus: "online_lobby",
-                          }))
-                        }
-                        isSelected={
-                          gameState.isHost
-                            ? menuSelection === 3
-                            : menuSelection === 1
-                        }
-                        onHover={setMenuSelection}
-                      />
-                      <MenuButton
-                        index={
-                          gameState.isHost
-                            ? 5
-                            : 2
-                        }
-                        label={t.back}
-                        danger
-                        onClick={() => {
-                          const isEditor = gameState.onlineMode === "editor";
-                          if (onlineService.isHost) {
-                            onlineService.closeLobby();
-                          } else {
-                            onlineService.disconnect();
-                          }
-                          setGameState((p) => ({
-                            ...p,
-                            status: isEditor ? "editor_type_select" : "online_menu",
-                          }));
-                        }}
-                        isSelected={
-                          gameState.isHost
-                            ? menuSelection === 5
-                            : menuSelection === 2
-                        }
-                        onHover={setMenuSelection}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-            {/* Customization Menu */}
-            {gameState.status === "customizing" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
-                <h2 className="text-2xl mb-4 text-white">{t.customize}</h2>
-
-                {/* Character Preview (Live Canvas) */}
-                <div className="w-56 h-56 bg-neutral-900 border-2 border-neutral-700 mb-6 flex items-center justify-center relative overflow-hidden">
-                  <CharacterPreview customization={customization} scale={8} />
-                  {renderLock("eyes", customization.eyes)}
-                  {renderLock("accessory", customization.accessory)}
-                  {renderLock("trail", customization.trailColor)}
-                </div>
-
-                <div className="flex flex-col gap-1 w-80 mb-4 h-64 overflow-y-auto custom-scrollbar">
-                  {/* Body RGB */}
-                  <div className="flex justify-between items-end mt-2 mb-1">
-                    <div className="text-xs text-neutral-500 font-bold uppercase tracking-widest">
-                      {t.bodyColor || "BODY COLOR"}
-                    </div>
-                    {isAdminUnlocked && (
-                      <div className="text-[10px] font-black text-yellow-400 animate-pulse tracking-tighter">
-                        ★ SECRET ADMIN DESIGN ★
-                      </div>
-                    )}
-                    {isRainbowUnlocked && (
-                      <div className="text-[10px] font-black text-fuchsia-400 animate-bounce tracking-tighter">
-                        🌈 RAINBOW LOVER 🌈
-                      </div>
-                    )}
-                    {isInvisibleUnlocked && (
-                      <div className="text-[10px] font-black text-cyan-200 animate-pulse tracking-tighter">
-                        👻 GHOST MODE 👻
-                      </div>
-                    )}
-                  </div>
-                  <SliderRow
-                    label="RED"
-                    value={hexToRgb(customization.color).r}
-                    index={0}
-                    colorClass="bg-red-500"
-                    onChange={(v: number) => setExactRGB(1, "color", "r", v)}
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                  <SliderRow
-                    label="GREEN"
-                    value={hexToRgb(customization.color).g}
-                    index={1}
-                    colorClass="bg-green-500"
-                    onChange={(v: number) => setExactRGB(1, "color", "g", v)}
-                    isSelected={menuSelection === 1}
-                    onHover={setMenuSelection}
-                  />
-                  <SliderRow
-                    label="BLUE"
-                    value={hexToRgb(customization.color).b}
-                    index={2}
-                    colorClass="bg-blue-500"
-                    onChange={(v: number) => setExactRGB(1, "color", "b", v)}
-                    isSelected={menuSelection === 2}
-                    onHover={setMenuSelection}
-                  />
-
-                  {/* Trail RGB */}
-                  <div className="text-xs text-neutral-500 font-bold mt-2">
-                    {t.trailColor || "TRAIL COLOR"}
-                  </div>
-
-                  {/* Preset Selector */}
-                  <div className="relative mb-1">
-                    <MenuButton
-                      index={3}
-                      label={`${t.style || "STYLE"}: ${TRAIL_PRESETS.find((p) => p.val === customization.trailColor)?.name || "CUSTOM"}`}
-                      onClick={() => rotateOption(1, "trail", 1)}
-                      isSelected={menuSelection === 3}
-                      onHover={setMenuSelection}
-                    />
-                    <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
-                        {getLockReason('trail', customization.trailColor)}
-                    </div>
-                    {!isUnlocked("trail", customization.trailColor) && (
-                        <div className="absolute right-4 top-3 text-red-500">
-                          🔒
-                        </div>
-                      )}
-                  </div>
-
-                  <SliderRow
-                    label="RED"
-                    value={
-                      hexToRgb(
-                        customization.trailColor === "rainbow"
-                          ? "#ff0044"
-                          : customization.trailColor,
-                      ).r
-                    }
-                    index={4}
-                    colorClass="bg-red-500"
-                    onChange={(v: number) =>
-                      setExactRGB(1, "trailColor", "r", v)
-                    }
-                    isSelected={menuSelection === 4}
-                    onHover={setMenuSelection}
-                  />
-                  <SliderRow
-                    label="GREEN"
-                    value={
-                      hexToRgb(
-                        customization.trailColor === "rainbow"
-                          ? "#ff0044"
-                          : customization.trailColor,
-                      ).g
-                    }
-                    index={5}
-                    colorClass="bg-green-500"
-                    onChange={(v: number) =>
-                      setExactRGB(1, "trailColor", "g", v)
-                    }
-                    isSelected={menuSelection === 5}
-                    onHover={setMenuSelection}
-                  />
-                  <SliderRow
-                    label="BLUE"
-                    value={
-                      hexToRgb(
-                        customization.trailColor === "rainbow"
-                          ? "#ff0044"
-                          : customization.trailColor,
-                      ).b
-                    }
-                    index={6}
-                    colorClass="bg-blue-500"
-                    onChange={(v: number) =>
-                      setExactRGB(1, "trailColor", "b", v)
-                    }
-                    isSelected={menuSelection === 6}
-                    onHover={setMenuSelection}
-                  />
-
-                  <div className="text-xs text-neutral-500 font-bold mt-2">
-                    {t.adjustControls || "ARROWS TO ADJUST • ENTER TO CYCLE"}
-                  </div>
-                  <div className="relative">
-                    <MenuButton
-                      index={7}
-                      label={`${t.eyes}: ${t.eye_names?.[customization.eyes] || customization.eyes}`}
-                      onClick={() => rotateOption(1, "eyes", 1)}
-                      isSelected={menuSelection === 7}
-                      onHover={setMenuSelection}
-                    />
-                    <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
-                        {getLockReason('eyes', customization.eyes)}
-                    </div>
-                    {!isUnlocked("eyes", customization.eyes) && (
-                      <div className="absolute right-4 top-3 text-red-500">
-                        🔒
-                      </div>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <MenuButton
-                      index={8}
-                      label={`${t.hat}: ${t.acc_names?.[customization.accessory] || customization.accessory}`}
-                      onClick={() => rotateOption(1, "accessory", 1)}
-                      isSelected={menuSelection === 8}
-                      onHover={setMenuSelection}
-                    />
-                    <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
-                        {getLockReason('accessory', customization.accessory)}
-                    </div>
-                    {!isUnlocked("accessory", customization.accessory) && (
-                      <div className="absolute right-4 top-3 text-red-500">
-                        🔒
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-4 w-full max-w-[500px] mt-2">
-                  <MenuButton
-                    index={9}
-                    label="🎲 RANDOM"
-                    onClick={() => {
-                        const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-                        const eyesPool = EYE_OPTIONS.filter(opt => isUnlocked('eyes', opt));
-                        const accPool = ACC_OPTIONS.filter(opt => isUnlocked('accessory', opt) && opt !== 'unicorn');
-                        const trailPool = TRAIL_PRESETS.filter(opt => isUnlocked('trail', opt.val));
-
-                        const randomEyes = eyesPool[Math.floor(Math.random() * eyesPool.length)] || 'normal';
-                        const randomAcc = accPool[Math.floor(Math.random() * accPool.length)] || 'none';
-                        const randomTrail = trailPool[Math.floor(Math.random() * trailPool.length)]?.val || randomColor;
-                        
-                        setCustomization(prev => ({ ...prev, color: randomColor, eyes: randomEyes, accessory: randomAcc, trailColor: randomTrail }));
-                    }}
-                    isSelected={menuSelection === 9}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={10}
-                    label={t.back}
-                    onClick={() =>
-                      setGameState((p) => ({
-                        ...p,
-                        status: p.previousStatus || "menu",
-                      }))
-                    }
-                    danger
-                    isSelected={menuSelection === 10}
-                    onHover={setMenuSelection}
-                  />
-                  <MenuButton
-                    index={11}
-                    label={
-                      gameState.previousStatus === "online_menu" ||
-                      gameState.previousStatus === "online_lobby"
-                        ? "CONFIRM"
-                        : t.play
-                    }
-                    // Disable play if selected items are locked
-                    disabled={
-                      !isUnlocked("eyes", customization.eyes) ||
-                      !isUnlocked("accessory", customization.accessory) ||
-                      !isUnlocked("trail", customization.trailColor)
-                    }
-                    onClick={() => {
-                      if (gameState.previousStatus === "online_lobby") {
-                        updateOnlineCustomization(customization);
-                      }
-                      setMenuSelection(0);
-                      setGameState((p) => ({
-                        ...p,
-                        status:
-                          p.previousStatus === "online_menu" ||
-                          p.previousStatus === "online_lobby" ||
-                          p.previousStatus === "menu"
-                            ? p.previousStatus
-                            : "difficulty_select",
-                      }));
-                    }}
-                    isSelected={menuSelection === 11}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-
-                <div className="text-[10px] text-neutral-500 mt-2">
-                    {t.adjustControls || "ARROWS to adjust • ENTER to cycle"}
-                </div>
-              </div>
-            )}
-
-            {/* ... (Other Menus remain similar but condensed in existing code) ... */}
-            {/* Pause Menu */}
-            {gameState.status === "paused" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50">
-                <h2 className="text-4xl text-white mb-8">{t.paused}</h2>
-                <div className="flex flex-col gap-2 w-72">
-                  {(() => {
-                    const buttons = [];
-
-                    if (
-                      (!onlineService.lobbyCode || onlineService.isHost) &&
-                      gameState.customLevelsQueue &&
-                      gameState.customLevelsQueue.length > 1
-                    ) {
-                      if (gameState.currentLevelIndex < gameState.customLevelsQueue.length - 1) {
-                        buttons.push({
-                          label: (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") ? "LEVEL SKIPPEN" : (t.nextLevelBtn || "NEXT LEVEL"),
-                          onClick: handleNextLevel,
-                        });
-                      }
-                      
-                      if (gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing") {
-                        buttons.push({ 
-                          label: "LEVEL WIEDERHOLEN", 
-                          onClick: handleRetry 
-                        });
-                        
-                        buttons.push({
-                          label: "NEUSTART",
-                          onClick: () => {
-                            setGameState(p => ({ ...p, currentLevelIndex: 0 }));
-                            handleRetry();
-                          }
-                        });
-                      }
-                    }
-
-                    if (
-                      !(
-                        gameState.previousStatus === "vs_playing" ||
-                        gameState.previousStatus === "brawler_playing"
-                      ) || !onlineService.lobbyCode
-                    ) {
-                      // Only add standard RETRY if not already added by custom logic above
-                      if (!(gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing")) {
-                        buttons.push({ 
-                          label: t.retry || "RETRY", 
-                          onClick: handleRetry 
-                        });
-                      }
-                    }
-
-                    if (onlineService.lobbyCode) {
-                      buttons.push({
-                        label: t.giveUp,
-                        danger: true,
-                        onClick: () => {
-                          onlineService.sendEvent("give_up", {
-                            name: playerName,
-                          });
-                          setGameState((p) => ({
-                            ...p,
-                            status: p.previousStatus || "playing",
-                          }));
-                          // Locally we treat it as finished with poor stats
-                          handleWin("GAVE UP");
-                        },
-                      });
-                      buttons.push({
-                        label: t.backToLobby,
-                        onClick: () => {
-                          if (onlineService.isHost) {
-                            onlineService.returnToLobby();
-                          } else {
-                            setGameState((p) => ({
-                              ...p,
-                              status: "online_lobby",
-                            }));
-                          }
-                        },
-                      });
-                    } else {
-                      // Back to Lobby / Selection for local modes
-                      const isLocalMulti = gameState.previousStatus === "vs_playing" || gameState.previousStatus === "brawler_playing";
-                      const isStory = gameState.previousStatus === "playing" || gameState.previousStatus === "random_run";
-                      
-                      if (isLocalMulti || isStory) {
-                        buttons.push({
-                          label: t.backToLobby || "ZURÜCK ZUR LOBBY",
-                          onClick: () => {
-                            setGameState((p) => {
-                              let nextStatus: Status = "menu";
-                              if (p.previousStatus === "brawler_playing") nextStatus = "brawler_setup";
-                              else if (p.previousStatus === "vs_playing") nextStatus = "vs_setup";
-                              else if (p.previousStatus === "playing" || p.previousStatus === "random_run") nextStatus = "difficulty_select";
-                              
-                              return {
-                                ...p,
-                                status: nextStatus
-                              };
-                            });
-                          },
-                        });
-                      }
-                    }
-
-                    buttons.push({
-                      label: t.settings,
-                      onClick: () => {
-                        setGameState((p) => ({ ...p, status: "settings", previousStatus: "paused" }));
-                        setMenuSelection(0);
-                      },
-                    });
-
-                    buttons.push({
-                      label: t.quit,
-                      danger: true,
-                      onClick: () => {
-                        if (onlineService.lobbyCode) {
-                          onlineService.disconnect();
-                        }
-                        setGameState((p) => ({
-                          ...p,
-                          status: p.geometryDashMode ? "geometry_dash_menu" : "menu",
-                          geometryDashMode: false,
-                        }));
-                      },
-                    });
-
-                    return buttons.map((btn, i) => (
-                      <MenuButton
-                        key={i}
-                        index={i}
-                        label={btn.label}
-                        danger={btn.danger}
-                        onClick={btn.onClick}
-                        isSelected={menuSelection === i}
-                        onHover={setMenuSelection}
-                      />
-                    ));
-                  })()}
-                </div>
-              </div>
-            )}
-
-            {/* Win Screen / VS Win */}
-            {(gameState.status === "won" ||
-              gameState.status === "vs_won" ||
-              gameState.status === "brawler_won") && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-900/80 backdrop-blur-md z-40">
-                {gameState.status === "vs_won" ||
-                gameState.status === "brawler_won" ? (
-                  <>
-                    <h2 className="text-5xl text-white font-bold mb-4 animate-bounce">
-                      {gameState.winner ? t.playerWin(gameState.winner) : ""}
-                    </h2>
-                    <div className="text-xl mb-8">TIME: {gameState.time}s</div>
-                    <div className="flex flex-col gap-3 w-72">
-                      {(!onlineService.lobbyCode || onlineService.isHost) &&
-                      gameState.customLevelsQueue &&
-                      gameState.currentLevelIndex <
-                        gameState.customLevelsQueue.length - 1 ? (
-                        <>
-                          <MenuButton
-                            index={0}
-                            label={t.nextLevelBtn}
-                            onClick={handleNextLevel}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={1}
-                            label={
-                              onlineService.lobbyCode
-                                ? t.backToLobby
-                                : t.backToSelection
+                                const localP = onlinePlayers.find(
+                                  (p) => p.id === onlineService.localPlayer?.id,
+                                );
+                                if (localP)
+                                  onlineService.setReady(!localP.ready);
+                              }
+                            }}
+                            isSelected={
+                              gameState.isHost
+                                ? menuSelection === 2
+                                : menuSelection === 0
                             }
-                            onClick={() => {
-                              if (
-                                onlineService.lobbyCode &&
-                                onlineService.isHost
-                              ) {
-                                onlineService.returnToLobby();
-                              } else {
-                                setGameState((p) => ({
-                                  ...p,
-                                  status: onlineService.lobbyCode
-                                    ? "online_lobby"
-                                    : gameState.status === "brawler_won"
-                                      ? "brawler_setup"
-                                      : "vs_setup",
-                                }));
-                              }
-                            }}
-                            isSelected={menuSelection === 1}
                             onHover={setMenuSelection}
                           />
                           <MenuButton
-                            index={2}
-                            label={t.mainMenu}
-                            danger
-                            onClick={() => {
-                              if (onlineService.lobbyCode)
-                                onlineService.disconnect();
-                              setGameState((p) => ({ ...p, status: "menu" }));
-                            }}
-                            isSelected={menuSelection === 2}
-                            onHover={setMenuSelection}
-                          />
-                        </>
-                      ) : onlineService.lobbyCode ? (
-                        <>
-                          <MenuButton
-                            index={0}
-                            label={t.backToLobby}
-                            onClick={() => {
-                              if (onlineService.isHost) {
-                                onlineService.returnToLobby();
-                              }
-                            }}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={1}
-                            label={t.mainMenu}
-                            danger
-                            onClick={() => {
-                              onlineService.disconnect();
-                              setGameState((p) => ({ ...p, status: "menu" }));
-                            }}
-                            isSelected={menuSelection === 1}
-                            onHover={setMenuSelection}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <MenuButton
-                            index={0}
-                            label={lang === Language.DE ? "NOCHMAL SPIELEN" : "PLAY AGAIN"}
-                            onClick={() => {
-                              handleRetry();
-                            }}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={1}
-                            label={lang === Language.DE ? "ZURÜCK ZUR LOBBY" : "BACK TO LOBBY"}
-                            onClick={() => {
+                            index={gameState.isHost ? 3 : 1}
+                            label={t.customize || "CUSTOMIZE"}
+                            onClick={() =>
                               setGameState((p) => ({
                                 ...p,
-                                status: gameState.status === "brawler_won" ? "brawler_setup" : "vs_setup",
-                              }));
-                            }}
-                            isSelected={menuSelection === 1}
+                                status: "customizing",
+                                previousStatus: "online_lobby",
+                              }))
+                            }
+                            isSelected={
+                              gameState.isHost
+                                ? menuSelection === 3
+                                : menuSelection === 1
+                            }
                             onHover={setMenuSelection}
                           />
                           <MenuButton
-                            index={2}
-                            label={t.mainMenu}
+                            index={gameState.isHost ? 5 : 2}
+                            label={t.back}
                             danger
                             onClick={() => {
-                              setGameState((p) => ({ ...p, status: "menu" }));
-                            }}
-                            isSelected={menuSelection === 2}
-                            onHover={setMenuSelection}
-                          />
-                        </>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h2 className="text-4xl text-white font-bold mb-2">
-                      {t.won}
-                    </h2>
-                    <div className="text-2xl text-green-300 mb-8 flex flex-col items-center gap-2">
-                      <span>
-                        {t.totalScore}: {gameState.score}
-                      </span>
-                      <span className="text-sm opacity-70">
-                        {t.time}: {gameState.time}s
-                      </span>
-                    </div>
-
-                    {showHighscoreInput ? (
-                      <div className="flex flex-col items-center gap-4 animate-fade-in">
-                        <h3 className="text-xl text-yellow-400 font-bold">
-                          {t.gameOver}
-                        </h3>
-                        <input
-                          type="text"
-                          placeholder={t.enterName}
-                          maxLength={8}
-                          value={playerName}
-                          autoFocus
-                          onChange={(e) =>
-                            setPlayerName(e.target.value.toUpperCase())
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && playerName.length > 0) {
-                              e.stopPropagation();
-                              saveHighscore();
-                            }
-                          }}
-                          className="bg-black border border-white p-2 text-center text-white"
-                        />
-                        <div className="w-72 mt-4">
-                          <MenuButton
-                            index={0}
-                            label={t.save}
-                            onClick={saveHighscore}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2 w-72">
-                        <MenuButton
-                          index={0}
-                          label={t.nextLevelBtn}
-                          onClick={handleNextLevel}
-                          isSelected={menuSelection === 0}
-                          onHover={setMenuSelection}
-                        />
-                        <MenuButton
-                          index={1}
-                          label={t.mainMenu}
-                          danger
-                          onClick={() =>
-                            setGameState((prev) => ({
-                              ...prev,
-                              status: prev.geometryDashMode ? "geometry_dash_menu" : "menu",
-                              geometryDashMode: false,
-                            }))
-                          }
-                          isSelected={menuSelection === 1}
-                          onHover={setMenuSelection}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Online Summary Screen */}
-            {gameState.status === "online_summary" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
-                <h2 className="text-4xl text-cyan-400 font-arcade mb-2 tracking-widest">
-                  {t.gameResults || "SPIEL-ERGEBNISSE"}
-                </h2>
-
-                {/* Podium / Träppchen */}
-                {onlineResults.length > 0 && (
-                  <div className="flex items-end justify-center gap-4 mb-8 mt-4 h-40">
-                     {/* 2nd Place */}
-                     {onlineResults[1] && (
-                        <div className="flex flex-col items-center">
-                           <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">{onlineResults[1].name}</div>
-                           <motion.div 
-                              initial={{ height: 0 }}
-                              animate={{ height: "60px" }}
-                              className="w-16 bg-neutral-600 border-x-2 border-t-2 border-neutral-500 flex items-center justify-center font-arcade text-white text-xl"
-                           >2</motion.div>
-                        </div>
-                     )}
-                     {/* 1st Place */}
-                     {onlineResults[0] && (
-                        <div className="flex flex-col items-center">
-                           <div className="text-xs text-yellow-400 font-bold mb-1 truncate max-w-[100px]">{onlineResults[0].name}</div>
-                           <motion.div 
-                              initial={{ height: 0 }}
-                              animate={{ height: "90px" }}
-                              transition={{ delay: 0.2 }}
-                              className="w-20 bg-yellow-600 border-x-2 border-t-2 border-yellow-500 flex items-center justify-center font-arcade text-white text-2xl shadow-[0_0_20px_rgba(234,179,8,0.3)]"
-                           >1</motion.div>
-                        </div>
-                     )}
-                     {/* 3rd Place */}
-                     {onlineResults[2] && (
-                        <div className="flex flex-col items-center">
-                           <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">{onlineResults[2].name}</div>
-                           <motion.div 
-                              initial={{ height: 0 }}
-                              animate={{ height: "40px" }}
-                              transition={{ delay: 0.4 }}
-                              className="w-16 bg-orange-800 border-x-2 border-t-2 border-orange-700 flex items-center justify-center font-arcade text-white text-lg"
-                           >3</motion.div>
-                        </div>
-                     )}
-                  </div>
-                )}
-
-                <div className="w-full max-w-2xl bg-neutral-900 border-2 border-neutral-700 p-6 rounded-lg shadow-2xl custom-scrollbar overflow-y-auto max-h-[70vh]">
-                  <table className="w-full text-left font-mono">
-                    <thead>
-                      <tr className="text-neutral-500 border-b border-neutral-800 text-xs">
-                        <th className="pb-2">PLATZ</th>
-                        <th className="pb-2">SPIELER</th>
-                        <th className="pb-2">ZEIT</th>
-                        <th className="pb-2">TODE</th>
-                        <th className="pb-2">PUNKTE</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                      {onlineResults.map((res, i) => (
-                        <tr
-                          key={res.id}
-                          className={`border-b border-neutral-800/50 ${res.id === onlineService.localPlayer?.id ? "bg-cyan-900/20" : ""}`}
-                        >
-                          <td className="py-3 font-arcade text-yellow-500">
-                            {i + 1}
-                          </td>
-                          <td className="py-3 font-bold text-white">
-                            {res.name}{" "}
-                            {res.id === onlineService.localPlayer?.id
-                              ? "(DU)"
-                              : ""}
-                          </td>
-                          <td className="py-3 text-cyan-300">
-                            {res.time === 999 ? "-" : `${res.time}s`}
-                          </td>
-                          <td className="py-3 text-red-500">{res.deaths}</td>
-                          <td className="py-3 text-green-400">
-                             {res.score}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-8 flex flex-col gap-3 w-72">
-                  {onlineService.lobbyCode ? (
-                    <>
-                      {onlineService.isHost ? (
-                        <>
-                          {gameState.customLevelsQueue &&
-                            gameState.currentLevelIndex <
-                              gameState.customLevelsQueue.length - 1 && (
-                              <MenuButton
-                                index={0}
-                                label="NÄCHSTES LEVEL"
-                                onClick={handleNextLevel}
-                                isSelected={menuSelection === 0}
-                                onHover={setMenuSelection}
-                              />
-                            )}
-                          <MenuButton
-                            index={
-                              gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 1
-                                : 0
-                            }
-                            label="NOCHMAL SPIELEN"
-                            onClick={async () => {
-                               setOnlineResults([]);
-                               setOnlineFinishTimer(null);
-                               if (onlineService.lobbyCode && onlineService.isHost) {
-                                   let targetIdx = gameState.currentLevelIndex;
-                                   // If we were at the end of a queue, restart from the beginning
-                                   if (gameState.customLevelsQueue && gameState.currentLevelIndex >= gameState.customLevelsQueue.length - 1) {
-                                       targetIdx = 0;
-                                   }
-                                   
-                                   const targetLevel = (gameState.customLevelsQueue && gameState.customLevelsQueue.length > 0) 
-                                       ? gameState.customLevelsQueue[targetIdx] 
-                                       : level;
-
-                                   if (targetLevel) {
-                                       await onlineService.broadcastLobbyState(
-                                           undefined,
-                                           targetLevel,
-                                           undefined,
-                                           brawlerTeamMode,
-                                           brawlerHazardMode,
-                                           undefined,
-                                           targetIdx
-                                       );
-                                   }
-                                   lastStartTimeRef.current = Date.now();
-                                   onlineService.startGame();
-                                   
-                                   // Immediately transition host to playing state
-                                   setGameState(p => ({
-                                       ...p,
-                                       status: p.onlineMode === "brawler" ? "brawler_playing" : "vs_playing",
-                                       levelTime: 0,
-                                       levelDeaths: 0,
-                                       collectedCoins: [],
-                                       blocksPlaced: 0
-                                   }));
-                                   setRespawnTrigger(p => p + 1);
-                               }
-                            }}
-                            isSelected={
-                              menuSelection ===
-                              (gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 1
-                                : 0)
-                            }
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={
-                              gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 2
-                                : 1
-                            }
-                            label={t.backToLobby}
-                            onClick={() => onlineService.returnToLobby()}
-                            isSelected={
-                              menuSelection ===
-                              (gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 2
-                                : 1)
-                            }
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={
-                              gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 3
-                                : 2
-                            }
-                            label={t.mainMenu}
-                            danger
-                            onClick={() => {
+                              const isEditor =
+                                gameState.onlineMode === "editor";
                               if (onlineService.isHost) {
                                 onlineService.closeLobby();
                               } else {
                                 onlineService.disconnect();
                               }
-                              setGameState((p) => ({ ...p, status: "menu" }));
+                              setGameState((p) => ({
+                                ...p,
+                                status: isEditor
+                                  ? "editor_type_select"
+                                  : "online_menu",
+                              }));
                             }}
                             isSelected={
-                              menuSelection ===
-                              (gameState.customLevelsQueue &&
-                              gameState.currentLevelIndex <
-                                gameState.customLevelsQueue.length - 1
-                                ? 3
-                                : 2)
+                              gameState.isHost
+                                ? menuSelection === 5
+                                : menuSelection === 2
                             }
                             onHover={setMenuSelection}
                           />
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex flex-col gap-2 w-full">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Customization Menu */}
+              {gameState.status === "customizing" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
+                  <h2 className="text-2xl mb-4 text-white">{t.customize}</h2>
+
+                  {/* Character Preview (Live Canvas) */}
+                  <div className="w-56 h-56 bg-neutral-900 border-2 border-neutral-700 mb-6 flex items-center justify-center relative overflow-hidden">
+                    <CharacterPreview customization={customization} scale={8} />
+                    {renderLock("eyes", customization.eyes)}
+                    {renderLock("accessory", customization.accessory)}
+                    {renderLock("trail", customization.trailColor)}
+                  </div>
+
+                  <div className="flex flex-col gap-1 w-80 mb-4 h-64 overflow-y-auto custom-scrollbar">
+                    {/* Body RGB */}
+                    <div className="flex justify-between items-end mt-2 mb-1">
+                      <div className="text-xs text-neutral-500 font-bold uppercase tracking-widest">
+                        {t.bodyColor || "BODY COLOR"}
+                      </div>
+                      {isAdminUnlocked && (
+                        <div className="text-[10px] font-black text-yellow-400 animate-pulse tracking-tighter">
+                          ★ SECRET ADMIN DESIGN ★
+                        </div>
+                      )}
+                      {isRainbowUnlocked && (
+                        <div className="text-[10px] font-black text-fuchsia-400 animate-bounce tracking-tighter">
+                          🌈 RAINBOW LOVER 🌈
+                        </div>
+                      )}
+                      {isInvisibleUnlocked && (
+                        <div className="text-[10px] font-black text-cyan-200 animate-pulse tracking-tighter">
+                          👻 GHOST MODE 👻
+                        </div>
+                      )}
+                    </div>
+                    <SliderRow
+                      label="RED"
+                      value={hexToRgb(customization.color).r}
+                      index={0}
+                      colorClass="bg-red-500"
+                      onChange={(v: number) => setExactRGB(1, "color", "r", v)}
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <SliderRow
+                      label="GREEN"
+                      value={hexToRgb(customization.color).g}
+                      index={1}
+                      colorClass="bg-green-500"
+                      onChange={(v: number) => setExactRGB(1, "color", "g", v)}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                    <SliderRow
+                      label="BLUE"
+                      value={hexToRgb(customization.color).b}
+                      index={2}
+                      colorClass="bg-blue-500"
+                      onChange={(v: number) => setExactRGB(1, "color", "b", v)}
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+
+                    {/* Trail RGB */}
+                    <div className="text-xs text-neutral-500 font-bold mt-2">
+                      {t.trailColor || "TRAIL COLOR"}
+                    </div>
+
+                    {/* Preset Selector */}
+                    <div className="relative mb-1">
+                      <MenuButton
+                        index={3}
+                        label={`${t.style || "STYLE"}: ${TRAIL_PRESETS.find((p) => p.val === customization.trailColor)?.name || "CUSTOM"}`}
+                        onClick={() => rotateOption(1, "trail", 1)}
+                        isSelected={menuSelection === 3}
+                        onHover={setMenuSelection}
+                      />
+                      <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
+                        {getLockReason("trail", customization.trailColor)}
+                      </div>
+                      {!isUnlocked("trail", customization.trailColor) && (
+                        <div className="absolute right-4 top-3 text-red-500">
+                          🔒
+                        </div>
+                      )}
+                    </div>
+
+                    <SliderRow
+                      label="RED"
+                      value={
+                        hexToRgb(
+                          customization.trailColor === "rainbow"
+                            ? "#ff0044"
+                            : customization.trailColor,
+                        ).r
+                      }
+                      index={4}
+                      colorClass="bg-red-500"
+                      onChange={(v: number) =>
+                        setExactRGB(1, "trailColor", "r", v)
+                      }
+                      isSelected={menuSelection === 4}
+                      onHover={setMenuSelection}
+                    />
+                    <SliderRow
+                      label="GREEN"
+                      value={
+                        hexToRgb(
+                          customization.trailColor === "rainbow"
+                            ? "#ff0044"
+                            : customization.trailColor,
+                        ).g
+                      }
+                      index={5}
+                      colorClass="bg-green-500"
+                      onChange={(v: number) =>
+                        setExactRGB(1, "trailColor", "g", v)
+                      }
+                      isSelected={menuSelection === 5}
+                      onHover={setMenuSelection}
+                    />
+                    <SliderRow
+                      label="BLUE"
+                      value={
+                        hexToRgb(
+                          customization.trailColor === "rainbow"
+                            ? "#ff0044"
+                            : customization.trailColor,
+                        ).b
+                      }
+                      index={6}
+                      colorClass="bg-blue-500"
+                      onChange={(v: number) =>
+                        setExactRGB(1, "trailColor", "b", v)
+                      }
+                      isSelected={menuSelection === 6}
+                      onHover={setMenuSelection}
+                    />
+
+                    <div className="text-xs text-neutral-500 font-bold mt-2">
+                      {t.adjustControls || "ARROWS TO ADJUST • ENTER TO CYCLE"}
+                    </div>
+                    <div className="relative">
+                      <MenuButton
+                        index={7}
+                        label={`${t.eyes}: ${t.eye_names?.[customization.eyes] || customization.eyes}`}
+                        onClick={() => rotateOption(1, "eyes", 1)}
+                        isSelected={menuSelection === 7}
+                        onHover={setMenuSelection}
+                      />
+                      <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
+                        {getLockReason("eyes", customization.eyes)}
+                      </div>
+                      {!isUnlocked("eyes", customization.eyes) && (
+                        <div className="absolute right-4 top-3 text-red-500">
+                          🔒
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <MenuButton
+                        index={8}
+                        label={`${t.hat}: ${t.acc_names?.[customization.accessory] || customization.accessory}`}
+                        onClick={() => rotateOption(1, "accessory", 1)}
+                        isSelected={menuSelection === 8}
+                        onHover={setMenuSelection}
+                      />
+                      <div className="text-[8px] text-neutral-500 text-center uppercase -mt-1 mb-2 px-4 italic leading-tight">
+                        {getLockReason("accessory", customization.accessory)}
+                      </div>
+                      {!isUnlocked("accessory", customization.accessory) && (
+                        <div className="absolute right-4 top-3 text-red-500">
+                          🔒
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 w-full max-w-[500px] mt-2">
+                    <MenuButton
+                      index={9}
+                      label="🎲 RANDOM"
+                      onClick={() => {
+                        const randomColor =
+                          "#" +
+                          Math.floor(Math.random() * 16777215)
+                            .toString(16)
+                            .padStart(6, "0");
+                        const eyesPool = EYE_OPTIONS.filter((opt) =>
+                          isUnlocked("eyes", opt),
+                        );
+                        const accPool = ACC_OPTIONS.filter(
+                          (opt) =>
+                            isUnlocked("accessory", opt) && opt !== "unicorn",
+                        );
+                        const trailPool = TRAIL_PRESETS.filter((opt) =>
+                          isUnlocked("trail", opt.val),
+                        );
+
+                        const randomEyes =
+                          eyesPool[
+                            Math.floor(Math.random() * eyesPool.length)
+                          ] || "normal";
+                        const randomAcc =
+                          accPool[Math.floor(Math.random() * accPool.length)] ||
+                          "none";
+                        const randomTrail =
+                          trailPool[
+                            Math.floor(Math.random() * trailPool.length)
+                          ]?.val || randomColor;
+
+                        setCustomization((prev) => ({
+                          ...prev,
+                          color: randomColor,
+                          eyes: randomEyes,
+                          accessory: randomAcc,
+                          trailColor: randomTrail,
+                        }));
+                      }}
+                      isSelected={menuSelection === 9}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={10}
+                      label={t.back}
+                      onClick={() =>
+                        setGameState((p) => ({
+                          ...p,
+                          status: p.previousStatus || "menu",
+                        }))
+                      }
+                      danger
+                      isSelected={menuSelection === 10}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={11}
+                      label={
+                        gameState.previousStatus === "online_menu" ||
+                        gameState.previousStatus === "online_lobby"
+                          ? "CONFIRM"
+                          : t.play
+                      }
+                      // Disable play if selected items are locked
+                      disabled={
+                        !isUnlocked("eyes", customization.eyes) ||
+                        !isUnlocked("accessory", customization.accessory) ||
+                        !isUnlocked("trail", customization.trailColor)
+                      }
+                      onClick={() => {
+                        if (gameState.previousStatus === "online_lobby") {
+                          updateOnlineCustomization(customization);
+                        }
+                        setMenuSelection(0);
+                        setGameState((p) => ({
+                          ...p,
+                          status:
+                            p.previousStatus === "online_menu" ||
+                            p.previousStatus === "online_lobby" ||
+                            p.previousStatus === "menu"
+                              ? p.previousStatus
+                              : "difficulty_select",
+                        }));
+                      }}
+                      isSelected={menuSelection === 11}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+
+                  <div className="text-[10px] text-neutral-500 mt-2">
+                    {t.adjustControls || "ARROWS to adjust • ENTER to cycle"}
+                  </div>
+                </div>
+              )}
+
+              {/* ... (Other Menus remain similar but condensed in existing code) ... */}
+              {/* Pause Menu */}
+              {gameState.status === "paused" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50">
+                  <h2 className="text-4xl text-white mb-8">{t.paused}</h2>
+                  <div className="flex flex-col gap-2 w-72">
+                    {(() => {
+                      const buttons = [];
+
+                      buttons.push({
+                        label: t.resume || "RESUME",
+                        onClick: () =>
+                          setGameState((p) => ({
+                            ...p,
+                            status:
+                              p.previousStatus ||
+                              (p.customLevelsQueue ? "random_run" : "playing"),
+                          })),
+                      });
+
+                      if (
+                        (!onlineService.lobbyCode || onlineService.isHost) &&
+                        gameState.customLevelsQueue &&
+                        gameState.customLevelsQueue.length > 1
+                      ) {
+                        if (
+                          gameState.currentLevelIndex <
+                          gameState.customLevelsQueue.length - 1
+                        ) {
+                          buttons.push({
+                            label:
+                              gameState.previousStatus === "vs_playing" ||
+                              gameState.previousStatus === "brawler_playing"
+                                ? "LEVEL SKIPPEN"
+                                : t.nextLevelBtn || "NEXT LEVEL",
+                            onClick: handleNextLevel,
+                          });
+                        }
+
+                        if (
+                          gameState.previousStatus === "vs_playing" ||
+                          gameState.previousStatus === "brawler_playing"
+                        ) {
+                          buttons.push({
+                            label: "LEVEL WIEDERHOLEN",
+                            onClick: handleRetry,
+                          });
+
+                          buttons.push({
+                            label: "NEUSTART",
+                            onClick: () => {
+                              setGameState((p) => ({
+                                ...p,
+                                currentLevelIndex: 0,
+                              }));
+                              handleRetry();
+                            },
+                          });
+                        }
+                      }
+
+                      if (
+                        !(
+                          gameState.previousStatus === "vs_playing" ||
+                          gameState.previousStatus === "brawler_playing"
+                        ) ||
+                        !onlineService.lobbyCode
+                      ) {
+                        // Only add standard RETRY if not already added by custom logic above
+                        if (
+                          !(
+                            gameState.previousStatus === "vs_playing" ||
+                            gameState.previousStatus === "brawler_playing"
+                          )
+                        ) {
+                          buttons.push({
+                            label: t.retry || "RETRY",
+                            onClick: handleRetry,
+                          });
+                        }
+                      }
+
+                      if (onlineService.lobbyCode) {
+                        buttons.push({
+                          label: t.giveUp,
+                          danger: true,
+                          onClick: () => {
+                            onlineService.sendEvent("give_up", {
+                              name: playerName,
+                            });
+                            setGameState((p) => ({
+                              ...p,
+                              status: p.previousStatus || "playing",
+                            }));
+                            // Locally we treat it as finished with poor stats
+                            handleWin("GAVE UP");
+                          },
+                        });
+                        buttons.push({
+                          label: t.backToLobby,
+                          onClick: () => {
+                            if (onlineService.isHost) {
+                              onlineService.returnToLobby();
+                            } else {
+                              setGameState((p) => ({
+                                ...p,
+                                status: "online_lobby",
+                              }));
+                            }
+                          },
+                        });
+                      } else {
+                        // Back to Lobby / Selection for local modes
+                        const isLocalMulti =
+                          gameState.previousStatus === "vs_playing" ||
+                          gameState.previousStatus === "brawler_playing";
+                        const isStory =
+                          gameState.previousStatus === "playing" ||
+                          gameState.previousStatus === "random_run";
+
+                        if (isLocalMulti || isStory) {
+                          buttons.push({
+                            label: t.backToLobby || "ZURÜCK ZUR LOBBY",
+                            onClick: () => {
+                              setGameState((p) => {
+                                let nextStatus: Status = "menu";
+                                if (p.previousStatus === "brawler_playing")
+                                  nextStatus = "brawler_setup";
+                                else if (p.previousStatus === "vs_playing")
+                                  nextStatus = "vs_setup";
+                                else if (
+                                  p.previousStatus === "playing" ||
+                                  p.previousStatus === "random_run"
+                                )
+                                  nextStatus = "difficulty_select";
+
+                                return {
+                                  ...p,
+                                  status: nextStatus,
+                                };
+                              });
+                            },
+                          });
+                        }
+                      }
+
+                      buttons.push({
+                        label: t.settings,
+                        onClick: () => {
+                          setGameState((p) => ({
+                            ...p,
+                            status: "settings",
+                            previousStatus: "paused",
+                          }));
+                          setMenuSelection(0);
+                        },
+                      });
+
+                      buttons.push({
+                        label: t.quit,
+                        danger: true,
+                        onClick: () => {
+                          if (onlineService.lobbyCode) {
+                            onlineService.disconnect();
+                          }
+                          setGameState((p) => ({
+                            ...p,
+                            status: p.geometryDashMode
+                              ? "geometry_dash_menu"
+                              : "menu",
+                            geometryDashMode: false,
+                          }));
+                        },
+                      });
+
+                      return buttons.map((btn, i) => (
+                        <MenuButton
+                          key={i}
+                          index={i}
+                          label={btn.label}
+                          danger={btn.danger}
+                          onClick={btn.onClick}
+                          isSelected={menuSelection === i}
+                          onHover={setMenuSelection}
+                        />
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Win Screen / VS Win */}
+              {(gameState.status === "won" ||
+                gameState.status === "vs_won" ||
+                gameState.status === "brawler_won") && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-900/80 backdrop-blur-md z-40">
+                  {gameState.status === "vs_won" ||
+                  gameState.status === "brawler_won" ? (
+                    <>
+                      <h2 className="text-5xl text-white font-bold mb-4 animate-bounce">
+                        {gameState.winner ? t.playerWin(gameState.winner) : ""}
+                      </h2>
+                      <div className="text-xl mb-8">
+                        TIME: {gameState.time}s
+                      </div>
+                      <div className="flex flex-col gap-3 w-72">
+                        {(!onlineService.lobbyCode || onlineService.isHost) &&
+                        gameState.customLevelsQueue &&
+                        gameState.currentLevelIndex <
+                          gameState.customLevelsQueue.length - 1 ? (
+                          <>
                             <MenuButton
                               index={0}
-                              label="WARTE AUF HOST..."
-                              onClick={() => {}}
-                              disabled
+                              label={t.nextLevelBtn}
+                              onClick={handleNextLevel}
                               isSelected={menuSelection === 0}
                               onHover={setMenuSelection}
                             />
                             <MenuButton
                               index={1}
+                              label={
+                                onlineService.lobbyCode
+                                  ? t.backToLobby
+                                  : t.backToSelection
+                              }
+                              onClick={() => {
+                                if (
+                                  onlineService.lobbyCode &&
+                                  onlineService.isHost
+                                ) {
+                                  onlineService.returnToLobby();
+                                } else {
+                                  setGameState((p) => ({
+                                    ...p,
+                                    status: onlineService.lobbyCode
+                                      ? "online_lobby"
+                                      : gameState.status === "brawler_won"
+                                        ? "brawler_setup"
+                                        : "vs_setup",
+                                  }));
+                                }
+                              }}
+                              isSelected={menuSelection === 1}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={2}
+                              label={t.mainMenu}
+                              danger
+                              onClick={() => {
+                                if (onlineService.lobbyCode)
+                                  onlineService.disconnect();
+                                setGameState((p) => ({ ...p, status: "menu" }));
+                              }}
+                              isSelected={menuSelection === 2}
+                              onHover={setMenuSelection}
+                            />
+                          </>
+                        ) : onlineService.lobbyCode ? (
+                          <>
+                            <MenuButton
+                              index={0}
                               label={t.backToLobby}
+                              onClick={() => {
+                                if (onlineService.isHost) {
+                                  onlineService.returnToLobby();
+                                }
+                              }}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={1}
+                              label={t.mainMenu}
+                              danger
+                              onClick={() => {
+                                onlineService.disconnect();
+                                setGameState((p) => ({ ...p, status: "menu" }));
+                              }}
+                              isSelected={menuSelection === 1}
+                              onHover={setMenuSelection}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <MenuButton
+                              index={0}
+                              label={
+                                lang === Language.DE
+                                  ? "NOCHMAL SPIELEN"
+                                  : "PLAY AGAIN"
+                              }
+                              onClick={() => {
+                                handleRetry();
+                              }}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={1}
+                              label={
+                                lang === Language.DE
+                                  ? "ZURÜCK ZUR LOBBY"
+                                  : "BACK TO LOBBY"
+                              }
                               onClick={() => {
                                 setGameState((p) => ({
                                   ...p,
-                                  status: "online_lobby",
+                                  status:
+                                    gameState.status === "brawler_won"
+                                      ? "brawler_setup"
+                                      : "vs_setup",
                                 }));
                               }}
                               isSelected={menuSelection === 1}
@@ -7961,781 +9037,1360 @@ const App: React.FC = () => {
                               label={t.mainMenu}
                               danger
                               onClick={() => {
-                                onlineService.disconnect();
-                                setGameState((p) => ({
-                                  ...p,
-                                  status: "menu",
-                                }));
+                                setGameState((p) => ({ ...p, status: "menu" }));
                               }}
                               isSelected={menuSelection === 2}
                               onHover={setMenuSelection}
                             />
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <>
-                      {gameState.customLevelsQueue &&
-                      gameState.currentLevelIndex <
-                        gameState.customLevelsQueue.length - 1 ? (
-                        <>
-                          <MenuButton
-                            index={0}
-                            label={t.nextLevelBtn}
-                            onClick={handleNextLevel}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={1}
-                            label={t.backToSelection}
-                            onClick={() =>
-                              setGameState((p) => ({
-                                ...p,
-                                status:
-                                  p.previousStatus === "brawler_playing"
-                                    ? "brawler_setup"
-                                    : "vs_setup",
-                              }))
+                      <h2 className="text-4xl text-white font-bold mb-2">
+                        {t.won}
+                      </h2>
+                      <div className="text-2xl text-green-300 mb-8 flex flex-col items-center gap-2">
+                        <span>
+                          {t.totalScore}: {gameState.score}
+                        </span>
+                        <span className="text-sm opacity-70">
+                          {t.time}: {gameState.time}s
+                        </span>
+                      </div>
+
+                      {showHighscoreInput ? (
+                        <div className="flex flex-col items-center gap-4 animate-fade-in">
+                          <h3 className="text-xl text-yellow-400 font-bold">
+                            {t.gameOver}
+                          </h3>
+                          <input
+                            type="text"
+                            placeholder={t.enterName}
+                            maxLength={8}
+                            value={playerName}
+                            autoFocus
+                            onChange={(e) =>
+                              setPlayerName(e.target.value.toUpperCase())
                             }
-                            isSelected={menuSelection === 1}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={2}
-                            label={t.mainMenu}
-                            danger
-                            onClick={() =>
-                              setGameState((p) => ({ ...p, status: "menu" }))
-                            }
-                            isSelected={menuSelection === 2}
-                            onHover={setMenuSelection}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <MenuButton
-                            index={0}
-                            label={lang === Language.DE ? "NOCHMAL SPIELEN" : "PLAY AGAIN"}
-                            onClick={() => {
-                              handleRetry();
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && playerName.length > 0) {
+                                e.stopPropagation();
+                                saveHighscore();
+                              }
                             }}
-                            isSelected={menuSelection === 0}
-                            onHover={setMenuSelection}
+                            className="bg-black border border-white p-2 text-center text-white"
                           />
+                          <div className="w-72 mt-4">
+                            <MenuButton
+                              index={0}
+                              label={t.save}
+                              onClick={saveHighscore}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2 w-72">
+                          {((gameState.customLevelsQueue &&
+                            gameState.currentLevelIndex <
+                              gameState.customLevelsQueue.length - 1) ||
+                            (!gameState.customLevelsQueue &&
+                              selectedDifficultySet &&
+                              gameState.currentLevelIndex <
+                                selectedDifficultySet.length - 1)) && (
+                            <MenuButton
+                              index={0}
+                              label={t.nextLevelBtn}
+                              onClick={handleNextLevel}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                          )}
                           <MenuButton
                             index={1}
-                            label={t.backToSelection}
+                            label={t.mainMenu}
+                            danger
                             onClick={() =>
-                              setGameState((p) => ({
-                                ...p,
-                                status:
-                                  p.previousStatus === "brawler_playing"
-                                    ? "brawler_setup"
-                                    : "vs_setup",
+                              setGameState((prev) => ({
+                                ...prev,
+                                status: prev.geometryDashMode
+                                  ? "geometry_dash_menu"
+                                  : "menu",
+                                geometryDashMode: false,
                               }))
                             }
                             isSelected={menuSelection === 1}
                             onHover={setMenuSelection}
                           />
-                          <MenuButton
-                            index={2}
-                            label={t.mainMenu}
-                            danger
-                            onClick={() =>
-                              setGameState((p) => ({ ...p, status: "menu" }))
-                            }
-                            isSelected={menuSelection === 2}
-                            onHover={setMenuSelection}
-                          />
-                        </>
+                        </div>
                       )}
                     </>
                   )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Shop UI */}
-            {gameState.status === "shop" && (
-              <ShopView 
-                t={t}
-                customization={customization}
-                setCustomization={setCustomization}
-                shopTab={shopTab}
-                setShopTab={setShopTab}
-                hoveredShopItem={hoveredShopItem}
-                setHoveredShopItem={setHoveredShopItem}
-                gameState={gameState}
-                onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                CharacterPreview={CharacterPreview}
-                SHOP_ITEMS={SHOP_ITEMS}
-                ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
-              />
-            )}
+              {/* Online Summary Screen */}
+              {gameState.status === "online_summary" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
+                  <h2 className="text-4xl text-cyan-400 font-arcade mb-2 tracking-widest">
+                    {t.gameResults || "SPIEL-ERGEBNISSE"}
+                  </h2>
 
-            {/* Book Menu */}
-            {gameState.status === "book" && (
-              <Book onClose={() => setGameState((p) => ({ ...p, status: "menu" }))} lang={lang || Language.DE} />
-            )}
-
-            {/* Geometry Dash Style Menu */}
-            {gameState.status === "geometry_dash_menu" && (() => {
-              const gdLevelsList = GD_LEVELS;
-              const currentLevel = gdLevelsList[gdSelectedLevelIndex] || GD_LEVELS[0];
-
-              return (
-                <div className="absolute inset-0 flex flex-col items-center justify-between p-8 bg-neutral-950 font-sans text-white z-40 overflow-hidden">
-                  {/* Neon Grid Background */}
-                  <div className="absolute inset-0 z-[-1] opacity-25">
-                    <div className="w-full h-full bg-[linear-gradient(to_right,#00ffcc_1px,transparent_1px),linear-gradient(to_bottom,#00ffcc_1px,transparent_1px)] bg-[size:40px_40px] shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/20 via-transparent to-emerald-950/20 pointer-events-none"></div>
-
-                  {/* Header */}
-                  <div className="flex flex-col items-center mt-4">
-                    <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-cyan-400 to-blue-500 font-extrabold tracking-widest uppercase drop-shadow-[0_4px_10px_rgba(0,255,160,0.5)] animate-pulse">
-                      RAGE RUN
-                    </h1>
-                    <span className="text-[10px] text-cyan-400 font-mono tracking-[0.4em] uppercase mt-2">
-                      - SECRET EXTRA MODE -
-                    </span>
-                  </div>
-
-                  {/* Level Display Selector */}
-                  <div className="flex flex-col items-center justify-center w-full max-w-xl bg-black/60 border border-cyan-500/30 p-6 rounded-lg backdrop-blur-md">
-                    <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4">
-                      {currentLevel.name}
-                    </h2>
-                    
-                    {/* Selector Arrow controls */}
-                    <div className="flex items-center justify-between w-full max-w-sm mb-4">
-                      <button
-                        onClick={() => {
-                          try { audio.playSfx("secret"); } catch (e) {}
-                          setGdSelectedLevelIndex((p) => (p > 0 ? p - 1 : gdLevelsList.length - 1));
-                        }}
-                        className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
-                      >
-                        ◀
-                      </button>
-                      
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs text-neutral-400 font-mono uppercase">
-                          LEVEL {gdSelectedLevelIndex + 1} OF {gdLevelsList.length}
-                        </span>
-                        <span className="text-[10px] text-emerald-400 font-black uppercase mt-1 tracking-wider">
-                          STYLE: AUTO-SCROLL
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          try { audio.playSfx("secret"); } catch (e) {}
-                          setGdSelectedLevelIndex((p) => (p < gdLevelsList.length - 1 ? p + 1 : 0));
-                        }}
-                        className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
-                      >
-                        ▶
-                      </button>
-                    </div>
-
-                    {/* Level details / coins */}
-                    <div className="text-xs text-neutral-400 text-center font-mono">
-                      COINS TO GRAB: {currentLevel.entities.filter(e => e.type === "coin").length || 0} ✨
-                    </div>
-                  </div>
-
-                  {/* Visual Character / Cube display bouncing with rotation angle */}
-                  <div className="my-4 flex items-center justify-center relative">
-                    <div className="absolute -inset-10 blur-2xl bg-cyan-500/20 rounded-full -z-10"></div>
-                    <div className="w-24 h-24 animate-bounce duration-700">
-                      <div className="w-full h-full rotate-[15deg] transition-transform duration-300">
-                        <CharacterPreview customization={customization} scale={6} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Play Button Row */}
-                  <div className="flex flex-col items-center gap-6 mb-4">
-                    <button
-                      onClick={() => {
-                        try {
-                          audio.playSfx("secret");
-                        } catch (e) {}
-                        setLevel(currentLevel);
-                        setGameState((prev) => ({
-                          ...prev,
-                          status: "random_run",
-                          geometryDashMode: true,
-                          currentLevelIndex: gdSelectedLevelIndex,
-                          customLevelsQueue: [currentLevel],
-                          deaths: 0,
-                          levelDeaths: 0,
-                          time: 0,
-                          levelTime: 0,
-                          score: 0,
-                        }));
-                        setRespawnTrigger((p) => p + 1);
-                      }}
-                      className="w-28 h-28 rounded-full bg-yellow-400 hover:bg-yellow-300 border-4 border-white shadow-[0_0_35px_rgba(234,179,8,0.7)] hover:scale-110 active:scale-95 transition-all transform flex items-center justify-center cursor-pointer group"
-                    >
-                      <div className="w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-l-[25px] border-l-emerald-600 ml-1.5 group-hover:border-l-emerald-500 transition-colors"></div>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        try { audio.playSfx("secret"); } catch (e) {}
-                        setGameState((p) => ({ ...p, status: "menu" }));
-                      }}
-                      className="px-6 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 font-black text-xs uppercase tracking-widest text-red-400 rounded transition-all active:scale-95"
-                    >
-                      ◀ BACK TO MAIN
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Settings Menu */}
-            {gameState.status === "settings" && (
-              <SettingsMenu 
-                t={t}
-                settings={settings}
-                setSettings={setSettings}
-                lang={lang}
-                menuSelection={menuSelection}
-                setMenuSelection={setMenuSelection}
-                onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                onKeybindings={() => {
-                   setGameState((p) => ({ ...p, status: "keybindings" }));
-                   setMenuSelection(0);
-                }}
-                FPS_OPTIONS={FPS_OPTIONS}
-                UI_SCALE_OPTIONS={UI_SCALE_OPTIONS}
-                RESOLUTION_OPTIONS={RESOLUTION_OPTIONS}
-                setPlayerName={setPlayerName}
-                MenuButton={MenuButton}
-                SettingsSlider={SettingsSlider}
-              />
-            )}
-
-            {/* Keybindings Menu */}
-            {gameState.status === "keybindings" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto custom-scrollbar py-10">
-                <h2 className="text-3xl mb-4 text-rage-red uppercase">{t.keybindings}</h2>
-                <div className="text-center text-sm text-neutral-400 mb-8 max-w-md">
-                  {t.keybindingsDesc}
-                </div>
-
-                <div className="flex gap-8 mb-8">
-                  {/* Player 1 */}
-                  <div className="w-64 space-y-1">
-                    <h3 className="text-xl text-troll-green mb-2 text-center uppercase">
-                      {t.player1}
-                    </h3>
-                    {[
-                      "up",
-                      "down",
-                      "left",
-                      "right",
-                      "action",
-                      "dash",
-                    ].map((action, i) => {
-                      const isEditing =
-                        editingKey?.player === 1 &&
-                        editingKey.action === action;
-                      const bindings =
-                        settings.keybindingsP1?.[
-                          action as keyof Keybindings
-                        ] || [];
-                      const keyBinds = bindings.filter(k => k !== "GP_None");
-                      const displayBinds = keyBinds.map(k => k.replace("Arrow", "").replace("Key", "").replace("Digit", "").replace("ControlRight", "R-CTRL").replace("ControlLeft", "L-CTRL").toUpperCase()).join(" / ");
-
-                      return (
-                        <div
-                          key={action}
-                          className={`p-2 border cursor-pointer flex flex-col transition-colors ${menuSelection === i ? "border-white bg-neutral-800" : "border-transparent border-b-neutral-800"}`}
-                          onMouseEnter={() => setMenuSelection(i)}
-                          onClick={() =>
-                            setEditingKey({
-                              player: 1,
-                              action: action as keyof Keybindings,
-                            })
-                          }
-                        >
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="uppercase text-[10px] font-bold text-neutral-400">
-                              {t[action as keyof typeof t] || action}
-                            </span>
-                            {isEditing && (
-                              <span className="text-rage-red animate-pulse text-[9px] font-black italic">
-                                {t.pressKey}
-                              </span>
-                            )}
+                  {/* Podium / Träppchen */}
+                  {onlineResults.length > 0 && (
+                    <div className="flex items-end justify-center gap-4 mb-8 mt-4 h-40">
+                      {/* 2nd Place */}
+                      {onlineResults[1] && (
+                        <div className="flex flex-col items-center">
+                          <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">
+                            {onlineResults[1].name}
                           </div>
-                          <div className="flex justify-between items-center text-[10px]">
-                            <div className="flex gap-1 items-center">
-                              <span className="font-bold text-blue-400">
-                                {displayBinds || "NONE"}
-                              </span>
-                            </div>
-                          </div>
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: "60px" }}
+                            className="w-16 bg-neutral-600 border-x-2 border-t-2 border-neutral-500 flex items-center justify-center font-arcade text-white text-xl"
+                          >
+                            2
+                          </motion.div>
                         </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Player 2 */}
-                  <div className="w-64 space-y-1">
-                    <h3 className="text-xl text-troll-green mb-2 text-center uppercase">
-                      {t.player2}
-                    </h3>
-                    {[
-                      "up",
-                      "down",
-                      "left",
-                      "right",
-                      "action",
-                      "dash",
-                    ].map((action, i) => {
-                      const idx = i + 6;
-                      const isEditing =
-                        editingKey?.player === 2 &&
-                        editingKey.action === action;
-                      const bindings =
-                        settings.keybindingsP2?.[
-                          action as keyof Keybindings
-                        ] || [];
-                      const keyBinds = bindings.filter(k => k !== "GP_None");
-                      const displayBinds = keyBinds.map(k => k.replace("Arrow", "").replace("Key", "").replace("Digit", "").replace("ControlRight", "R-CTRL").replace("ControlLeft", "L-CTRL").toUpperCase()).join(" / ");
-
-                      return (
-                        <div
-                          key={action}
-                          className={`p-2 border cursor-pointer flex flex-col transition-colors ${menuSelection === idx ? "border-white bg-neutral-800" : "border-transparent border-b-neutral-800"}`}
-                          onMouseEnter={() => setMenuSelection(idx)}
-                          onClick={() =>
-                            setEditingKey({
-                              player: 2,
-                              action: action as keyof Keybindings,
-                            })
-                          }
-                        >
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="uppercase text-[10px] font-bold text-neutral-400">
-                               {t[action as keyof typeof t] || action}
-                            </span>
-                            {isEditing && (
-                              <span className="text-rage-red animate-pulse text-[9px] font-black italic">
-                                {t.pressKey}
-                              </span>
-                            )}
+                      )}
+                      {/* 1st Place */}
+                      {onlineResults[0] && (
+                        <div className="flex flex-col items-center">
+                          <div className="text-xs text-yellow-400 font-bold mb-1 truncate max-w-[100px]">
+                            {onlineResults[0].name}
                           </div>
-                          <div className="flex justify-between items-center text-[10px]">
-                            <div className="flex gap-1 items-center">
-                              <span className="font-bold text-blue-400">
-                                {displayBinds || "NONE"}
-                              </span>
-                            </div>
-                          </div>
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: "90px" }}
+                            transition={{ delay: 0.2 }}
+                            className="w-20 bg-yellow-600 border-x-2 border-t-2 border-yellow-500 flex items-center justify-center font-arcade text-white text-2xl shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                          >
+                            1
+                          </motion.div>
                         </div>
-                      );
-                    })}
+                      )}
+                      {/* 3rd Place */}
+                      {onlineResults[2] && (
+                        <div className="flex flex-col items-center">
+                          <div className="text-xs text-neutral-400 mb-1 truncate max-w-[80px]">
+                            {onlineResults[2].name}
+                          </div>
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: "40px" }}
+                            transition={{ delay: 0.4 }}
+                            className="w-16 bg-orange-800 border-x-2 border-t-2 border-orange-700 flex items-center justify-center font-arcade text-white text-lg"
+                          >
+                            3
+                          </motion.div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="w-full max-w-2xl bg-neutral-900 border-2 border-neutral-700 p-6 rounded-lg shadow-2xl custom-scrollbar overflow-y-auto max-h-[70vh]">
+                    <table className="w-full text-left font-mono">
+                      <thead>
+                        <tr className="text-neutral-500 border-b border-neutral-800 text-xs">
+                          <th className="pb-2">PLATZ</th>
+                          <th className="pb-2">SPIELER</th>
+                          <th className="pb-2">ZEIT</th>
+                          <th className="pb-2">TODE</th>
+                          <th className="pb-2">PUNKTE</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {onlineResults.map((res, i) => (
+                          <tr
+                            key={res.id}
+                            className={`border-b border-neutral-800/50 ${res.id === onlineService.localPlayer?.id ? "bg-cyan-900/20" : ""}`}
+                          >
+                            <td className="py-3 font-arcade text-yellow-500">
+                              {i + 1}
+                            </td>
+                            <td className="py-3 font-bold text-white">
+                              {res.name}{" "}
+                              {res.id === onlineService.localPlayer?.id
+                                ? "(DU)"
+                                : ""}
+                            </td>
+                            <td className="py-3 text-cyan-300">
+                              {res.time === 999 ? "-" : `${res.time}s`}
+                            </td>
+                            <td className="py-3 text-red-500">{res.deaths}</td>
+                            <td className="py-3 text-green-400">{res.score}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
 
-                <div className="w-72">
-                  <MenuButton
-                    index={12}
-                    label={t.back}
-                    onClick={() => {
-                      setGameState((p) => ({ ...p, status: "settings" }));
-                      setMenuSelection(2);
-                    }}
-                    isSelected={menuSelection === 12}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-              </div>
-            )}
+                  <div className="mt-8 flex flex-col gap-3 w-72">
+                    {onlineService.lobbyCode ? (
+                      <>
+                        {onlineService.isHost ? (
+                          <>
+                            {gameState.customLevelsQueue &&
+                              gameState.currentLevelIndex <
+                                gameState.customLevelsQueue.length - 1 && (
+                                <MenuButton
+                                  index={0}
+                                  label="NÄCHSTES LEVEL"
+                                  onClick={handleNextLevel}
+                                  isSelected={menuSelection === 0}
+                                  onHover={setMenuSelection}
+                                />
+                              )}
+                            <MenuButton
+                              index={
+                                gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 1
+                                  : 0
+                              }
+                              label="NOCHMAL SPIELEN"
+                              onClick={async () => {
+                                setOnlineResults([]);
+                                setOnlineFinishTimer(null);
+                                if (
+                                  onlineService.lobbyCode &&
+                                  onlineService.isHost
+                                ) {
+                                  let targetIdx = gameState.currentLevelIndex;
+                                  // If we were at the end of a queue, restart from the beginning
+                                  if (
+                                    gameState.customLevelsQueue &&
+                                    gameState.currentLevelIndex >=
+                                      gameState.customLevelsQueue.length - 1
+                                  ) {
+                                    targetIdx = 0;
+                                  }
 
-            {/* Highscores Menu (Per Level) */}
-            {gameState.status === "highscores" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
-                <h2 className="text-3xl mb-4 text-troll-green">
-                  {t.highscores}
-                </h2>
+                                  const targetLevel =
+                                    gameState.customLevelsQueue &&
+                                    gameState.customLevelsQueue.length > 0
+                                      ? gameState.customLevelsQueue[targetIdx]
+                                      : level;
 
-                <div className="mb-4 flex flex-col items-center">
-                  <div className="text-[10px] text-neutral-500 mb-1">
-                    {t.changeSourceHint || "USE UP/DOWN TO CHANGE SOURCE"}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const sources: any[] =
-                        gameState.onlineMode === "brawler"
-                          ? ["brawler", "custom"]
-                          : ["builtin", "beginner", "advanced", "expert", "god", "custom"];
-                      const currentIdx = sources.indexOf(levelSource);
-                      let nextIdx = (currentIdx + 1) % sources.length;
-                      const newSource = sources[nextIdx];
-                      if (newSource === "custom" && customLevels.length === 0) {
-                        nextIdx = (nextIdx + 1) % sources.length;
-                      }
-                      setLevelSource(sources[nextIdx]);
-                      setHighscoreLevelIndex(0);
-                    }}
-                    className={`text-sm font-bold text-blue-400 hover:underline cursor-pointer uppercase tracking-widest`}
-                  >
-                    {(() => {
-                      if (levelSource === "beginner") return t.beginner || "BEGINNER";
-                      if (levelSource === "advanced") return t.advanced || "ADVANCED";
-                      if (levelSource === "expert") return t.expert || "EXPERT";
-                      if (levelSource === "god") return t.god || "JUMP GOD";
-                      if (levelSource === "brawler") return t.brawlerLevels || "BRAWLER";
-                      if (levelSource === "custom") return t.customLevelsLabel || "OWN LEVELS";
-                      if (levelSource === "builtin") return t.fullRun || "FULL RUN";
-                      return levelSource.toUpperCase();
-                    })()}
-                  </button>
-                </div>
+                                  if (targetLevel) {
+                                    await onlineService.broadcastLobbyState(
+                                      undefined,
+                                      targetLevel,
+                                      undefined,
+                                      brawlerTeamMode,
+                                      brawlerHazardMode,
+                                      undefined,
+                                      targetIdx,
+                                    );
+                                  }
+                                  lastStartTimeRef.current = Date.now();
+                                  onlineService.startGame();
 
-                {levelSource !== "builtin" && (
-                  <div className="flex flex-col items-center gap-4 mb-6">
-                    <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg">
-                      {(() => {
-                        let activeList: LevelData[] = [];
-                        if (levelSource === "beginner") activeList = INITIAL_LEVELS;
-                        else if (levelSource === "advanced") activeList = ADVANCED_LEVELS;
-                        else if (levelSource === "expert") activeList = EXPERT_LEVELS;
-                        else if (levelSource === "god") activeList = GOD_LEVELS;
-                        else if (levelSource === "brawler") activeList = BRAWLER_LEVELS;
-                        else if (levelSource === "custom") activeList = customLevels;
-
-                        const idx = Math.min(
-                          Math.max(0, highscoreLevelIndex),
-                          Math.max(0, activeList.length - 1),
-                        );
-                        if (activeList[idx]) {
-                          return (
-                            <LevelPreview
-                              level={activeList[idx]}
-                              width={192}
-                              height={108}
-                              className="w-full h-full"
+                                  // Immediately transition host to playing state
+                                  setGameState((p) => ({
+                                    ...p,
+                                    status:
+                                      p.onlineMode === "brawler"
+                                        ? "brawler_playing"
+                                        : "vs_playing",
+                                    levelTime: 0,
+                                    levelDeaths: 0,
+                                    collectedCoins: [],
+                                    blocksPlaced: 0,
+                                  }));
+                                  setRespawnTrigger((p) => p + 1);
+                                }
+                              }}
+                              isSelected={
+                                menuSelection ===
+                                (gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 1
+                                  : 0)
+                              }
+                              onHover={setMenuSelection}
                             />
-                          );
-                        }
-                        return <div className="w-full h-full flex items-center justify-center text-xs text-neutral-600">NO PREVIEW</div>;
-                      })()}
+                            <MenuButton
+                              index={
+                                gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 2
+                                  : 1
+                              }
+                              label={t.backToLobby}
+                              onClick={() => onlineService.returnToLobby()}
+                              isSelected={
+                                menuSelection ===
+                                (gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 2
+                                  : 1)
+                              }
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={
+                                gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 3
+                                  : 2
+                              }
+                              label={t.mainMenu}
+                              danger
+                              onClick={() => {
+                                if (onlineService.isHost) {
+                                  onlineService.closeLobby();
+                                } else {
+                                  onlineService.disconnect();
+                                }
+                                setGameState((p) => ({ ...p, status: "menu" }));
+                              }}
+                              isSelected={
+                                menuSelection ===
+                                (gameState.customLevelsQueue &&
+                                gameState.currentLevelIndex <
+                                  gameState.customLevelsQueue.length - 1
+                                  ? 3
+                                  : 2)
+                              }
+                              onHover={setMenuSelection}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex flex-col gap-2 w-full">
+                              <MenuButton
+                                index={0}
+                                label="WARTE AUF HOST..."
+                                onClick={() => {}}
+                                disabled
+                                isSelected={menuSelection === 0}
+                                onHover={setMenuSelection}
+                              />
+                              <MenuButton
+                                index={1}
+                                label={t.backToLobby}
+                                onClick={() => {
+                                  setGameState((p) => ({
+                                    ...p,
+                                    status: "online_lobby",
+                                  }));
+                                }}
+                                isSelected={menuSelection === 1}
+                                onHover={setMenuSelection}
+                              />
+                              <MenuButton
+                                index={2}
+                                label={t.mainMenu}
+                                danger
+                                onClick={() => {
+                                  onlineService.disconnect();
+                                  setGameState((p) => ({
+                                    ...p,
+                                    status: "menu",
+                                  }));
+                                }}
+                                isSelected={menuSelection === 2}
+                                onHover={setMenuSelection}
+                              />
+                            </div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {gameState.customLevelsQueue &&
+                        gameState.currentLevelIndex <
+                          gameState.customLevelsQueue.length - 1 ? (
+                          <>
+                            <MenuButton
+                              index={0}
+                              label={t.nextLevelBtn}
+                              onClick={handleNextLevel}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={1}
+                              label={t.backToSelection}
+                              onClick={() =>
+                                setGameState((p) => ({
+                                  ...p,
+                                  status:
+                                    p.previousStatus === "brawler_playing"
+                                      ? "brawler_setup"
+                                      : "vs_setup",
+                                }))
+                              }
+                              isSelected={menuSelection === 1}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={2}
+                              label={t.mainMenu}
+                              danger
+                              onClick={() =>
+                                setGameState((p) => ({ ...p, status: "menu" }))
+                              }
+                              isSelected={menuSelection === 2}
+                              onHover={setMenuSelection}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <MenuButton
+                              index={0}
+                              label={
+                                lang === Language.DE
+                                  ? "NOCHMAL SPIELEN"
+                                  : "PLAY AGAIN"
+                              }
+                              onClick={() => {
+                                handleRetry();
+                              }}
+                              isSelected={menuSelection === 0}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={1}
+                              label={t.backToSelection}
+                              onClick={() =>
+                                setGameState((p) => ({
+                                  ...p,
+                                  status:
+                                    p.previousStatus === "brawler_playing"
+                                      ? "brawler_setup"
+                                      : "vs_setup",
+                                }))
+                              }
+                              isSelected={menuSelection === 1}
+                              onHover={setMenuSelection}
+                            />
+                            <MenuButton
+                              index={2}
+                              label={t.mainMenu}
+                              danger
+                              onClick={() =>
+                                setGameState((p) => ({ ...p, status: "menu" }))
+                              }
+                              isSelected={menuSelection === 2}
+                              onHover={setMenuSelection}
+                            />
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Shop UI */}
+              {gameState.status === "shop" && (
+                <ShopView
+                  t={t}
+                  customization={customization}
+                  setCustomization={setCustomization}
+                  shopTab={shopTab}
+                  setShopTab={setShopTab}
+                  hoveredShopItem={hoveredShopItem}
+                  setHoveredShopItem={setHoveredShopItem}
+                  gameState={gameState}
+                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                  CharacterPreview={CharacterPreview}
+                  SHOP_ITEMS={SHOP_ITEMS}
+                  ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+                />
+              )}
+
+              {/* Book Menu */}
+              {gameState.status === "book" && (
+                <Book
+                  onClose={() =>
+                    setGameState((p) => ({ ...p, status: "menu" }))
+                  }
+                  lang={lang || Language.DE}
+                />
+              )}
+
+              {/* Geometry Dash Style Menu */}
+              {gameState.status === "geometry_dash_menu" &&
+                (() => {
+                  const gdLevelsList = GD_LEVELS;
+                  const currentLevel =
+                    gdLevelsList[gdSelectedLevelIndex] || GD_LEVELS[0];
+
+                  return (
+                    <div className="absolute inset-0 flex flex-col items-center justify-between p-8 bg-neutral-950 font-sans text-white z-40 overflow-hidden">
+                      {/* Neon Grid Background */}
+                      <div className="absolute inset-0 z-[-1] opacity-25">
+                        <div className="w-full h-full bg-[linear-gradient(to_right,#00ffcc_1px,transparent_1px),linear-gradient(to_bottom,#00ffcc_1px,transparent_1px)] bg-[size:40px_40px] shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/20 via-transparent to-emerald-950/20 pointer-events-none"></div>
+
+                      {/* Header */}
+                      <div className="flex flex-col items-center mt-4">
+                        <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-cyan-400 to-blue-500 font-extrabold tracking-widest uppercase drop-shadow-[0_4px_10px_rgba(0,255,160,0.5)] animate-pulse">
+                          RAGE RUN
+                        </h1>
+                        <span className="text-[10px] text-cyan-400 font-mono tracking-[0.4em] uppercase mt-2">
+                          - SECRET EXTRA MODE -
+                        </span>
+                      </div>
+
+                      {/* Level Display Selector */}
+                      <div className="flex flex-col items-center justify-center w-full max-w-xl bg-black/60 border border-cyan-500/30 p-6 rounded-lg backdrop-blur-md">
+                        <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4">
+                          {currentLevel.name}
+                        </h2>
+
+                        {/* Selector Arrow controls */}
+                        <div className="flex items-center justify-between w-full max-w-sm mb-4">
+                          <button
+                            onClick={() => {
+                              try {
+                                audio.playSfx("secret");
+                              } catch (e) {}
+                              setGdSelectedLevelIndex((p) =>
+                                p > 0 ? p - 1 : gdLevelsList.length - 1,
+                              );
+                            }}
+                            className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
+                          >
+                            ◀
+                          </button>
+
+                          <div className="flex flex-col items-center">
+                            <span className="text-xs text-neutral-400 font-mono uppercase">
+                              LEVEL {gdSelectedLevelIndex + 1} OF{" "}
+                              {gdLevelsList.length}
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-black uppercase mt-1 tracking-wider">
+                              STYLE: AUTO-SCROLL
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              try {
+                                audio.playSfx("secret");
+                              } catch (e) {}
+                              setGdSelectedLevelIndex((p) =>
+                                p < gdLevelsList.length - 1 ? p + 1 : 0,
+                              );
+                            }}
+                            className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
+                          >
+                            ▶
+                          </button>
+                        </div>
+
+                        {/* Level details / coins */}
+                        <div className="text-xs text-neutral-400 text-center font-mono">
+                          COINS TO GRAB:{" "}
+                          {currentLevel.entities.filter(
+                            (e) => e.type === "coin",
+                          ).length || 0}{" "}
+                          ✨
+                        </div>
+                        {gameState.playedLevelIds.includes(currentLevel.id) && (
+                           <div className="mt-2 text-sm text-green-400 font-bold uppercase tracking-widest text-center">
+                             ✅ COMPLETED
+                           </div>
+                        )}
+                        {(() => {
+                           const storedScores = localStorage.getItem("ragecube_highscores");
+                           if (storedScores) {
+                             try {
+                               const parsed = JSON.parse(storedScores);
+                               const s = parsed[currentLevel.id];
+                               if (s !== undefined) {
+                                  return (
+                                     <div className="mt-1 text-[10px] text-yellow-400 font-mono tracking-widest">
+                                       HIGHSCORE: {s}
+                                     </div>
+                                  );
+                               }
+                             } catch (e) {}
+                           }
+                           return null;
+                         })()}
+                      </div>
+
+                      {/* All Levels Grid Overview with Completion and Highscores */}
+                      <div className="w-full max-w-4xl px-4 mt-2 mb-2">
+                        <div className="text-center font-black uppercase tracking-widest text-cyan-400 text-[10px] mb-2">
+                          LEVEL-ÜBERSICHT & HIGHSCORES
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                          {gdLevelsList.map((lvl, idx) => {
+                            const completed = gameState.playedLevelIds.includes(lvl.id);
+                            let highscore: number | undefined;
+                            try {
+                              const stored = localStorage.getItem("ragecube_highscores");
+                              if (stored) {
+                                const parsed = JSON.parse(stored);
+                                highscore = parsed[lvl.id];
+                              }
+                            } catch (e) {}
+                            const isSelected = gdSelectedLevelIndex === idx;
+                            return (
+                              <div
+                                key={lvl.id}
+                                onClick={() => {
+                                  try {
+                                    audio.playSfx("secret");
+                                  } catch (e) {}
+                                  setGdSelectedLevelIndex(idx);
+                                }}
+                                className={`p-2 rounded border cursor-pointer transition-all flex flex-col items-center justify-between text-center min-h-[55px] select-none ${
+                                  isSelected
+                                    ? "bg-cyan-500/20 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                                    : "bg-black/40 border-neutral-800 hover:border-cyan-700 hover:bg-black/60"
+                                }`}
+                              >
+                                <div className="text-[9px] font-black text-neutral-300 tracking-wider">
+                                  {idx + 1}. {lvl.name}
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5 mt-1">
+                                  {completed ? (
+                                    <span className="text-[8px] text-green-400 font-bold uppercase tracking-wider flex items-center gap-0.5">
+                                      ✅ COMPLETED
+                                    </span>
+                                  ) : (
+                                    <span className="text-[8px] text-neutral-500 font-bold uppercase tracking-wider">
+                                      UNFINISHED
+                                    </span>
+                                  )}
+                                  {highscore !== undefined && (
+                                    <span className="text-[8px] text-yellow-500 font-mono font-bold leading-none">
+                                      🪙 {highscore}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Visual Character / Cube display bouncing with rotation angle */}
+                      <div className="my-4 flex items-center justify-center relative">
+                        <div className="absolute -inset-10 blur-2xl bg-cyan-500/20 rounded-full -z-10"></div>
+                        <div className="w-24 h-24 animate-bounce duration-700">
+                          <div className="w-full h-full rotate-[15deg] transition-transform duration-300">
+                            <CharacterPreview
+                              customization={customization}
+                              scale={6}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-row items-center gap-4 mb-2">
+                        <button
+                          onClick={() => setGameState((p) => ({ ...p, gdSpeedMode: 1 }))}
+                          className={`px-4 py-2 font-black uppercase tracking-widest text-[10px] border rounded transition-all ${
+                            (gameState.gdSpeedMode || 1) === 1 ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_15px_#22d3ee]" : "text-cyan-600 border-cyan-900 hover:border-cyan-600"
+                          }`}
+                        >
+                          NORMAL (1x)
+                        </button>
+                        <button
+                          onClick={() => setGameState((p) => ({ ...p, gdSpeedMode: 1.25 }))}
+                          className={`px-4 py-2 font-black uppercase tracking-widest text-[10px] border rounded transition-all ${
+                            (gameState.gdSpeedMode || 1) === 1.25 ? "bg-orange-500 text-black border-orange-400 shadow-[0_0_15px_#f97316]" : "text-orange-600 border-orange-900 hover:border-orange-600"
+                          }`}
+                        >
+                          SCHNELL (1.25x)
+                        </button>
+                        <button
+                          onClick={() => setGameState((p) => ({ ...p, gdSpeedMode: 1.5 }))}
+                          className={`px-4 py-2 font-black uppercase tracking-widest text-[10px] border rounded transition-all ${
+                            (gameState.gdSpeedMode || 1) === 1.5 ? "bg-red-500 text-white border-red-400 shadow-[0_0_15px_#ef4444]" : "text-red-700 border-red-900 hover:border-red-700"
+                          }`}
+                        >
+                          VERRÜCKT (1.5x)
+                        </button>
+                      </div>
+
+                      {/* Play Button Row */}
+                      <div className="flex flex-col items-center gap-6 mb-4">
+                        <button
+                          onClick={() => {
+                            try {
+                              audio.playSfx("secret");
+                            } catch (e) {}
+                            setLevel(currentLevel);
+                            setGameState((prev) => ({
+                              ...prev,
+                              status: "random_run",
+                              geometryDashMode: true,
+                              currentLevelIndex: gdSelectedLevelIndex,
+                              customLevelsQueue: GD_LEVELS,
+                              deaths: 0,
+                              levelDeaths: 0,
+                              time: 0,
+                              levelTime: 0,
+                              score: 0,
+                            }));
+                            setRespawnTrigger((p) => p + 1);
+                          }}
+                          className="w-28 h-28 rounded-full bg-yellow-400 hover:bg-yellow-300 border-4 border-white shadow-[0_0_35px_rgba(234,179,8,0.7)] hover:scale-110 active:scale-95 transition-all transform flex items-center justify-center cursor-pointer group"
+                        >
+                          <div className="w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-l-[25px] border-l-emerald-600 ml-1.5 group-hover:border-l-emerald-500 transition-colors"></div>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            try {
+                              audio.playSfx("secret");
+                            } catch (e) {}
+                            setGameState((p) => ({ ...p, status: "menu" }));
+                          }}
+                          className="px-6 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 font-black text-xs uppercase tracking-widest text-red-400 rounded transition-all active:scale-95"
+                        >
+                          ◀ BACK TO MAIN
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <button
-                        className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
-                        onClick={() =>
-                          setHighscoreLevelIndex((p) => Math.max(0, p - 1))
+                  );
+                })()}
+
+              {/* Settings Menu */}
+              {gameState.status === "settings" && (
+                <SettingsMenu
+                  t={t}
+                  settings={settings}
+                  setSettings={setSettings}
+                  lang={lang}
+                  menuSelection={menuSelection}
+                  setMenuSelection={setMenuSelection}
+                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                  onKeybindings={() => {
+                    setGameState((p) => ({ ...p, status: "keybindings" }));
+                    setMenuSelection(0);
+                  }}
+                  FPS_OPTIONS={FPS_OPTIONS}
+                  UI_SCALE_OPTIONS={UI_SCALE_OPTIONS}
+                  RESOLUTION_OPTIONS={RESOLUTION_OPTIONS}
+                  setPlayerName={setPlayerName}
+                  MenuButton={MenuButton}
+                  SettingsSlider={SettingsSlider}
+                />
+              )}
+
+              {/* Keybindings Menu */}
+              {gameState.status === "keybindings" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto custom-scrollbar py-10">
+                  <h2 className="text-3xl mb-4 text-rage-red uppercase">
+                    {t.keybindings}
+                  </h2>
+                  <div className="text-center text-sm text-neutral-400 mb-8 max-w-md">
+                    {t.keybindingsDesc}
+                  </div>
+
+                  <div className="flex gap-8 mb-8">
+                    {/* Player 1 */}
+                    <div className="w-64 space-y-1">
+                      <h3 className="text-xl text-troll-green mb-2 text-center uppercase">
+                        {t.player1}
+                      </h3>
+                      {["up", "down", "left", "right", "action", "dash"].map(
+                        (action, i) => {
+                          const isEditing =
+                            editingKey?.player === 1 &&
+                            editingKey.action === action;
+                          const bindings =
+                            settings.keybindingsP1?.[
+                              action as keyof Keybindings
+                            ] || [];
+                          const keyBinds = bindings.filter(
+                            (k) => k !== "GP_None",
+                          );
+                          const displayBinds = keyBinds
+                            .map((k) =>
+                              k
+                                .replace("Arrow", "")
+                                .replace("Key", "")
+                                .replace("Digit", "")
+                                .replace("ControlRight", "R-CTRL")
+                                .replace("ControlLeft", "L-CTRL")
+                                .toUpperCase(),
+                            )
+                            .join(" / ");
+
+                          return (
+                            <div
+                              key={action}
+                              className={`p-2 border cursor-pointer flex flex-col transition-colors ${menuSelection === i ? "border-white bg-neutral-800" : "border-transparent border-b-neutral-800"}`}
+                              onMouseEnter={() => setMenuSelection(i)}
+                              onClick={() =>
+                                setEditingKey({
+                                  player: 1,
+                                  action: action as keyof Keybindings,
+                                })
+                              }
+                            >
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="uppercase text-[10px] font-bold text-neutral-400">
+                                  {t[action as keyof typeof t] || action}
+                                </span>
+                                {isEditing && (
+                                  <span className="text-rage-red animate-pulse text-[9px] font-black italic">
+                                    {t.pressKey}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex justify-between items-center text-[10px]">
+                                <div className="flex gap-1 items-center">
+                                  <span className="font-bold text-blue-400">
+                                    {displayBinds || "NONE"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+
+                    {/* Player 2 */}
+                    <div className="w-64 space-y-1">
+                      <h3 className="text-xl text-troll-green mb-2 text-center uppercase">
+                        {t.player2}
+                      </h3>
+                      {["up", "down", "left", "right", "action", "dash"].map(
+                        (action, i) => {
+                          const idx = i + 6;
+                          const isEditing =
+                            editingKey?.player === 2 &&
+                            editingKey.action === action;
+                          const bindings =
+                            settings.keybindingsP2?.[
+                              action as keyof Keybindings
+                            ] || [];
+                          const keyBinds = bindings.filter(
+                            (k) => k !== "GP_None",
+                          );
+                          const displayBinds = keyBinds
+                            .map((k) =>
+                              k
+                                .replace("Arrow", "")
+                                .replace("Key", "")
+                                .replace("Digit", "")
+                                .replace("ControlRight", "R-CTRL")
+                                .replace("ControlLeft", "L-CTRL")
+                                .toUpperCase(),
+                            )
+                            .join(" / ");
+
+                          return (
+                            <div
+                              key={action}
+                              className={`p-2 border cursor-pointer flex flex-col transition-colors ${menuSelection === idx ? "border-white bg-neutral-800" : "border-transparent border-b-neutral-800"}`}
+                              onMouseEnter={() => setMenuSelection(idx)}
+                              onClick={() =>
+                                setEditingKey({
+                                  player: 2,
+                                  action: action as keyof Keybindings,
+                                })
+                              }
+                            >
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="uppercase text-[10px] font-bold text-neutral-400">
+                                  {t[action as keyof typeof t] || action}
+                                </span>
+                                {isEditing && (
+                                  <span className="text-rage-red animate-pulse text-[9px] font-black italic">
+                                    {t.pressKey}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex justify-between items-center text-[10px]">
+                                <div className="flex gap-1 items-center">
+                                  <span className="font-bold text-blue-400">
+                                    {displayBinds || "NONE"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="w-72">
+                    <MenuButton
+                      index={12}
+                      label={t.back}
+                      onClick={() => {
+                        setGameState((p) => ({ ...p, status: "settings" }));
+                        setMenuSelection(2);
+                      }}
+                      isSelected={menuSelection === 12}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Highscores Menu (Per Level) */}
+              {gameState.status === "highscores" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
+                  <h2 className="text-3xl mb-4 text-troll-green">
+                    {t.highscores}
+                  </h2>
+
+                  <div className="mb-4 flex flex-col items-center">
+                    <div className="text-[10px] text-neutral-500 mb-1">
+                      {t.changeSourceHint || "USE UP/DOWN TO CHANGE SOURCE"}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const sources: any[] =
+                          gameState.onlineMode === "brawler"
+                            ? ["brawler", "custom"]
+                            : [
+                                "builtin",
+                                "beginner",
+                                "advanced",
+                                "expert",
+                                "god",
+                                "custom",
+                              ];
+                        const currentIdx = sources.indexOf(levelSource);
+                        let nextIdx = (currentIdx + 1) % sources.length;
+                        const newSource = sources[nextIdx];
+                        if (
+                          newSource === "custom" &&
+                          customLevels.length === 0
+                        ) {
+                          nextIdx = (nextIdx + 1) % sources.length;
                         }
-                      >
-                        ◀
-                      </button>
-                      <div className="text-center w-64 px-2">
+                        setLevelSource(sources[nextIdx]);
+                        setHighscoreLevelIndex(0);
+                      }}
+                      className={`text-sm font-bold text-blue-400 hover:underline cursor-pointer uppercase tracking-widest`}
+                    >
+                      {(() => {
+                        if (levelSource === "beginner")
+                          return t.beginner || "BEGINNER";
+                        if (levelSource === "advanced")
+                          return t.advanced || "ADVANCED";
+                        if (levelSource === "expert")
+                          return t.expert || "EXPERT";
+                        if (levelSource === "god") return t.god || "JUMP GOD";
+                        if (levelSource === "brawler")
+                          return t.brawlerLevels || "BRAWLER";
+                        if (levelSource === "custom")
+                          return t.customLevelsLabel || "OWN LEVELS";
+                        if (levelSource === "builtin")
+                          return t.fullRun || "FULL RUN";
+                        return levelSource.toUpperCase();
+                      })()}
+                    </button>
+                  </div>
+
+                  {levelSource !== "builtin" && (
+                    <div className="flex flex-col items-center gap-4 mb-6">
+                      <div className="w-48 aspect-video bg-black border border-neutral-700 rounded overflow-hidden shadow-lg">
                         {(() => {
                           let activeList: LevelData[] = [];
-                          if (levelSource === "beginner") activeList = INITIAL_LEVELS;
-                          else if (levelSource === "advanced") activeList = ADVANCED_LEVELS;
-                          else if (levelSource === "expert") activeList = EXPERT_LEVELS;
-                          else if (levelSource === "god") activeList = GOD_LEVELS;
-                          else if (levelSource === "brawler") activeList = BRAWLER_LEVELS;
-                          else if (levelSource === "custom") activeList = customLevels;
+                          if (levelSource === "beginner")
+                            activeList = INITIAL_LEVELS;
+                          else if (levelSource === "advanced")
+                            activeList = ADVANCED_LEVELS;
+                          else if (levelSource === "expert")
+                            activeList = EXPERT_LEVELS;
+                          else if (levelSource === "god")
+                            activeList = GOD_LEVELS;
+                          else if (levelSource === "brawler")
+                            activeList = BRAWLER_LEVELS;
+                          else if (levelSource === "custom")
+                            activeList = customLevels;
 
                           const idx = Math.min(
                             Math.max(0, highscoreLevelIndex),
                             Math.max(0, activeList.length - 1),
                           );
-                          const currentLevel = activeList[idx];
-
+                          if (activeList[idx]) {
+                            return (
+                              <LevelPreview
+                                level={activeList[idx]}
+                                width={192}
+                                height={108}
+                                className="w-full h-full"
+                              />
+                            );
+                          }
                           return (
-                            <>
-                              <div className="text-xs text-neutral-400 font-mono tracking-tighter">
-                                {t.level || "LEVEL"}{" "}
-                                {idx + 1} / {activeList.length}
-                              </div>
-                              <div className="text-white font-bold truncate text-lg">
-                                {currentLevel?.name || "NO LEVELS"}
-                              </div>
-                            </>
+                            <div className="w-full h-full flex items-center justify-center text-xs text-neutral-600">
+                              NO PREVIEW
+                            </div>
                           );
                         })()}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <button
+                          className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
+                          onClick={() =>
+                            setHighscoreLevelIndex((p) => Math.max(0, p - 1))
+                          }
+                        >
+                          ◀
+                        </button>
+                        <div className="text-center w-64 px-2">
+                          {(() => {
+                            let activeList: LevelData[] = [];
+                            if (levelSource === "beginner")
+                              activeList = INITIAL_LEVELS;
+                            else if (levelSource === "advanced")
+                              activeList = ADVANCED_LEVELS;
+                            else if (levelSource === "expert")
+                              activeList = EXPERT_LEVELS;
+                            else if (levelSource === "god")
+                              activeList = GOD_LEVELS;
+                            else if (levelSource === "brawler")
+                              activeList = BRAWLER_LEVELS;
+                            else if (levelSource === "custom")
+                              activeList = customLevels;
+
+                            const idx = Math.min(
+                              Math.max(0, highscoreLevelIndex),
+                              Math.max(0, activeList.length - 1),
+                            );
+                            const currentLevel = activeList[idx];
+
+                            return (
+                              <>
+                                <div className="text-xs text-neutral-400 font-mono tracking-tighter">
+                                  {t.level || "LEVEL"} {idx + 1} /{" "}
+                                  {activeList.length}
+                                </div>
+                                <div className="text-white font-bold truncate text-lg">
+                                  {currentLevel?.name || "NO LEVELS"}
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <button
+                          className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
+                          onClick={() => {
+                            let activeList: LevelData[] = [];
+                            if (levelSource === "beginner")
+                              activeList = INITIAL_LEVELS;
+                            else if (levelSource === "advanced")
+                              activeList = ADVANCED_LEVELS;
+                            else if (levelSource === "expert")
+                              activeList = EXPERT_LEVELS;
+                            else if (levelSource === "god")
+                              activeList = GOD_LEVELS;
+                            else if (levelSource === "brawler")
+                              activeList = BRAWLER_LEVELS;
+                            else if (levelSource === "custom")
+                              activeList = customLevels;
+
+                            setHighscoreLevelIndex((p) =>
+                              Math.min(activeList.length - 1, p + 1),
+                            );
+                          }}
+                        >
+                          ▶
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {levelSource === "builtin" && (
+                    <div className="flex items-center gap-4 mb-6">
+                      <button
+                        className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
+                        onClick={() => {
+                          setHighscoreLevelIndex((p) => Math.max(0, p - 1));
+                        }}
+                      >
+                        ◀
+                      </button>
+                      <div className="text-center w-64">
+                        <div className="text-white font-bold text-xl text-yellow-500 animate-pulse uppercase tracking-widest truncate">
+                          {(() => {
+                            if (highscoreLevelIndex === 0)
+                              return t.fullRun || "FULL STORY RUN";
+                            const cat =
+                              storyCategories[highscoreLevelIndex - 1];
+                            return cat ? `${cat.name} RUN` : "STORY RUN";
+                          })()}
+                        </div>
                       </div>
                       <button
                         className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
                         onClick={() => {
-                          let activeList: LevelData[] = [];
-                          if (levelSource === "beginner") activeList = INITIAL_LEVELS;
-                          else if (levelSource === "advanced") activeList = ADVANCED_LEVELS;
-                          else if (levelSource === "expert") activeList = EXPERT_LEVELS;
-                          else if (levelSource === "god") activeList = GOD_LEVELS;
-                          else if (levelSource === "brawler") activeList = BRAWLER_LEVELS;
-                          else if (levelSource === "custom") activeList = customLevels;
-
                           setHighscoreLevelIndex((p) =>
-                            Math.min(activeList.length - 1, p + 1),
+                            Math.min(storyCategories.length, p + 1),
                           );
                         }}
                       >
                         ▶
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {levelSource === "builtin" && (
-                  <div className="flex items-center gap-4 mb-6">
-                    <button
-                      className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
-                      onClick={() => {
-                        setHighscoreLevelIndex((p) => Math.max(0, p - 1));
-                      }}
-                    >
-                      ◀
-                    </button>
-                    <div className="text-center w-64">
-                      <div className="text-white font-bold text-xl text-yellow-500 animate-pulse uppercase tracking-widest truncate">
-                        {(() => {
-                           if (highscoreLevelIndex === 0) return t.fullRun || "FULL STORY RUN";
-                           const cat = storyCategories[highscoreLevelIndex - 1];
-                           return cat ? `${cat.name} RUN` : "STORY RUN";
-                        })()}
-                      </div>
-                    </div>
-                    <button
-                      className="text-3xl hover:text-white text-neutral-500 transition-colors p-2"
-                      onClick={() => {
-                        setHighscoreLevelIndex((p) => Math.min(storyCategories.length, p + 1));
-                      }}
-                    >
-                      ▶
-                    </button>
-                  </div>
-                )}
+                  <div className="w-80 space-y-2 mb-8 h-64 overflow-y-auto custom-scrollbar bg-neutral-900/50 rounded-lg p-2 border border-neutral-800">
+                    {(() => {
+                      let activeList: LevelData[] = [];
+                      if (levelSource === "beginner")
+                        activeList = INITIAL_LEVELS;
+                      else if (levelSource === "advanced")
+                        activeList = ADVANCED_LEVELS;
+                      else if (levelSource === "expert")
+                        activeList = EXPERT_LEVELS;
+                      else if (levelSource === "god") activeList = GOD_LEVELS;
+                      else if (levelSource === "brawler")
+                        activeList = BRAWLER_LEVELS;
+                      else if (levelSource === "custom")
+                        activeList = customLevels;
+                      else if (levelSource === "builtin")
+                        activeList = INITIAL_LEVELS; // Just for fallback
 
-                <div className="w-80 space-y-2 mb-8 h-64 overflow-y-auto custom-scrollbar bg-neutral-900/50 rounded-lg p-2 border border-neutral-800">
-                  {(() => {
-                    let activeList: LevelData[] = [];
-                    if (levelSource === "beginner") activeList = INITIAL_LEVELS;
-                    else if (levelSource === "advanced") activeList = ADVANCED_LEVELS;
-                    else if (levelSource === "expert") activeList = EXPERT_LEVELS;
-                    else if (levelSource === "god") activeList = GOD_LEVELS;
-                    else if (levelSource === "brawler") activeList = BRAWLER_LEVELS;
-                    else if (levelSource === "custom") activeList = customLevels;
-                    else if (levelSource === "builtin") activeList = INITIAL_LEVELS; // Just for fallback
-
-                    if (levelSource === "custom" && activeList.length === 0)
-                      return (
-                        <p className="text-center text-red-500 mt-10">
-                          {t.noLevels || "NO CUSTOM LEVELS"}
-                        </p>
-                      );
-
-                    const idx = Math.min(
-                      Math.max(0, highscoreLevelIndex),
-                      Math.max(0, activeList.length - 1),
-                    );
-                    const currentId =
-                      levelSource === "builtin"
-                        ? (highscoreLevelIndex === 0 ? "STORY_MODE" : (storyCategories[highscoreLevelIndex - 1]?.name || "STORY_MODE"))
-                        : activeList[idx]?.id;
-
-                    if (!currentId) return <p className="text-center text-neutral-500 mt-10">ERROR</p>;
-
-                    const scores = highScores
-                      .filter((h) => h.levelId === currentId)
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 10);
-
-                    if (scores.length === 0)
-                      return (
-                        <div className="flex flex-col items-center justify-center mt-10 text-neutral-500 border-2 border-dashed border-neutral-800 rounded-lg p-8">
-                          <span className="text-4xl mb-2">👻</span>
-                          <p className="text-center font-bold uppercase tracking-widest text-xs">
-                            {t.noRecords || "NO RECORDS"}
+                      if (levelSource === "custom" && activeList.length === 0)
+                        return (
+                          <p className="text-center text-red-500 mt-10">
+                            {t.noLevels || "NO CUSTOM LEVELS"}
                           </p>
-                        </div>
+                        );
+
+                      const idx = Math.min(
+                        Math.max(0, highscoreLevelIndex),
+                        Math.max(0, activeList.length - 1),
                       );
+                      const currentId =
+                        levelSource === "builtin"
+                          ? highscoreLevelIndex === 0
+                            ? "STORY_MODE"
+                            : storyCategories[highscoreLevelIndex - 1]?.name ||
+                              "STORY_MODE"
+                          : activeList[idx]?.id;
 
-                    return scores.map((h, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col bg-black/40 border border-neutral-800 rounded p-3 mb-1 hover:border-blue-500/50 transition-colors"
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-bold text-white text-sm">
-                            {i + 1}. {h.name}
-                          </span>
-                          <span className="text-yellow-400 font-bold text-sm">
-                            {h.score}
-                          </span>
+                      if (!currentId)
+                        return (
+                          <p className="text-center text-neutral-500 mt-10">
+                            ERROR
+                          </p>
+                        );
+
+                      const scores = highScores
+                        .filter((h) => h.levelId === currentId)
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 10);
+
+                      if (scores.length === 0)
+                        return (
+                          <div className="flex flex-col items-center justify-center mt-10 text-neutral-500 border-2 border-dashed border-neutral-800 rounded-lg p-8">
+                            <span className="text-4xl mb-2">👻</span>
+                            <p className="text-center font-bold uppercase tracking-widest text-xs">
+                              {t.noRecords || "NO RECORDS"}
+                            </p>
+                          </div>
+                        );
+
+                      return scores.map((h, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col bg-black/40 border border-neutral-800 rounded p-3 mb-1 hover:border-blue-500/50 transition-colors"
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-white text-sm">
+                              {i + 1}. {h.name}
+                            </span>
+                            <span className="text-yellow-400 font-bold text-sm">
+                              {h.score}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-neutral-500 uppercase font-mono">
+                            <span>{h.date}</span>
+                            <span className="text-neutral-400">
+                              {h.time}s • {h.deaths}☠
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-[10px] text-neutral-500 uppercase font-mono">
-                          <span>{h.date}</span>
-                          <span className="text-neutral-400">{h.time}s • {h.deaths}☠</span>
-                        </div>
-                      </div>
-                    ));
+                      ));
+                    })()}
+                  </div>
+                  <div className="w-72">
+                    <MenuButton
+                      index={0}
+                      label={t.back}
+                      onClick={() =>
+                        setGameState((p) => ({ ...p, status: "menu" }))
+                      }
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Global Toast */}
+              <AnimatePresence>
+                {toastMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{
+                      opacity: 0,
+                      scale: 0.9,
+                      transition: { duration: 0.2 },
+                    }}
+                    className="fixed bottom-6 right-6 bg-neutral-950/95 border border-neutral-800 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[250] flex items-center gap-3"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-rage-red animate-pulse" />
+                    <span className="font-medium text-sm tracking-tight">
+                      {toastMessage}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Achievement Toast */}
+              {achievementToast && (
+                <div className="fixed bottom-4 right-4 bg-neutral-900 border-2 border-yellow-500 text-white p-4 rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.3)] z-[200] animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-4 max-w-sm pointer-events-none">
+                  <div className="text-4xl animate-bounce">
+                    {achievementToast.icon}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-1">
+                      {t.achievementUnlocked || "ACHIEVEMENT UNLOCKED"}
+                    </div>
+                    <div className="font-bold text-sm text-yellow-100">
+                      {t.achievements_data?.[
+                        achievementToast.id as keyof typeof t.achievements_data
+                      ]?.title || achievementToast.title}
+                    </div>
+                    <div className="text-xs text-neutral-400 mt-1">
+                      {t.achievements_data?.[
+                        achievementToast.id as keyof typeof t.achievements_data
+                      ]?.desc || achievementToast.description}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showLevelMenu && (
+                <LevelMenu
+                  categories={(() => {
+                    const isVS =
+                      gameState.status === "vs_setup" ||
+                      gameState.onlineMode === "vs";
+                    const isBrawler =
+                      gameState.status === "brawler_setup" ||
+                      gameState.onlineMode === "brawler";
+                    const process = (list: LevelData[]) => {
+                      if (isVS) return filterVSLevels(list);
+                      if (isBrawler) return filterBrawlerLevels(list);
+                      return list;
+                    };
+
+                    return [
+                      { name: "Beginner", levels: process(INITIAL_LEVELS) },
+                      { name: "Advanced", levels: process(ADVANCED_LEVELS) },
+                      { name: "Expert", levels: process(EXPERT_LEVELS) },
+                      { name: "God", levels: process(GOD_LEVELS) },
+                      { name: "Brawler", levels: process(BRAWLER_LEVELS) },
+                      { name: "Custom Levels", levels: process(customLevels) },
+                    ];
                   })()}
-                </div>
-                <div className="w-72">
-                  <MenuButton
-                    index={0}
-                    label={t.back}
-                    onClick={() =>
-                      setGameState((p) => ({ ...p, status: "menu" }))
+                  selectedLevels={selectedLevels}
+                  onToggleLevel={toggleLevelSelection}
+                  onClose={() => setShowLevelMenu(false)}
+                  onStart={() => {
+                    setShowLevelMenu(false);
+                    if (selectedLevels.length > 0) {
+                      if (onlineService.lobbyCode && gameState.isHost) {
+                        const firstLevel = selectedLevels[0];
+                        setLevel(firstLevel);
+                        setGameState((p) => ({
+                          ...p,
+                          customLevelsQueue: selectedLevels,
+                          currentLevelIndex: 0,
+                        }));
+                        onlineService.broadcastLobbyState(
+                          gameState.onlineMode!,
+                          firstLevel,
+                          selectedLevels,
+                          brawlerTeamMode,
+                          brawlerHazardMode,
+                          undefined,
+                          0,
+                          gameState.collisionEnabled,
+                          undefined,
+                          brawlerPowerups,
+                          brawlerSuddenDeath,
+                          gameState.finishTimerEnabled,
+                        );
+                      } else {
+                        // Local mode: if multiple levels, start a queue
+                        setLevel(selectedLevels[0]);
+                        setGameState((p) => ({
+                          ...p,
+                          customLevelsQueue:
+                            selectedLevels.length > 1
+                              ? selectedLevels
+                              : undefined,
+                          currentLevelIndex: 0,
+                        }));
+
+                        // If we are in a setup screen, we might want to transition to playing
+                        if (gameState.status === "vs_setup") {
+                          setGameState((p) => ({
+                            ...p,
+                            status: "vs_playing",
+                            levelDeaths: 0,
+                            levelTime: 0,
+                            collectedCoins: [],
+                            deaths: 0,
+                            blocksPlaced: 0,
+                          }));
+                          setRespawnTrigger(0);
+                          checkAchievements({ mode: "vs" });
+                        } else if (gameState.status === "brawler_setup") {
+                          setGameState((p) => ({
+                            ...p,
+                            status: "brawler_powerup_setup",
+                            levelDeaths: 0,
+                            levelTime: 0,
+                            collectedCoins: [],
+                            deaths: 0,
+                            blocksPlaced: 0,
+                          }));
+                          setMenuSelection(0);
+                        }
+                      }
                     }
-                    isSelected={menuSelection === 0}
-                    onHover={setMenuSelection}
-                  />
-                </div>
-              </div>
-            )}
-
-        {/* Global Toast */}
-        <AnimatePresence>
-          {toastMessage && (
-            <motion.div
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-              className="fixed bottom-6 right-6 bg-neutral-950/95 border border-neutral-800 text-white px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[250] flex items-center gap-3"
-            >
-              <div className="w-2 h-2 rounded-full bg-rage-red animate-pulse" />
-              <span className="font-medium text-sm tracking-tight">{toastMessage}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Achievement Toast */}
-        {achievementToast && (
-          <div className="fixed bottom-4 right-4 bg-neutral-900 border-2 border-yellow-500 text-white p-4 rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.3)] z-[200] animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-4 max-w-sm pointer-events-none">
-            <div className="text-4xl animate-bounce">{achievementToast.icon}</div>
-            <div className="flex flex-col">
-              <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-1">
-                {t.achievementUnlocked || "ACHIEVEMENT UNLOCKED"}
-              </div>
-              <div className="font-bold text-sm text-yellow-100">
-                {t.achievements_data?.[achievementToast.id as keyof typeof t.achievements_data]?.title || achievementToast.title}
-              </div>
-              <div className="text-xs text-neutral-400 mt-1">
-                {t.achievements_data?.[achievementToast.id as keyof typeof t.achievements_data]?.desc || achievementToast.description}
-              </div>
+                  }}
+                  t={t}
+                />
+              )}
             </div>
           </div>
-        )}
-
-        {showLevelMenu && (
-          <LevelMenu
-            categories={(() => {
-              const isVS =
-                gameState.status === "vs_setup" ||
-                gameState.onlineMode === "vs";
-              const isBrawler =
-                gameState.status === "brawler_setup" ||
-                gameState.onlineMode === "brawler";
-              const process = (list: LevelData[]) => {
-                if (isVS) return filterVSLevels(list);
-                if (isBrawler) return filterBrawlerLevels(list);
-                return list;
-              };
-
-              return [
-                { name: "Beginner", levels: process(INITIAL_LEVELS) },
-                { name: "Advanced", levels: process(ADVANCED_LEVELS) },
-                { name: "Expert", levels: process(EXPERT_LEVELS) },
-                { name: "God", levels: process(GOD_LEVELS) },
-                { name: "Brawler", levels: process(BRAWLER_LEVELS) },
-                { name: "Custom Levels", levels: process(customLevels) },
-              ];
-            })()}
-            selectedLevels={selectedLevels}
-            onToggleLevel={toggleLevelSelection}
-            onClose={() => setShowLevelMenu(false)}
-            onStart={() => {
-              setShowLevelMenu(false);
-              if (selectedLevels.length > 0) {
-                if (onlineService.lobbyCode && gameState.isHost) {
-                  const firstLevel = selectedLevels[0];
-                  setLevel(firstLevel);
-                  setGameState(p => ({
-                    ...p,
-                    customLevelsQueue: selectedLevels,
-                    currentLevelIndex: 0
-                  }));
-                  onlineService.broadcastLobbyState(
-                    gameState.onlineMode!,
-                    firstLevel,
-                    selectedLevels,
-                    brawlerTeamMode,
-                    brawlerHazardMode,
-                    undefined,
-                    0,
-                    gameState.collisionEnabled,
-                    undefined,
-                    brawlerPowerups,
-                    brawlerSuddenDeath,
-                    gameState.finishTimerEnabled
-                  );
-                } else {
-                  // Local mode: if multiple levels, start a queue
-                  setLevel(selectedLevels[0]);
-                  setGameState((p) => ({
-                    ...p,
-                    customLevelsQueue:
-                      selectedLevels.length > 1 ? selectedLevels : undefined,
-                    currentLevelIndex: 0,
-                  }));
-
-                  // If we are in a setup screen, we might want to transition to playing
-                  if (gameState.status === "vs_setup") {
-                    setGameState((p) => ({
-                      ...p,
-                      status: "vs_playing",
-                      levelDeaths: 0,
-                      levelTime: 0,
-                      collectedCoins: [],
-                      deaths: 0,
-                      blocksPlaced: 0,
-                    }));
-                    setRespawnTrigger(0);
-                    checkAchievements({ mode: "vs" });
-                  } else if (gameState.status === "brawler_setup") {
-                    setGameState((p) => ({
-                      ...p,
-                      status: "brawler_powerup_setup",
-                      levelDeaths: 0,
-                      levelTime: 0,
-                      collectedCoins: [],
-                      deaths: 0,
-                      blocksPlaced: 0,
-                    }));
-                    setMenuSelection(0);
-                  }
-                }
-              }
-            }}
-            t={t}
-          />
-        )}
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
-    <div className="mt-4 text-neutral-500 text-xs hidden md:block text-center opacity-0 pointer-events-none">
-      Rage Cube v7.0
-    </div>
-  </>
-);
+      <div className="mt-4 text-neutral-500 text-xs hidden md:block text-center opacity-0 pointer-events-none">
+        Rage Cube v7.0
+      </div>
+    </>
+  );
 };
 
 export default App;

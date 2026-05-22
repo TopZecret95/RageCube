@@ -45,6 +45,8 @@ export interface GameCanvasProps {
   opponentOpacity?: number;
   status?: string;
   geometryDashMode?: boolean;
+  gdSpeedMode?: number;
+  levelDeaths?: number;
 }
 
 export interface TempBlock extends Entity {
@@ -168,6 +170,7 @@ export interface PlayerState {
   collectedPowerupIds: string[];
   hasStartedMove: boolean;
   moveStartTime: number;
+  scrollX?: number; // Add scrollX
   // New Abilities
   dashCooldown: number;
   dashTimer: number;
