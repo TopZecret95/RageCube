@@ -78,6 +78,367 @@ const FPS_OPTIONS = [30, 60, 120, 144, 165, 240, 0]; // 0 = Unlimited
 const UI_SCALE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5];
 const RESOLUTION_OPTIONS = [720, 1080, 1440, 2160];
 
+const createGDLevel = (spec: {
+  id: string;
+  name: string;
+  length: number;
+  gaps?: [number, number][];
+  ceilings?: [number, number][];
+  hazards?: number[];
+  upsideDownHazards?: number[];
+  trampolines?: number[];
+  gravityBlocks?: { x: number; y: number }[];
+  coins?: { x: number; y: number }[];
+  platforms?: { x: number; y: number; w: number; h?: number }[];
+  additionalEntities?: any[];
+}): LevelData => {
+  const entities: any[] = [];
+
+  // 1. Generate core floor blocks (w: 30, h: 30) from 0 to length at y = 480
+  const gapList = spec.gaps || [];
+  for (let x = 0; x < spec.length; x += 30) {
+    const inGap = gapList.some(([start, end]) => x >= start && x < end);
+    if (!inGap) {
+      entities.push({ x, y: 480, w: 30, h: 30, type: "wall" });
+    }
+  }
+
+  // 2. Generate ceilings (w: 30, h: 30 at y = 150)
+  const ceilingList = spec.ceilings || [];
+  ceilingList.forEach(([start, end]) => {
+    for (let x = start; x < end; x += 30) {
+      entities.push({ x, y: 150, w: 30, h: 30, type: "wall" });
+    }
+  });
+
+  // 3. Generate floor hazards (spikes) at y = 450
+  if (spec.hazards) {
+    spec.hazards.forEach((x) => {
+      entities.push({ x, y: 450, w: 30, h: 30, type: "hazard" });
+    });
+  }
+
+  // 4. Generate ceiling hazards at y = 180 (directly under y=150 ceiling)
+  if (spec.upsideDownHazards) {
+    spec.upsideDownHazards.forEach((x) => {
+      entities.push({ x, y: 180, w: 30, h: 30, type: "hazard" });
+    });
+  }
+
+  // 5. Generate floor trampolines at y = 450
+  if (spec.trampolines) {
+    spec.trampolines.forEach((x) => {
+      entities.push({ x, y: 450, w: 30, h: 30, type: "trampoline" });
+    });
+  }
+
+  // 6. Generate gravity block triggers
+  if (spec.gravityBlocks) {
+    spec.gravityBlocks.forEach(({ x, y }) => {
+      entities.push({ x, y, w: 30, h: 30, type: "block_gravity" });
+    });
+  }
+
+  // 7. Generate coins (type "coin", auto-assigned dynamic ID)
+  if (spec.coins) {
+    spec.coins.forEach(({ x, y }, index) => {
+      entities.push({
+        x,
+        y,
+        w: 20,
+        h: 20,
+        type: "coin",
+        id: `${spec.id}_coin_${index + 1}`,
+      });
+    });
+  }
+
+  // 8. Generate floating platforms
+  if (spec.platforms) {
+    spec.platforms.forEach((p) => {
+      entities.push({
+        x: p.x,
+        y: p.y,
+        w: p.w,
+        h: p.h || 30,
+        type: "wall",
+      });
+    });
+  }
+
+  // 9. Add any extra custom entities
+  if (spec.additionalEntities) {
+    spec.additionalEntities.forEach((ent) => {
+      entities.push(ent);
+    });
+  }
+
+  // 10. Generate final Goal automatically
+  entities.push({
+    x: spec.length - 200,
+    y: 420,
+    w: 30,
+    h: 60,
+    type: "goal",
+  });
+
+  return {
+    id: spec.id,
+    name: spec.name,
+    start: { x: 50, y: 420 },
+    allowedAbility: "none",
+    isCustom: true,
+    isBrawler: false,
+    isVerified: true,
+    entities,
+  };
+};
+
+const GD_LEVEL_1_STEREO_MADNESS = createGDLevel({
+  id: "gd_stereo_madness",
+  name: "Stereo Madness",
+  length: 4000,
+  hazards: [390, 570, 750, 780, 1020, 1170, 1200, 1230, 1560, 1710, 1890, 1920, 2220, 2400, 2430, 2760, 3060, 3090, 3120],
+  trampolines: [1950],
+  platforms: [
+    { x: 900, y: 450, w: 30 },
+    { x: 930, y: 420, w: 30 },
+    { x: 960, y: 390, w: 30 },
+    { x: 1350, y: 450, w: 30 },
+    { x: 1380, y: 420, w: 30 },
+    { x: 1410, y: 450, w: 30 },
+    { x: 1600, y: 390, w: 90 },
+    { x: 2100, y: 390, w: 90 },
+    { x: 2040, y: 360, w: 60 },
+    { x: 2700, y: 360, w: 120 },
+  ],
+  additionalEntities: [
+    { x: 1630, y: 360, w: 30, h: 30, type: "hazard" },
+    { x: 2130, y: 360, w: 30, h: 30, type: "hazard" },
+  ],
+  coins: [
+    { x: 965, y: 330 },
+    { x: 1635, y: 290 },
+    { x: 2135, y: 290 },
+  ],
+});
+
+const GD_LEVEL_2_BACK_ON_TRACK = createGDLevel({
+  id: "gd_back_on_track",
+  name: "Back On Track",
+  length: 4000,
+  hazards: [450, 1200, 1230, 1700, 2100, 2500, 2900, 2930, 3300],
+  trampolines: [800, 1400, 2300, 3100],
+  platforms: [
+    { x: 830, y: 330, w: 270 },
+    { x: 1430, y: 330, w: 240 },
+    { x: 2330, y: 330, w: 210 },
+    { x: 3130, y: 300, w: 180 },
+  ],
+  additionalEntities: [
+    { x: 950, y: 300, w: 30, h: 30, type: "hazard" },
+    { x: 1530, y: 300, w: 30, h: 30, type: "hazard" },
+    { x: 2400, y: 300, w: 30, h: 30, type: "hazard" },
+  ],
+  coins: [
+    { x: 960, y: 240 },
+    { x: 1540, y: 240 },
+    { x: 3200, y: 200 },
+  ],
+});
+
+const GD_LEVEL_3_POLARGEIST = createGDLevel({
+  id: "gd_polargeist",
+  name: "Polargeist",
+  length: 4200,
+  hazards: [500, 1200, 1800, 2100, 3050, 3350, 3380],
+  platforms: [
+    { x: 700, y: 450, w: 30 },
+    { x: 730, y: 420, w: 30 },
+    { x: 760, y: 390, w: 30 },
+    { x: 790, y: 360, w: 120 },
+    { x: 1480, y: 320, w: 60, h: 160 },
+    { x: 2580, y: 320, w: 60, h: 160 },
+  ],
+  additionalEntities: [
+    { x: 1380, y: 380, w: 30, h: 30, type: "trampoline" },
+    { x: 2480, y: 380, w: 30, h: 30, type: "trampoline" },
+  ],
+  coins: [
+    { x: 835, y: 280 },
+    { x: 1400, y: 250 },
+    { x: 2500, y: 250 },
+  ],
+});
+
+const GD_LEVEL_4_DRY_OUT = createGDLevel({
+  id: "gd_dry_out",
+  name: "Dry Out",
+  length: 4200,
+  ceilings: [[900, 2200]],
+  hazards: [400, 600, 2500, 2800, 3100, 3400],
+  upsideDownHazards: [1100, 1400, 1700, 2000],
+  gravityBlocks: [
+    { x: 900, y: 450 },
+    { x: 2100, y: 180 },
+  ],
+  platforms: [
+    { x: 2400, y: 420, w: 90 },
+  ],
+  coins: [
+    { x: 1400, y: 250 },
+    { x: 1700, y: 250 },
+    { x: 2445, y: 340 },
+  ],
+});
+
+const GD_LEVEL_5_BASE_AFTER_BASE = createGDLevel({
+  id: "gd_base_after_base",
+  name: "Base After Base",
+  length: 4200,
+  gaps: [[1200, 1400], [2600, 2800]],
+  hazards: [500, 750, 780, 1700, 1730, 1760, 2100, 2130, 2160, 3300, 3500],
+  trampolines: [1000],
+  platforms: [
+    { x: 1100, y: 380, w: 120 },
+    { x: 2500, y: 380, w: 120 },
+  ],
+  coins: [
+    { x: 1240, y: 280 },
+    { x: 2640, y: 280 },
+    { x: 3400, y: 380 },
+  ],
+});
+
+const GD_LEVEL_6_CANT_LET_GO = createGDLevel({
+  id: "gd_cant_let_go",
+  name: "Can't Let Go",
+  length: 4400,
+  hazards: [600, 1200, 2000, 2700, 3350],
+  platforms: [
+    { x: 1000, y: 360, w: 600, h: 30 },
+    { x: 2400, y: 360, w: 600, h: 30 },
+    { x: 750, y: 450, w: 90 },
+    { x: 1800, y: 420, w: 90 },
+  ],
+  additionalEntities: [
+    { x: 1250, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 2650, y: 450, w: 30, h: 30, type: "hazard" },
+  ],
+  coins: [
+    { x: 1350, y: 410 },
+    { x: 2750, y: 410 },
+    { x: 1845, y: 320 },
+  ],
+});
+
+const GD_LEVEL_7_JUMPER = createGDLevel({
+  id: "gd_jumper",
+  name: "Jumper",
+  length: 4500,
+  hazards: [500, 1000, 1600, 2800, 3400],
+  trampolines: [1300, 1800, 3000],
+  platforms: [
+    { x: 700, y: 450, w: 30 },
+    { x: 730, y: 420, w: 30 },
+    { x: 760, y: 390, w: 30 },
+    { x: 790, y: 360, w: 90 },
+    { x: 1330, y: 280, w: 200 },
+    { x: 1830, y: 250, w: 200 },
+  ],
+  additionalEntities: [
+    { x: 1200, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1230, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1260, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1700, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1730, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 1760, y: 450, w: 30, h: 30, type: "hazard" },
+  ],
+  coins: [
+    { x: 1400, y: 180 },
+    { x: 1900, y: 150 },
+    { x: 3100, y: 200 },
+  ],
+});
+
+const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
+  id: "gd_time_machine",
+  name: "Time Machine",
+  length: 4550,
+  hazards: [400, 700, 730, 2200, 2230, 2260, 2800, 2830, 2860, 3400],
+  trampolines: [1100, 1300, 1500, 1700],
+  platforms: [
+    { x: 2350, y: 450, w: 90 },
+    { x: 2950, y: 450, w: 90 },
+  ],
+  coins: [
+    { x: 1200, y: 200 },
+    { x: 1400, y: 180 },
+    { x: 1600, y: 200 },
+  ],
+});
+
+const GD_LEVEL_9_CYCLES = createGDLevel({
+  id: "gd_cycles",
+  name: "Cycles",
+  length: 4600,
+  ceilings: [[1000, 1600], [2400, 3000]],
+  hazards: [400, 600, 1805, 1835, 2100, 3300, 3600],
+  upsideDownHazards: [1200, 1400, 2600, 2800],
+  gravityBlocks: [
+    { x: 950, y: 450 },
+    { x: 1550, y: 180 },
+    { x: 2350, y: 450 },
+    { x: 2950, y: 180 },
+  ],
+  coins: [
+    { x: 1250, y: 250 },
+    { x: 2650, y: 250 },
+    { x: 3450, y: 380 },
+  ],
+});
+
+const GD_LEVEL_10_CLUBSTEP = createGDLevel({
+  id: "gd_clubstep",
+  name: "Clubstep",
+  length: 5000,
+  ceilings: [[1400, 2200]],
+  hazards: [400, 600, 800, 2500, 2530, 2900, 2930, 2960, 3500, 4200, 4230, 4500],
+  upsideDownHazards: [1600, 1900, 2100],
+  trampolines: [950, 3100, 3800],
+  gravityBlocks: [
+    { x: 1350, y: 450 },
+    { x: 2150, y: 180 },
+  ],
+  platforms: [
+    { x: 1050, y: 370, w: 200, h: 30 },
+    { x: 3200, y: 380, w: 300, h: 30 },
+    { x: 3850, y: 320, w: 90 },
+  ],
+  additionalEntities: [
+    { x: 1150, y: 450, w: 30, h: 30, type: "hazard" },
+    { x: 3350, y: 450, w: 30, h: 30, type: "hazard" },
+  ],
+  coins: [
+    { x: 1150, y: 280 },
+    { x: 1750, y: 250 },
+    { x: 3350, y: 280 },
+  ],
+});
+
+const GD_LEVELS: LevelData[] = [
+  GD_LEVEL_1_STEREO_MADNESS,
+  GD_LEVEL_2_BACK_ON_TRACK,
+  GD_LEVEL_3_POLARGEIST,
+  GD_LEVEL_4_DRY_OUT,
+  GD_LEVEL_5_BASE_AFTER_BASE,
+  GD_LEVEL_6_CANT_LET_GO,
+  GD_LEVEL_7_JUMPER,
+  GD_LEVEL_8_TIME_MACHINE,
+  GD_LEVEL_9_CYCLES,
+  GD_LEVEL_10_CLUBSTEP,
+];
+
 const BRAWLER_CLASS_OPTIONS = ["standard", "fighter", "dasher", "jumper", "tank", "ninja", "heavy", "vampire"] as const;
 
 const BRAWLER_DESCS: Record<string, {pos: string, neg: string}> = {
@@ -914,6 +1275,7 @@ const App: React.FC = () => {
 
   // Menu navigation state
   const [menuSelection, setMenuSelection] = useState(0);
+  const [gdSelectedLevelIndex, setGdSelectedLevelIndex] = useState(0);
   const [editingKey, setEditingKey] = useState<{
     player: 1 | 2;
     action: keyof Keybindings;
@@ -4896,6 +5258,7 @@ const App: React.FC = () => {
                 isSpectating={gameState.isSpectating}
                 spectateTargetId={gameState.spectateTargetId}
                 opponentOpacity={settings.opponentOpacity}
+                geometryDashMode={!!gameState.geometryDashMode}
               />
             )}
 
@@ -5824,6 +6187,22 @@ const App: React.FC = () => {
                   <h1 className="text-5xl sm:text-7xl md:text-9xl lava-text font-arcade tracking-[-0.15em] relative">
                     CUBE
                     <div className="absolute -inset-2 blur-xl bg-orange-600/30 -z-10 animate-pulse"></div>
+                    <button
+                      id="secret-gd-mode-btn"
+                      onClick={() => {
+                        try {
+                          audio.playSfx("secret");
+                        } catch (e) {}
+                        setGameState((p) => ({
+                          ...p,
+                          status: "geometry_dash_menu",
+                        }));
+                      }}
+                      className="absolute -right-2 top-0 w-8 h-8 flex items-center justify-center text-xs text-yellow-500/10 hover:text-yellow-400 hover:scale-125 transition-all cursor-pointer z-50 animate-pulse"
+                      title="⭐"
+                    >
+                      ⭐
+                    </button>
                   </h1>
                 </div>
 
@@ -7116,7 +7495,11 @@ const App: React.FC = () => {
                         if (onlineService.lobbyCode) {
                           onlineService.disconnect();
                         }
-                        setGameState((p) => ({ ...p, status: "menu" }));
+                        setGameState((p) => ({
+                          ...p,
+                          status: p.geometryDashMode ? "geometry_dash_menu" : "menu",
+                          geometryDashMode: false,
+                        }));
                       },
                     });
 
@@ -7325,7 +7708,8 @@ const App: React.FC = () => {
                           onClick={() =>
                             setGameState((prev) => ({
                               ...prev,
-                              status: "menu",
+                              status: prev.geometryDashMode ? "geometry_dash_menu" : "menu",
+                              geometryDashMode: false,
                             }))
                           }
                           isSelected={menuSelection === 1}
@@ -7695,6 +8079,124 @@ const App: React.FC = () => {
             {gameState.status === "book" && (
               <Book onClose={() => setGameState((p) => ({ ...p, status: "menu" }))} lang={lang || Language.DE} />
             )}
+
+            {/* Geometry Dash Style Menu */}
+            {gameState.status === "geometry_dash_menu" && (() => {
+              const gdLevelsList = GD_LEVELS;
+              const currentLevel = gdLevelsList[gdSelectedLevelIndex] || GD_LEVELS[0];
+
+              return (
+                <div className="absolute inset-0 flex flex-col items-center justify-between p-8 bg-neutral-950 font-sans text-white z-40 overflow-hidden">
+                  {/* Neon Grid Background */}
+                  <div className="absolute inset-0 z-[-1] opacity-25">
+                    <div className="w-full h-full bg-[linear-gradient(to_right,#00ffcc_1px,transparent_1px),linear-gradient(to_bottom,#00ffcc_1px,transparent_1px)] bg-[size:40px_40px] shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/20 via-transparent to-emerald-950/20 pointer-events-none"></div>
+
+                  {/* Header */}
+                  <div className="flex flex-col items-center mt-4">
+                    <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-green-300 via-cyan-400 to-blue-500 font-extrabold tracking-widest uppercase drop-shadow-[0_4px_10px_rgba(0,255,160,0.5)] animate-pulse">
+                      RAGE RUN
+                    </h1>
+                    <span className="text-[10px] text-cyan-400 font-mono tracking-[0.4em] uppercase mt-2">
+                      - SECRET EXTRA MODE -
+                    </span>
+                  </div>
+
+                  {/* Level Display Selector */}
+                  <div className="flex flex-col items-center justify-center w-full max-w-xl bg-black/60 border border-cyan-500/30 p-6 rounded-lg backdrop-blur-md">
+                    <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-4">
+                      {currentLevel.name}
+                    </h2>
+                    
+                    {/* Selector Arrow controls */}
+                    <div className="flex items-center justify-between w-full max-w-sm mb-4">
+                      <button
+                        onClick={() => {
+                          try { audio.playSfx("secret"); } catch (e) {}
+                          setGdSelectedLevelIndex((p) => (p > 0 ? p - 1 : gdLevelsList.length - 1));
+                        }}
+                        className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
+                      >
+                        ◀
+                      </button>
+                      
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs text-neutral-400 font-mono uppercase">
+                          LEVEL {gdSelectedLevelIndex + 1} OF {gdLevelsList.length}
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-black uppercase mt-1 tracking-wider">
+                          STYLE: AUTO-SCROLL
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          try { audio.playSfx("secret"); } catch (e) {}
+                          setGdSelectedLevelIndex((p) => (p < gdLevelsList.length - 1 ? p + 1 : 0));
+                        }}
+                        className="w-10 h-10 flex items-center justify-center bg-cyan-600/30 border border-cyan-400 hover:bg-cyan-500/50 rounded-full text-white font-bold transition-all hover:scale-110 active:scale-95"
+                      >
+                        ▶
+                      </button>
+                    </div>
+
+                    {/* Level details / coins */}
+                    <div className="text-xs text-neutral-400 text-center font-mono">
+                      COINS TO GRAB: {currentLevel.entities.filter(e => e.type === "coin").length || 0} ✨
+                    </div>
+                  </div>
+
+                  {/* Visual Character / Cube display bouncing with rotation angle */}
+                  <div className="my-4 flex items-center justify-center relative">
+                    <div className="absolute -inset-10 blur-2xl bg-cyan-500/20 rounded-full -z-10"></div>
+                    <div className="w-24 h-24 animate-bounce duration-700">
+                      <div className="w-full h-full rotate-[15deg] transition-transform duration-300">
+                        <CharacterPreview customization={customization} scale={6} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Play Button Row */}
+                  <div className="flex flex-col items-center gap-6 mb-4">
+                    <button
+                      onClick={() => {
+                        try {
+                          audio.playSfx("secret");
+                        } catch (e) {}
+                        setLevel(currentLevel);
+                        setGameState((prev) => ({
+                          ...prev,
+                          status: "random_run",
+                          geometryDashMode: true,
+                          currentLevelIndex: gdSelectedLevelIndex,
+                          customLevelsQueue: [currentLevel],
+                          deaths: 0,
+                          levelDeaths: 0,
+                          time: 0,
+                          levelTime: 0,
+                          score: 0,
+                        }));
+                        setRespawnTrigger((p) => p + 1);
+                      }}
+                      className="w-28 h-28 rounded-full bg-yellow-400 hover:bg-yellow-300 border-4 border-white shadow-[0_0_35px_rgba(234,179,8,0.7)] hover:scale-110 active:scale-95 transition-all transform flex items-center justify-center cursor-pointer group"
+                    >
+                      <div className="w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-l-[25px] border-l-emerald-600 ml-1.5 group-hover:border-l-emerald-500 transition-colors"></div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        try { audio.playSfx("secret"); } catch (e) {}
+                        setGameState((p) => ({ ...p, status: "menu" }));
+                      }}
+                      className="px-6 py-2 bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 font-black text-xs uppercase tracking-widest text-red-400 rounded transition-all active:scale-95"
+                    >
+                      ◀ BACK TO MAIN
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Settings Menu */}
             {gameState.status === "settings" && (

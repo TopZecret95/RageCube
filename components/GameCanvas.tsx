@@ -151,6 +151,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   spectateTargetId,
   opponentOpacity = 0.5,
   status,
+  geometryDashMode = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -626,7 +627,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   };
 
   const initPlayers = (isRespawn = false) => {
-    if (level.autoScroll) {
+    if (level.autoScroll || geometryDashMode) {
       if (level.start) currentRespawnPos.current = { ...level.start };
       cameraRef.current.x = Math.max(
         0,
@@ -634,7 +635,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       );
       cameraRef.current.y = 0;
       scrollWallX.current = cameraRef.current.x;
-      hasStartedMoving.current = false;
+      hasStartedMoving.current = geometryDashMode ? true : false;
     }
 
     // Capture existing metrics if it is a respawn
@@ -707,6 +708,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       respawnTimer: 0,
       coyoteTimer: 0,
       jumpBufferTimer: 0,
+      rotationAngle: 0,
     };
 
     const defaultP1Controls: Keybindings = {
@@ -884,6 +886,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (deathsMap.has(key)) {
           p.deaths = deathsMap.get(key) || 0;
         }
+      });
+    }
+
+    if (geometryDashMode) {
+      hasStartedMoving.current = true;
+      players.current.forEach((p) => {
+        p.hasStartedMove = true;
+        const scrollSpeed = 260;
+        const startWallX = Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15);
+        p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+        p.vel.x = scrollSpeed / 60;
       });
     }
 
@@ -2198,14 +2211,33 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
+    const handleMouseJumpDown = () => {
+      if (geometryDashMode) {
+        keys.current["Click"] = true;
+      }
+    };
+    const handleMouseJumpUp = () => {
+      if (geometryDashMode) {
+        keys.current["Click"] = false;
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("mousedown", handleMouseJumpDown);
+    window.addEventListener("mouseup", handleMouseJumpUp);
+    window.addEventListener("touchstart", handleMouseJumpDown);
+    window.addEventListener("touchend", handleMouseJumpUp);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("mousedown", handleMouseJumpDown);
+      window.removeEventListener("mouseup", handleMouseJumpUp);
+      window.removeEventListener("touchstart", handleMouseJumpDown);
+      window.removeEventListener("touchend", handleMouseJumpUp);
     };
   }, [paused, gameMode, level.allowedAbility]);
 
@@ -2877,12 +2909,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           return bindings.some((code) => keys.current[code]);
         };
 
-        let pressingLeft = checkAction("left");
-        let pressingRight = checkAction("right");
-        let pressingJump = checkAction("up");
-        let pressingDown = checkAction("down");
-        const pressingAction = checkAction("action");
-        const pressingDash = checkAction("dash");
+        let pressingLeft = geometryDashMode ? false : checkAction("left");
+        let pressingRight = geometryDashMode ? true : checkAction("right");
+        let pressingJump = geometryDashMode
+          ? (checkAction("up") || checkAction("action") || checkAction("dash") || keys.current["Space"] || keys.current["ArrowUp"] || keys.current["KeyW"] || keys.current["Click"])
+          : checkAction("up");
+        let pressingDown = geometryDashMode ? false : checkAction("down");
+        const pressingAction = geometryDashMode ? false : checkAction("action");
+        const pressingDash = geometryDashMode ? false : checkAction("dash");
 
         if (isLocal && !p.hasStartedMove && !paused && !isStartingRef.current) {
           if (
@@ -2979,13 +3013,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         if (isLocal) {
-          if (!pressingJump) {
-            p.canJump = true;
-          } else {
-            // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
-            if (p.isGrounded || p.isWallSliding) {
-              p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
+          if (geometryDashMode) {
+            if (pressingJump) {
+              p.jumpBufferTimer = 6;
               p.canJump = true;
+            }
+          } else {
+            if (!pressingJump) {
+              p.canJump = true;
+            } else {
+              // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
+              if (p.isGrounded || p.isWallSliding) {
+                p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
+                p.canJump = true;
+              }
             }
           }
         }
@@ -3069,6 +3110,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         // Tick timers
         if (p.coyoteTimer > 0) p.coyoteTimer -= dt;
         if (p.jumpBufferTimer > 0) p.jumpBufferTimer -= dt;
+
+        // Tick Geometry Dash rotation angle
+        if (geometryDashMode) {
+          if (!p.isGrounded) {
+            p.rotationAngle = ((p.rotationAngle || 0) + 8.5 * dt) % 360;
+          } else {
+            const currentAngle = p.rotationAngle || 0;
+            const targetAngle = Math.round(currentAngle / 90) * 90;
+            p.rotationAngle = targetAngle % 360;
+          }
+        } else {
+          p.rotationAngle = 0;
+        }
 
         // Hook Physics override
         p.gravity = p.gravityFlipped ? -GRAVITY : GRAVITY;
@@ -3164,22 +3218,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         } else {
           // Normal Movement
-          let moveX = 0;
-          const currentMaxSpeed =
-            MAX_SPEED *
-            (slowMoTimerRef.current > 0 ? 1.0 : 1.0) *
-            (p.slowTimer > 0 ? 0.5 : 1.0) *
-            stats.speedMul;
+          if (geometryDashMode) {
+            p.vel.x = (260 / 60) * dt;
+          } else {
+            let moveX = 0;
+            const currentMaxSpeed =
+              MAX_SPEED *
+              (slowMoTimerRef.current > 0 ? 1.0 : 1.0) *
+              (p.slowTimer > 0 ? 0.5 : 1.0) *
+              stats.speedMul;
 
-          // Only allow player to accelerate if they are not currently being knocked back (exceeding max speed)
-          if (Math.abs(p.vel.x) <= currentMaxSpeed * 1.5) {
-            const currentAccel =
-              MOVE_ACCEL * (p.slowTimer > 0 ? 0.5 : 1.0) * stats.speedMul;
-            if (pressingLeft) moveX -= currentAccel;
-            if (pressingRight) moveX += currentAccel;
+            // Only allow player to accelerate if they are not currently being knocked back (exceeding max speed)
+            if (Math.abs(p.vel.x) <= currentMaxSpeed * 1.5) {
+              const currentAccel =
+                MOVE_ACCEL * (p.slowTimer > 0 ? 0.5 : 1.0) * stats.speedMul;
+              if (pressingLeft) moveX -= currentAccel;
+              if (pressingRight) moveX += currentAccel;
+            }
+
+            p.vel.x += moveX * dt; // Apply acceleration with time scaling
           }
-
-          p.vel.x += moveX * dt; // Apply acceleration with time scaling
 
           p.vel.y += p.gravity * stats.gravityMul * dt; // Apply gravity with time scaling
 
@@ -3206,7 +3264,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Jump Logic (Ground / Wall)
         const canCoyoteJump = p.isGrounded || p.coyoteTimer > 0;
-        if (p.jumpBufferTimer > 0 && p.canJump) {
+        if (p.jumpBufferTimer > 0 && (p.canJump || geometryDashMode)) {
           if (canCoyoteJump) {
             let force = JUMP_FORCE * stats.jumpMul;
             if (p.surfaceType === "slime")
@@ -3371,7 +3429,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               continue;
             }
             if (entity.type === "checkpoint") {
-              if (level.autoScroll) continue; // Disable checkpoints in auto-scroll levels
+              if (level.autoScroll || geometryDashMode) continue; // Disable checkpoints in auto-scroll levels
               // Check if this checkpoint is new
               if (
                 currentRespawnPos.current.x !== entity.x ||
@@ -3612,6 +3670,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             )
               continue;
 
+            if (geometryDashMode) {
+              spawnParticles(
+                p.pos.x + p.w / 2,
+                p.pos.y + p.h / 2,
+                p.color,
+                20,
+                "blood",
+              );
+              p.pos = { ...currentRespawnPos.current };
+              p.ghostOverlapIndices = players.current
+                .filter((op) => op.playerIndex !== p.playerIndex)
+                .map((op) => op.playerIndex);
+              p.vel = { x: 0, y: 0 };
+              p.respawnTimer = Date.now();
+              resetPlayerSize(p);
+              onDie();
+              audio.playDie(p.deathSound);
+              break;
+            }
+
             if (p.vel.x > 0) {
               p.pos.x = entity.x - playerRect.w;
               p.wallDir = 1;
@@ -3805,7 +3883,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               continue;
             }
             if (entity.type === "checkpoint") {
-              if (level.autoScroll) continue;
+              if (level.autoScroll || geometryDashMode) continue;
               if (
                 currentRespawnPos.current.x !== entity.x ||
                 currentRespawnPos.current.y !== entity.y
@@ -4162,7 +4240,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (p.surfaceType === "ice") groundFriction = ICE_FRICTION;
           if (p.surfaceType === "slime") groundFriction = SLIME_FRICTION;
         }
-        p.vel.x *= groundFriction;
+        if (geometryDashMode) {
+          p.vel.x = (260 / 60) * dt;
+        } else {
+          p.vel.x *= groundFriction;
+        }
 
         // Player-to-Player Collision (Brawler Mode or VS Mode with Collision)
         if (gameMode === "brawler" || (gameMode === "vs" && vsCollision)) {
@@ -4305,8 +4387,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         // Keep players from running off the right edge in auto-scroll
-        if (level.autoScroll && p.hasStartedMove) {
-          const scrollSpeed = level.autoScrollSpeed || 150;
+        if ((level.autoScroll || geometryDashMode) && p.hasStartedMove) {
+          const scrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
           const pWallX = ((Date.now() - p.moveStartTime) / 1000) * scrollSpeed;
           const maxRight = pWallX + GAME_WIDTH - p.w;
           if (p.pos.x > maxRight) {
@@ -4316,15 +4398,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         const pWallX =
-          level.autoScroll && p.hasStartedMove
+          (level.autoScroll || geometryDashMode) && p.hasStartedMove
             ? ((Date.now() - p.moveStartTime) / 1000) *
-              (level.autoScrollSpeed || 150)
+              (geometryDashMode ? 260 : (level.autoScrollSpeed || 150))
             : 0;
 
         const dieTop =
           (p.gravityFlipped && p.pos.y + p.h < 0) ||
           (!p.gravityFlipped && p.pos.y < -2500) ||
-          (level.autoScroll && p.pos.y + p.h < cameraRef.current.y - 50);
+          ((level.autoScroll || geometryDashMode) && p.pos.y + p.h < cameraRef.current.y - 50);
 
         const dieBottom =
           (!p.gravityFlipped && p.pos.y > currentLevelHeight) ||
@@ -4332,19 +4414,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           (gameMode === "brawler" &&
             brawlerSuddenDeath &&
             p.pos.y + p.h > lavaY) ||
-          (level.autoScroll &&
+          ((level.autoScroll || geometryDashMode) &&
             p.pos.y > cameraRef.current.y + GAME_HEIGHT + 50);
 
         const dieLeftRight =
-          level.autoScroll && p.hasStartedMove && p.pos.x < pWallX + 10;
+          (level.autoScroll || geometryDashMode) && p.hasStartedMove && p.pos.x < pWallX + 10;
 
         if (dieTop || dieBottom || dieLeftRight) {
           if (isOnline && p.onlineId !== onlineService.localPlayer?.id) return;
 
-          if (level.autoScroll) {
+          if (level.autoScroll || geometryDashMode) {
             if (level.start) currentRespawnPos.current = { ...level.start };
             // On death, reset this player's wall
-            p.hasStartedMove = false;
+            p.hasStartedMove = geometryDashMode ? true : false;
             p.moveStartTime = Date.now();
           }
 
@@ -4594,16 +4676,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       if (
-        level.autoScroll &&
+        (level.autoScroll || geometryDashMode) &&
         followedPlayer &&
         followedPlayer.hasStartedMove &&
         !followedPlayer.finished
       ) {
-        const scrollSpeed = level.autoScrollSpeed || 150;
+        const scrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
         scrollWallX.current =
           ((Date.now() - followedPlayer.moveStartTime) / 1000) * scrollSpeed;
       } else if (
-        level.autoScroll &&
+        (level.autoScroll || geometryDashMode) &&
         (!followedPlayer || !followedPlayer.hasStartedMove)
       ) {
         scrollWallX.current = 0;
@@ -4647,7 +4729,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const oldCamX = cameraRef.current.x;
       const oldCamY = cameraRef.current.y;
       
-      if (level.autoScroll && !isSpectatingNowLocal) {
+      if ((level.autoScroll || geometryDashMode) && !isSpectatingNowLocal) {
         cameraRef.current.x = scrollWallX.current;
       } else {
         // Smoothly transition both in normal levels and when spectating auto-scroll levels
@@ -5448,7 +5530,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
-      if (level.autoScroll) {
+      if (level.autoScroll && !geometryDashMode) {
         const h = level.height
           ? Math.max(level.height, GAME_HEIGHT)
           : GAME_HEIGHT;
@@ -5698,6 +5780,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const visualAlpha = typeof alpha === "number" ? alpha : 0;
         const px = p.pos.x + offX + p.vel.x * visualAlpha;
         const py = p.pos.y + offY + p.vel.y * visualAlpha;
+
+        if (geometryDashMode && p.rotationAngle) {
+          ctx.translate(px + w / 2, py + h / 2);
+          ctx.rotate((p.rotationAngle * Math.PI) / 180);
+          ctx.translate(-(px + w / 2), -(py + h / 2));
+        }
 
         // Spectator Highlight
         if (isSpectatingNowLocal) {

@@ -44,6 +44,7 @@ export interface GameCanvasProps {
   spectateTargetId?: string;
   opponentOpacity?: number;
   status?: string;
+  geometryDashMode?: boolean;
 }
 
 export interface TempBlock extends Entity {
@@ -183,4 +184,5 @@ export interface PlayerState {
   coyoteTimer: number;
   jumpBufferTimer: number;
   isLocal?: boolean;
+  rotationAngle?: number;
 }
