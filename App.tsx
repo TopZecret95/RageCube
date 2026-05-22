@@ -4841,26 +4841,41 @@ const App: React.FC = () => {
       gameState.status === "testing" ||
       gameState.status === "brawler_testing"
     ) {
+      processedCoins.current.clear();
       setRespawnTrigger((prev) => prev + 1);
       return;
     }
 
-    setGameState((prev) => ({
-      ...prev,
-      deaths: newTotalDeaths,
-      levelDeaths: prev.levelDeaths + 1,
-      collectedCoins: prev.geometryDashMode ? [] : prev.collectedCoins,
-      score:
+    const coinsCollectedThisAttempt = gameState.collectedCoins.length;
+    if (coinsCollectedThisAttempt > 0) {
+      setCustomization((prev) => ({
+        ...prev,
+        coins: Math.max(0, (prev.coins || 0) - coinsCollectedThisAttempt),
+      }));
+    }
+
+    setGameState((prev) => {
+      const baseScorePenalty =
         prev.status === "random_run" || !!prev.storyCategoryName
           ? prev.score - 50
-          : Math.max(0, prev.score - 50), // Fixed 50 points penalty per death
-    }));
+          : Math.max(0, prev.score - 50);
+      return {
+        ...prev,
+        deaths: newTotalDeaths,
+        levelDeaths: prev.levelDeaths + 1,
+        collectedCoins: [], // Coins reappear when you die!
+        score: Math.max(0, baseScorePenalty - (coinsCollectedThisAttempt * 500)),
+      };
+    });
+
+    processedCoins.current.clear();
 
     setRespawnTrigger((prev) => prev + 1);
   }, [
     gameState.deaths,
     gameState.levelDeaths,
     gameState.status,
+    gameState.collectedCoins,
     checkAchievements,
     level?.id,
     customization.deathSound,
