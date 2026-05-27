@@ -85,7 +85,7 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
             try {
                 const rawJson = event.target?.result as string;
                 // decompressLevel handles both legacy and compressed formats
-                const json = decompressLevel(rawJson);
+                const json = decompressLevel(rawJson, false);
                 const itemsToCheck = Array.isArray(json) ? json : [json];
                 
                 itemsToCheck.forEach((item: any, subIndex: number) => {

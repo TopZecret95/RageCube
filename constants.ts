@@ -6003,702 +6003,672 @@ export const EXPERT_LEVELS: LevelData[] = [
   "height": 540,
   "entities": [
     {
-      "type": "trampoline",
       "x": 870,
       "y": 510,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "trampoline"
     },
     {
-      "type": "hazard",
       "x": 900,
       "y": 510,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 840,
       "y": 510,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "ice",
       "x": 840,
       "y": 60,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 900,
       "y": 60,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 900,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 900,
       "y": 30,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 840,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 840,
       "y": 30,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "ice",
       "x": 870,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "ice"
     },
     {
-      "type": "hazard",
       "x": 930,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 780,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 750,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 720,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 690,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 660,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 630,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 600,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "laser",
       "x": 750,
       "y": 240,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "laser",
       "x": 600,
       "y": 240,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "laser",
       "x": 450,
       "y": 240,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "laser_cannon",
       "x": 450,
       "y": 240,
       "w": 330,
-      "h": 28
+      "h": 28,
+      "type": "gravity_zero"
     },
     {
-      "type": "toggle_switch",
       "x": 420,
       "y": 240,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_gravity"
     },
     {
-      "type": "hazard",
       "x": 150,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 180,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 210,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "wall",
       "x": 300,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "wall"
     },
     {
-      "type": "hazard",
       "x": 330,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 360,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 390,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 420,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "wall",
       "x": 270,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "wall"
     },
     {
-      "type": "coin",
       "x": 305,
       "y": 35,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776745666222_1tqxv6ccm",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776745666222_1tqxv6ccm"
     },
     {
-      "type": "coin",
       "x": 515,
       "y": 245,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776745668240_9i4p1anya",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776745668240_9i4p1anya"
     },
     {
-      "type": "coin",
       "x": 665,
       "y": 245,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776745668998_9p5z6j7n1",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776745668998_9p5z6j7n1"
     },
     {
-      "type": "trampoline",
       "x": 450,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "trampoline"
     },
     {
-      "type": "trampoline",
       "x": 480,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "trampoline"
     },
     {
-      "type": "coin",
       "x": 455,
       "y": 35,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776745726008_xkt05v1od",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776745726008_xkt05v1od"
     },
     {
-      "type": "hazard",
       "x": 360,
       "y": 30,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 390,
       "y": 30,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 390,
       "y": 60,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 360,
       "y": 60,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 30,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 60,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 90,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 120,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 240,
       "y": 150,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 270,
       "y": 150,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 270,
       "y": 180,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 300,
       "y": 180,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 300,
       "y": 210,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "wall",
       "x": 300,
       "y": 270,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "wall"
     },
     {
-      "type": "wall",
       "x": 270,
       "y": 270,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "wall"
     },
     {
-      "type": "slime",
       "x": 240,
       "y": 270,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "slime"
     },
     {
-      "type": "slime",
       "x": 210,
       "y": 270,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "slime"
     },
     {
-      "type": "hazard",
       "x": 360,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 390,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 420,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 450,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 480,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 510,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 540,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 570,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 600,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 630,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 660,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 690,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 720,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 750,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 780,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 330,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 360,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 390,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 420,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 450,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 480,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 810,
       "y": 510,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 330,
       "y": 300,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 510,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 540,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "hazard",
       "x": 570,
       "y": 0,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "hazard"
     },
     {
-      "type": "toggle_switch",
       "x": 180,
       "y": 360,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_gravity"
     },
     {
-      "type": "checkpoint",
       "x": 240,
       "y": 240,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "checkpoint"
     },
     {
-      "type": "laser_cannon",
       "x": 330,
       "y": 390,
       "w": 330,
-      "h": 30
+      "h": 30,
+      "type": "gravity_zero"
     },
     {
-      "type": "laser",
       "x": 330,
       "y": 390,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "laser",
       "x": 480,
       "y": 390,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "laser",
       "x": 630,
       "y": 390,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_dash"
     },
     {
-      "type": "goal",
       "x": 750,
       "y": 420,
       "w": 17,
       "h": 70,
-      "movingH": true,
-      "moveRange": 66,
-      "moveSpeed": 0.002,
-      "id": "",
-      "opacity": 1
+      "type": "goal",
+      "movingV": true,
+      "movingH": false,
+      "moveRange": 66
     },
     {
-      "type": "coin",
       "x": 245,
       "y": 305,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776746083754_qxm9clbsa",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776746083754_qxm9clbsa"
     },
     {
-      "type": "coin",
       "x": 425,
       "y": 395,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776746088793_vnn7k27tq",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776746088793_vnn7k27tq"
     },
     {
-      "type": "coin",
       "x": 575,
       "y": 395,
       "w": 20,
       "h": 20,
-      "movingH": false,
-      "moveRange": 100,
-      "moveSpeed": 0.002,
-      "id": "e_1776746089408_6ak45pd85",
-      "opacity": 1
+      "type": "coin",
+      "id": "e_1776746089408_6ak45pd85"
     },
     {
-      "type": "toggle_switch",
       "x": 600,
       "y": 390,
       "w": 30,
-      "h": 30
+      "h": 30,
+      "type": "block_gravity"
     }
   ],
   "allowedAbility": "none",

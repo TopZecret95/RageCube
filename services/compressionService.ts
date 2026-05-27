@@ -117,9 +117,14 @@ export const decompressLevel = (compressedJson: string, strictSignature: boolean
   if (data && typeof data === 'object' && ('hash' in data)) {
       const verified = verifyData(data);
       if (verified === null) {
-          throw new Error("Tampering detected in level export.");
+          if (strictSignature) {
+              throw new Error("Tampering detected in level export.");
+          } else {
+              data = data.data; // fallback to unverified data
+          }
+      } else {
+          data = verified;
       }
-      data = verified;
   } else if (strictSignature) {
      throw new Error("Invalid or unsigned level data.");
   }
