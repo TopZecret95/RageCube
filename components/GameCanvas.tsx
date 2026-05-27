@@ -3027,20 +3027,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         if (isLocal) {
-          if (geometryDashMode) {
-            if (pressingJump) {
-              p.jumpBufferTimer = 6;
+          if (!pressingJump) {
+            p.canJump = true;
+          } else if (!geometryDashMode) {
+            // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
+            if (p.isGrounded || p.isWallSliding) {
+              p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
               p.canJump = true;
-            }
-          } else {
-            if (!pressingJump) {
-              p.canJump = true;
-            } else {
-              // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
-              if (p.isGrounded || p.isWallSliding) {
-                p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);
-                p.canJump = true;
-              }
             }
           }
         }
@@ -3281,7 +3274,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Jump Logic (Ground / Wall)
         const canCoyoteJump = p.isGrounded || p.coyoteTimer > 0;
-        if (p.jumpBufferTimer > 0 && (p.canJump || geometryDashMode)) {
+        if (p.jumpBufferTimer > 0 && p.canJump) {
           if (canCoyoteJump) {
             let force = JUMP_FORCE * stats.jumpMul;
             if (p.surfaceType === "slime")
@@ -4270,7 +4263,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         if (foundGround) {
           p.surfaceType = dominantSurface;
-        } else {
+        } else if (!geometryDashMode) {
           p.surfaceType = "none";
         }
 
@@ -6801,4 +6794,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   );
 };
 
-export default GameCanvas;
+export default React.memo(GameCanvas, (prevProps, nextProps) => {
+  return (
+    prevProps.level === nextProps.level &&
+    prevProps.status === nextProps.status &&
+    prevProps.customization === nextProps.customization &&
+    prevProps.customizationP2 === nextProps.customizationP2 &&
+    prevProps.settings === nextProps.settings &&
+    prevProps.gdSpeedMode === nextProps.gdSpeedMode &&
+    prevProps.collectedCoins.length === nextProps.collectedCoins.length &&
+    prevProps.paused === nextProps.paused &&
+    prevProps.geometryDashMode === nextProps.geometryDashMode &&
+    prevProps.isSpectating === nextProps.isSpectating &&
+    prevProps.spectateTargetId === nextProps.spectateTargetId &&
+    prevProps.opponentOpacity === nextProps.opponentOpacity &&
+    prevProps.levelDeaths === nextProps.levelDeaths
+  );
+});

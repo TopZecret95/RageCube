@@ -375,8 +375,8 @@ const GD_LEVEL_6_CANT_LET_GO = createGDLevel({
     [3400, 3460],
   ],
   floorSegments: [{ start: 2200, end: 2800, type: "slime" }],
-  hazards: [400, 600, 2300, 2500, 2530, 4000, 4200, 4230],
-  upsideDownHazards: [1100, 1400, 1430, 1600, 1900, 3000, 3300, 3330, 3600],
+  hazards: [400, 600, 2300, 4000, 4200],
+  upsideDownHazards: [1100, 1400, 1600, 1900, 3000, 3300, 3600],
   platforms: [
     { x: 1100, y: 420, w: 90, type: "wall" },
     { x: 1800, y: 390, w: 90, type: "ice" },
@@ -385,7 +385,7 @@ const GD_LEVEL_6_CANT_LET_GO = createGDLevel({
   coins: [
     { x: 700, y: 380 },
     { x: 1415, y: 250 },
-    { x: 2515, y: 350 },
+    { x: 2515, y: 430 },
     { x: 3315, y: 250 },
     { x: 4100, y: 380 },
   ],
@@ -401,7 +401,7 @@ const GD_LEVEL_7_JUMPER = createGDLevel({
     [2500, 2590],
   ],
   floorSegments: [{ start: 1000, end: 1500, type: "ice" }, { start: 2000, end: 3000, type: "ice" }],
-  hazards: [800, 1400, 1430, 1800, 2800, 3200, 3230, 3800, 4000],
+  hazards: [1500, 1800, 2800, 3200, 3800],
   trampolines: [1000, 1600, 2100, 3000, 3500],
   additionalEntities: [
     { x: 1150, y: 250, w: 120, h: 30, type: "wall" },
@@ -430,8 +430,7 @@ const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
   length: 5000,
   floorSegments: [{ start: 3000, end: 4000, type: "slime" }],
   hazards: [
-    400, 800, 830, 1200, 1230, 1260, 1700, 1730, 2400, 2430, 2460, 2900, 3300,
-    3330, 3360, 4100, 4130,
+    400, 800, 830, 1200, 1230, 1700, 1730, 2400, 2430, 2900, 3330, 4100, 4130,
   ],
   platforms: [
     { x: 1100, y: 390, w: 90, type: "ice" },
@@ -498,15 +497,15 @@ const GD_LEVEL_10_CLUBSTEP = createGDLevel({
     { x: 4700, y: 210 },
   ],
   gaps: [
-    [500, 560],
-    [900, 990],
+    [500, 550],
+    [900, 950],
   ],
   floorSegments: [{ start: 0, end: 1400, type: "slime" }, { start: 2800, end: 3600, type: "ice" }],
   hazards: [
-    400, 700, 1050, 1080, 1110, 3100, 3130, 3400, 5000, 5030, 5060, 5300,
+    400, 700, 1080, 3100, 3130, 3400, 5000, 5030, 5300,
   ],
   upsideDownHazards: [
-    1600, 1800, 1830, 1860, 2200, 2400, 2430, 3800, 4000, 4030, 4060, 4400,
+    1600, 1800, 1830, 2200, 2400, 2430, 3800, 4000, 4030, 4400,
   ],
   trampolines: [300, 1200, 3200],
   additionalEntities: [
@@ -4945,6 +4944,22 @@ const App: React.FC = () => {
     });
   }, [checkAchievements]);
 
+  const handleJump = useCallback(() => {
+    setGameState((p) => {
+      p.totalJumps = (p.totalJumps || 0) + 1;
+      checkAchievements({ totalJumps: p.totalJumps });
+      return p;
+    });
+  }, [checkAchievements]);
+
+  const handleHook = useCallback(() => {
+    setGameState((p) => {
+      p.hooksUsed = (p.hooksUsed || 0) + 1;
+      checkAchievements({ hooksUsed: p.hooksUsed });
+      return p;
+    });
+  }, [checkAchievements]);
+
   const handleWin = useCallback(
     (
       winnerName?: string,
@@ -5944,20 +5959,8 @@ const App: React.FC = () => {
                   onWin={handleWin}
                   onCoin={handleCoin}
                   onBlockPlace={handleBlockPlace}
-                  onJump={() => {
-                    setGameState((p) => {
-                      const newJumps = p.totalJumps + 1;
-                      checkAchievements({ totalJumps: newJumps });
-                      return { ...p, totalJumps: newJumps };
-                    });
-                  }}
-                  onHook={() => {
-                    setGameState((p) => {
-                      const newHooks = p.hooksUsed + 1;
-                      checkAchievements({ hooksUsed: newHooks });
-                      return { ...p, hooksUsed: newHooks };
-                    });
-                  }}
+                  onJump={handleJump}
+                  onHook={handleHook}
                   status={gameState.status}
                   collectedCoins={gameState.collectedCoins}
                   paused={
@@ -10385,8 +10388,8 @@ const App: React.FC = () => {
 
               {/* Achievement Toast */}
               {achievementToast && (
-                <div className="fixed bottom-4 right-4 bg-neutral-900 border-2 border-yellow-500 text-white p-4 rounded-xl shadow-[0_0_30px_rgba(234,179,8,0.3)] z-[200] animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-4 max-w-sm pointer-events-none">
-                  <div className="text-4xl animate-bounce">
+                <div className="fixed bottom-4 right-4 bg-neutral-900 border-2 border-yellow-500 text-white p-4 rounded-xl z-[200] animate-in slide-in-from-right-10 fade-in duration-300 flex items-center gap-4 max-w-sm pointer-events-none will-change-transform">
+                  <div className="text-4xl transform transition-transform duration-300">
                     {achievementToast.icon}
                   </div>
                   <div className="flex flex-col">
