@@ -3029,7 +3029,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (isLocal) {
           if (!pressingJump) {
             p.canJump = true;
-          } else if (!geometryDashMode) {
+          } else {
             // Autojump: if holding jump, keep the buffer alive while on ground or wall-sliding
             if (p.isGrounded || p.isWallSliding) {
               p.jumpBufferTimer = Math.max(p.jumpBufferTimer, 6);

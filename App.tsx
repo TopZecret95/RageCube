@@ -500,12 +500,12 @@ const GD_LEVEL_10_CLUBSTEP = createGDLevel({
     [500, 550],
     [900, 950],
   ],
-  floorSegments: [{ start: 0, end: 1400, type: "slime" }, { start: 2800, end: 3600, type: "ice" }],
+  floorSegments: [{ start: 0, end: 1400, type: "wall" }, { start: 2800, end: 3600, type: "wall" }],
   hazards: [
-    400, 700, 1080, 3100, 3130, 3400, 5000, 5030, 5300,
+    400, 1080, 3100, 3400, 5000, 5300,
   ],
   upsideDownHazards: [
-    1600, 1800, 1830, 2200, 2400, 2430, 3800, 4000, 4030, 4400,
+    1600, 1800, 2200, 2400, 3800, 4000, 4400,
   ],
   trampolines: [300, 1200, 3200],
   additionalEntities: [
@@ -514,10 +514,10 @@ const GD_LEVEL_10_CLUBSTEP = createGDLevel({
     { x: 3350, y: 250, w: 120, h: 30, type: "wall" },
   ],
   platforms: [
-    { x: 600, y: 420, w: 90, type: "ice" },
-    { x: 1200, y: 390, w: 90, type: "slime" },
+    { x: 600, y: 420, w: 90, type: "wall" },
+    { x: 1200, y: 390, w: 90, type: "wall" },
     { x: 2000, y: 450, w: 120, type: "wall" },
-    { x: 3500, y: 420, w: 90, type: "ice" },
+    { x: 3500, y: 420, w: 90, type: "wall" },
   ],
   coins: [
     { x: 1080, y: 350 },
