@@ -776,6 +776,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           deathSound: op.customization.deathSound || "default",
           trailType: op.customization.trailType || "normal",
           brawlerClass: op.customization.brawlerClass || "standard",
+          continuousRotation: op.customization.continuousRotation,
           name: op.name || `Player ${idx + 1}`,
           playerIndex: idx,
           team: team,
@@ -814,6 +815,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           deathSound: customization?.deathSound || "default",
           trailType: customization?.trailType || "normal",
           brawlerClass: customization?.brawlerClass || "standard",
+          continuousRotation: customization?.continuousRotation,
           name: "P1",
           playerIndex: 0,
           team: getTeam(0),
@@ -838,6 +840,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           deathSound: (p2Config as any).deathSound || "default",
           trailType: (p2Config as any).trailType || "normal",
           brawlerClass: (p2Config as any).brawlerClass || "standard",
+          continuousRotation: (p2Config as any).continuousRotation,
           name: "P2",
           playerIndex: 1,
           team: getTeam(1),
@@ -864,6 +867,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           deathSound: customization?.deathSound || "default",
           trailType: customization?.trailType || "normal",
           brawlerClass: customization?.brawlerClass || "standard",
+          continuousRotation: customization?.continuousRotation,
           name: "P1",
           playerIndex: 0,
           inventory: null,
@@ -2712,11 +2716,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
+      const fakeTypes = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
+
       const collidableEntities = [
         ...level.entities,
         ...tempBlocks.current,
         ...dynamicPowerups.current,
       ]
+        .filter((e) => !(geometryDashMode && fakeTypes.includes(e.type)))
         .map((e) => getDynamicEntity(e, effectiveTime, isOnline ? 1.0 : dt))
         .filter(Boolean) as (Entity & { dx?: number; dy?: number })[];
 
@@ -3119,8 +3126,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (p.jumpBufferTimer > 0) p.jumpBufferTimer -= dt;
 
         // Tick Geometry Dash rotation angle
-        if (geometryDashMode) {
-          if (!p.isGrounded) {
+        if (geometryDashMode || (p as any).continuousRotation) {
+          if (!p.isGrounded || (p as any).continuousRotation) {
             p.rotationAngle = ((p.rotationAngle || 0) + 8.5 * dt) % 360;
           } else {
             const currentAngle = p.rotationAngle || 0;
@@ -3226,7 +3233,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         } else {
           // Normal Movement
           if (geometryDashMode) {
-            p.vel.x = (260 / 60) * dt;
+            let speedMul = 1.0;
+            if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") speedMul = 1.5;
+            if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") speedMul = 0.7;
+            p.vel.x = ((260 * speedMul) / 60) * dt;
           } else {
             let moveX = 0;
             const currentMaxSpeed =
@@ -3353,11 +3363,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (checkCollision(playerRectX, entity)) {
             // Pass-through entities
             if (
-              entity.type === "walkthrough_wall" ||
-              entity.type === "troll_wall" ||
-              entity.type === "fake_goal" ||
-              entity.type === "fake_ice" ||
-              entity.type === "fake_slime"
+              !geometryDashMode && (
+                entity.type === "walkthrough_wall" ||
+                entity.type === "troll_wall" ||
+                entity.type === "fake_goal" ||
+                entity.type === "fake_ice" ||
+                entity.type === "fake_slime"
+              )
             )
               continue; // Do nothing, just pass
             if (entity.type === "ghost_hazard") continue; // Do nothing, just pass
@@ -3676,6 +3688,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             )
               continue;
 
+            // If the player is landing on top of a solid block (or bottom of a ceiling block under inverted gravity),
+            // skip the X-collision check for this block so they can safely land rather than dying/snapping horizontally.
+            // This is crucial for GD mode where hitting a wall side is fatal.
+            // Tolerances increased for GD mode to avoid the ice-block/slide death bug.
+            const tolerance = geometryDashMode ? 18 : 10;
+            const isLanding = p.isGrounded || (p.gravity >= 0 && p.vel.y >= -3) || (p.gravity < 0 && p.vel.y <= 3);
+            if (isLanding) {
+              if (p.gravity >= 0) {
+                const prevFeet = p.pos.y + p.h;
+                if (prevFeet <= entity.y + tolerance) {
+                  continue; 
+                }
+              } else {
+                const prevHead = p.pos.y;
+                if (prevHead >= entity.y + entity.h - tolerance) {
+                  continue; 
+                }
+              }
+            }
+
             if (geometryDashMode) {
               spawnParticles(
                 p.pos.x + p.w / 2,
@@ -3807,11 +3839,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (checkCollision(playerRect, entity)) {
             if (
-              entity.type === "walkthrough_wall" ||
-              entity.type === "troll_wall" ||
-              entity.type === "fake_goal" ||
-              entity.type === "fake_ice" ||
-              entity.type === "fake_slime"
+              !geometryDashMode && (
+                entity.type === "walkthrough_wall" ||
+                entity.type === "troll_wall" ||
+                entity.type === "fake_goal" ||
+                entity.type === "fake_ice" ||
+                entity.type === "fake_slime"
+              )
             )
               continue; // Do nothing
             if (entity.type === "ghost_hazard") continue; // Do nothing
@@ -4247,7 +4281,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (p.surfaceType === "slime") groundFriction = SLIME_FRICTION;
         }
         if (geometryDashMode) {
-          p.vel.x = (260 / 60) * dt;
+          let speedMul = 1.0;
+          if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") speedMul = 1.5;
+          if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") speedMul = 0.7;
+          p.vel.x = ((260 * speedMul) / 60) * dt;
         } else {
           p.vel.x *= groundFriction;
         }
@@ -4401,7 +4438,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
              if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") currentScrollSpeed *= 0.7;
           }
           
-          const dtInSeconds = (16.666 / 1000) * dt; 
+          const dtInSeconds = (1 / 60) * dt; 
           p.scrollX = (p.scrollX || 0) + currentScrollSpeed * dtInSeconds;
         }
 
@@ -4848,9 +4885,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Logical Shadows for 3D effect
+      const fakeTypesRender = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.beginPath();
-      [...level.entities, ...tempBlocks.current].forEach((baseEnt) => {
+      [...level.entities, ...tempBlocks.current]
+        .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
+        .forEach((baseEnt) => {
         const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
         if (!ent) return;
         const isSolid =
@@ -4873,7 +4913,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fill();
 
       // Draw Level Entities
-      [...level.entities, ...dynamicPowerups.current].forEach((baseEnt) => {
+      [...level.entities, ...dynamicPowerups.current]
+        .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
+        .forEach((baseEnt) => {
         const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
         if (!ent) return; // Skip if fragile block is broken
 
@@ -4906,13 +4948,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         // X-Ray Effect Logic
-        const isFake =
+        const isFake = !geometryDashMode && (
           ent.type === "walkthrough_wall" ||
           ent.type === "ghost_hazard" ||
           ent.type === "troll_wall" ||
           ent.type === "fake_goal" ||
           ent.type === "fake_ice" ||
-          ent.type === "fake_slime";
+          ent.type === "fake_slime"
+        );
         const isXrayActive = xrayTimerRef.current > 0;
 
         let alpha = ent.opacity ?? 1.0;
@@ -4926,70 +4969,80 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ent.type === "wall" ||
           ent.type === "walkthrough_wall" ||
           ent.type === "troll_wall"
-        )
+        ) {
           ctx.fillStyle = COLORS.WALL;
-        else if (ent.type === "hazard" || ent.type === "ghost_hazard")
+        } else if (ent.type === "hazard" || ent.type === "ghost_hazard") {
           ctx.fillStyle = COLORS.HAZARD;
-        else if (ent.type === "goal" || ent.type === "fake_goal")
+        } else if (ent.type === "goal" || ent.type === "fake_goal") {
           ctx.fillStyle = isGoalUnlocked ? COLORS.GOAL : COLORS.GOAL_LOCKED;
-        else if (ent.type === "bounce") ctx.fillStyle = COLORS.BOUNCE;
-        else if (ent.type === "coin") ctx.fillStyle = COLORS.COIN;
-        else if (ent.type === "ice" || ent.type === "fake_ice")
+        } else if (ent.type === "bounce") {
+          ctx.fillStyle = COLORS.BOUNCE;
+        } else if (ent.type === "coin") {
+          ctx.fillStyle = COLORS.COIN;
+        } else if (ent.type === "ice" || ent.type === "fake_ice") {
           ctx.fillStyle = COLORS.ICE;
-        else if (ent.type === "trampoline") ctx.fillStyle = COLORS.TRAMPOLINE;
-        else if (ent.type === "slime" || ent.type === "fake_slime")
+        } else if (ent.type === "trampoline") {
+          ctx.fillStyle = COLORS.TRAMPOLINE;
+        } else if (ent.type === "slime" || ent.type === "fake_slime") {
           ctx.fillStyle = COLORS.SLIME;
-        else if (ent.type === "teleport") ctx.fillStyle = COLORS.TELEPORT;
-        else if (ent.type === "powerup_build")
-          ctx.fillStyle = COLORS.POWERUP_BUILD;
-        else if (ent.type === "powerup_hook")
-          ctx.fillStyle = COLORS.POWERUP_HOOK;
-        else if (ent.type === "powerup_double_jump")
-          ctx.fillStyle = COLORS.POWERUP_DJ;
-        else if (ent.type === "powerup_triple_jump")
-          ctx.fillStyle = "#ff00ff"; // Magenta for triple jump
-        else if (ent.type === "powerup_slow_mo")
-          ctx.fillStyle = COLORS.POWERUP_SLOW_MO;
-        else if (ent.type === "powerup_xray")
-          ctx.fillStyle = COLORS.POWERUP_XRAY;
-        else if (ent.type === "powerup_ice_block") ctx.fillStyle = COLORS.ICE;
-        else if (ent.type === "powerup_slime_block")
-          ctx.fillStyle = COLORS.SLIME;
-        else if (ent.type === "powerup_fireball") ctx.fillStyle = "#ff4500";
-        else if (ent.type === "powerup_bomb") ctx.fillStyle = "#333333";
-        else if (ent.type === "powerup_shield")
-          ctx.fillStyle = "#ffd700"; // Gold
-        else if (ent.type === "powerup_steal")
-          ctx.fillStyle = "#8a2be2"; // Purple
-        else if (ent.type === "powerup_slow")
-          ctx.fillStyle = "#00ffff"; // Cyan
-        else if (ent.type === "powerup_melee")
-          ctx.fillStyle = "#ff0000"; // Red
-        else if (ent.type === "powerup_shrink")
-          ctx.fillStyle = "#10b981"; // Emerald
-        else if (ent.type === "powerup_grow")
-          ctx.fillStyle = "#ef4444"; // Red-500
-        else if (ent.type === "powerup_dash")
-          ctx.fillStyle = "#f59e0b"; // Amber
-        else if (ent.type === "powerup_teleport")
+        } else if (ent.type === "teleport") {
           ctx.fillStyle = COLORS.TELEPORT;
-        else if (ent.type === "block_dash") ctx.fillStyle = "#f59e0b";
-        else if (ent.type === "block_shrink") ctx.fillStyle = "#10b981";
-        else if (ent.type === "block_gravity") ctx.fillStyle = "#8b5cf6";
-        else if (ent.type === "fragile" || ent.fragile)
+        } else if (ent.type === "powerup_build") {
+          ctx.fillStyle = COLORS.POWERUP_BUILD;
+        } else if (ent.type === "powerup_hook") {
+          ctx.fillStyle = COLORS.POWERUP_HOOK;
+        } else if (ent.type === "powerup_double_jump") {
+          ctx.fillStyle = COLORS.POWERUP_DJ;
+        } else if (ent.type === "powerup_triple_jump") {
+          ctx.fillStyle = "#ff00ff"; // Magenta for triple jump
+        } else if (ent.type === "powerup_slow_mo") {
+          ctx.fillStyle = COLORS.POWERUP_SLOW_MO;
+        } else if (ent.type === "powerup_xray") {
+          ctx.fillStyle = COLORS.POWERUP_XRAY;
+        } else if (ent.type === "powerup_ice_block") {
+          ctx.fillStyle = COLORS.ICE;
+        } else if (ent.type === "powerup_slime_block") {
+          ctx.fillStyle = COLORS.SLIME;
+        } else if (ent.type === "powerup_fireball") {
+          ctx.fillStyle = "#ff4500";
+        } else if (ent.type === "powerup_bomb") {
+          ctx.fillStyle = "#333333";
+        } else if (ent.type === "powerup_shield") {
+          ctx.fillStyle = "#ffd700"; // Gold
+        } else if (ent.type === "powerup_steal") {
+          ctx.fillStyle = "#8a2be2"; // Purple
+        } else if (ent.type === "powerup_slow") {
+          ctx.fillStyle = "#00ffff"; // Cyan
+        } else if (ent.type === "powerup_melee") {
+          ctx.fillStyle = "#ff0000"; // Red
+        } else if (ent.type === "powerup_shrink") {
+          ctx.fillStyle = "#10b981"; // Emerald
+        } else if (ent.type === "powerup_grow") {
+          ctx.fillStyle = "#ef4444"; // Red-500
+        } else if (ent.type === "powerup_dash") {
+          ctx.fillStyle = "#f59e0b"; // Amber
+        } else if (ent.type === "powerup_teleport") {
+          ctx.fillStyle = COLORS.TELEPORT;
+        } else if (ent.type === "block_dash") {
+          ctx.fillStyle = "#f59e0b";
+        } else if (ent.type === "block_shrink") {
+          ctx.fillStyle = "#10b981";
+        } else if (ent.type === "block_gravity") {
+          ctx.fillStyle = "#8b5cf6";
+        } else if (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") {
+          ctx.fillStyle = "rgba(168, 85, 247, 0.4)"; // Purple semi-transparent
+        } else if (ent.type === "gravity_zero" || (ent as any).type === "grav_down") {
+          ctx.fillStyle = "rgba(14, 165, 233, 0.4)"; // Blue semi-transparent
+        } else if (ent.type === "fragile" || ent.fragile) {
           ctx.fillStyle = "#d6d3d1"; // Stone
-        else if (
+        } else if (
           ent.type === "moving_platform_h" ||
           ent.type === "moving_platform_v" ||
           ent.movingH ||
           ent.movingV
-        )
+        ) {
           ctx.fillStyle = "#f97316"; // Orange
-        else if (ent.type === "gravity_reverse")
-          ctx.fillStyle = "#a855f7"; // Purple
-        else if (ent.type === "gravity_zero")
-          ctx.fillStyle = "#0ea5e9"; // Blue
-        else if (ent.type === "powerup_spawner") {
+        } else if (ent.type === "powerup_spawner") {
           if (gameMode === "brawler") return; // Invisible in game
           ctx.fillStyle = "#ff00ff";
         } else if (ent.type === "checkpoint") {
@@ -4998,9 +5051,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             currentRespawnPos.current.x === ent.x &&
             currentRespawnPos.current.y === ent.y;
           ctx.fillStyle = isActive ? "#00ff00" : COLORS.CHECKPOINT;
-        } else if (ent.type === "powerup_remover")
+        } else if (ent.type === "powerup_remover") {
           ctx.fillStyle = COLORS.REMOVE_ABILITY;
-        else ctx.fillStyle = "#fff";
+        } else {
+          ctx.fillStyle = "#fff";
+        }
 
         let drawX = ent.x;
         let drawY = ent.y;
@@ -5154,8 +5209,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.lineTo(drawX, drawY + ent.h);
           ctx.stroke();
         } else {
-          if (ent.type === "gravity_reverse" || ent.type === "gravity_zero") {
-            ctx.strokeStyle = ctx.fillStyle as string;
+          if (ent.type === "gravity_reverse" || ent.type === "gravity_zero" || (ent as any).type === "grav_up" || (ent as any).type === "grav_down") {
+            // Fill the area with the semi-transparent fillStyle
+            ctx.fillRect(drawX, drawY, ent.w, ent.h);
+            // Draw a solid border around the area
+            ctx.strokeStyle = (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") ? "#a855f7" : "#0ea5e9";
             ctx.lineWidth = 2;
             ctx.strokeRect(drawX, drawY, ent.w, ent.h);
           } else {
@@ -5287,8 +5345,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.lineTo(drawX + 5, drawY + ent.h - 5);
             ctx.stroke();
           }
-          if (ent.type === "gravity_reverse") {
-            ctx.fillStyle = "rgba(255,255,255,0.5)";
+          if (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") {
+            ctx.fillStyle = "rgba(255,255,255,0.7)";
             ctx.beginPath();
             const centerX = drawX + ent.w / 2;
             const centerY = drawY + ent.h / 2;
@@ -5298,9 +5356,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.lineTo(centerX - size / 2, centerY - size / 2);
             ctx.fill();
           }
-          if (ent.type === "gravity_zero") {
-            ctx.strokeStyle = "rgba(255,255,255,0.5)";
-            ctx.lineWidth = 2;
+          if (ent.type === "gravity_zero" || (ent as any).type === "grav_down") {
+            ctx.strokeStyle = "rgba(255,255,255,0.7)";
+            ctx.lineWidth = 3;
             ctx.beginPath();
             const centerX = drawX + ent.w / 2;
             const centerY = drawY + ent.h / 2;

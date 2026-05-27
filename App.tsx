@@ -78,6 +78,7 @@ const DEFAULT_CUSTOMIZATION: PlayerCustomization = {
   deathAnim: "normal",
   trailType: "normal",
   brawlerClass: "standard",
+  continuousRotation: false,
 };
 
 const FPS_OPTIONS = [30, 60, 120, 144, 165, 240, 0]; // 0 = Unlimited
@@ -1464,6 +1465,14 @@ const App: React.FC = () => {
 
   const toggleLevelSelection = (lvl: LevelData) => {
     setSelectedLevels((prev) => {
+      if (gameState.onlineMode === "editor") {
+        const exists = prev.find((s) => s.id === lvl.id);
+        if (exists) {
+          return [];
+        } else {
+          return [lvl];
+        }
+      }
       const exists = prev.find((s) => s.id === lvl.id);
       if (exists) {
         return prev.filter((s) => s.id !== lvl.id);
@@ -4846,8 +4855,10 @@ const App: React.FC = () => {
       return;
     }
 
+    const isGD = gameState.geometryDashMode;
     const coinsCollectedThisAttempt = gameState.collectedCoins.length;
-    if (coinsCollectedThisAttempt > 0) {
+
+    if (isGD && coinsCollectedThisAttempt > 0) {
       setCustomization((prev) => ({
         ...prev,
         coins: Math.max(0, (prev.coins || 0) - coinsCollectedThisAttempt),
@@ -4855,21 +4866,27 @@ const App: React.FC = () => {
     }
 
     setGameState((prev) => {
-      const penaltyAmount = prev.geometryDashMode ? 10 : 50;
+      const penaltyAmount = isGD ? 10 : 50;
       const baseScorePenalty =
         prev.status === "random_run" || !!prev.storyCategoryName
           ? prev.score - penaltyAmount
           : Math.max(0, prev.score - penaltyAmount);
+      
+      const sessionScore = isGD 
+        ? Math.max(0, baseScorePenalty - (coinsCollectedThisAttempt * 500))
+        : baseScorePenalty;
+
       return {
         ...prev,
         deaths: newTotalDeaths,
         levelDeaths: prev.levelDeaths + 1,
-        collectedCoins: [], // Coins reappear when you die!
-        score: Math.max(0, baseScorePenalty - (coinsCollectedThisAttempt * 500)),
+        // In Rage Run (GD mode), coins reappear on death. In Normal levels, they stay collected.
+        collectedCoins: isGD ? [] : prev.collectedCoins,
+        score: sessionScore,
       };
     });
 
-    processedCoins.current.clear();
+    if (isGD) processedCoins.current.clear();
 
     setRespawnTrigger((prev) => prev + 1);
   }, [
@@ -4877,6 +4894,7 @@ const App: React.FC = () => {
     gameState.levelDeaths,
     gameState.status,
     gameState.collectedCoins,
+    gameState.geometryDashMode,
     checkAchievements,
     level?.id,
     customization.deathSound,
@@ -5230,6 +5248,32 @@ const App: React.FC = () => {
           if (levelBonus > currentScore) {
             parsed[level.id] = levelBonus;
             localStorage.setItem("ragecube_highscores", JSON.stringify(parsed));
+          }
+
+          // Track speed clears
+          const speedClearsStored = localStorage.getItem("ragecube_gd_speed_clears");
+          const speedClears = speedClearsStored ? JSON.parse(speedClearsStored) : {};
+          if (!speedClears[level.id]) speedClears[level.id] = [];
+          
+          const speedVal = gameState.gdSpeedMode || 1;
+          if (!speedClears[level.id].includes(speedVal)) {
+            speedClears[level.id].push(speedVal);
+            localStorage.setItem("ragecube_gd_speed_clears", JSON.stringify(speedClears));
+            
+            // Check for Mastery Achievement
+            const allLevels = GD_LEVELS.map(l => l.id);
+            const master = allLevels.every(id => {
+              const clears = speedClears[id] || [];
+              return clears.includes(1) && clears.includes(1.25) && clears.includes(1.5);
+            });
+            if (master) {
+              const currentAchievements = secureLoad("ragecube_achievements") || [];
+              if (!currentAchievements.includes("rage_master")) {
+                const newAch = [...currentAchievements, "rage_master"];
+                secureSave("ragecube_achievements", newAch);
+                showToast(lang === Language.DE ? "RAGE RUN MEISTER FREIGESCHALTET!" : "RAGE RUN MASTER UNLOCKED!");
+              }
+            }
           }
         } catch (e) {}
       }
@@ -8070,7 +8114,7 @@ const App: React.FC = () => {
                           })}
                         </div>
 
-                        {gameState.onlineMode !== "editor" && (
+                        {true && (
                           <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
                             <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
                               {t.selectedLevels || "Selected Level(s)"}
@@ -8632,6 +8676,44 @@ const App: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Mastery Reward Button */}
+                    {(() => {
+                        const speedClearsStored = localStorage.getItem("ragecube_gd_speed_clears");
+                        let master = false;
+                        if (speedClearsStored) {
+                           try {
+                             const speedClears = JSON.parse(speedClearsStored);
+                             const allLevels = GD_LEVELS.map(l => l.id);
+                             master = allLevels.every(id => {
+                               const clears = speedClears[id] || [];
+                               return clears.includes(1) && clears.includes(1.25) && clears.includes(1.5);
+                             });
+                           } catch(e) {}
+                        }
+                        
+                        if (!master) return null;
+
+                        return (
+                          <div className="mt-2 border-t border-cyan-900 pt-2 animate-fade-in">
+                            <MenuButton
+                              index={15}
+                              label={`ENDLESS ROTATION: ${customization.continuousRotation ? 'ON' : 'OFF'}`}
+                              onClick={() => {
+                                setCustomization(prev => ({
+                                  ...prev,
+                                  continuousRotation: !prev.continuousRotation
+                                }));
+                              }}
+                              isSelected={menuSelection === 15}
+                              onHover={setMenuSelection}
+                            />
+                            <div className="text-[8px] text-cyan-400 text-center uppercase mt-1 px-4 italic font-bold">
+                              ★ RAGE RUN MASTER UNLOCKED ★
+                            </div>
+                          </div>
+                        );
+                    })()}
                   </div>
 
                   <div className="flex gap-4 w-full max-w-[500px] mt-2">
@@ -9618,8 +9700,20 @@ const App: React.FC = () => {
                           ✨
                         </div>
                         {gameState.playedLevelIds.includes(currentLevel.id) && (
-                           <div className="mt-2 text-sm text-green-400 font-bold uppercase tracking-widest text-center">
+                           <div className="mt-2 text-sm text-green-400 font-bold uppercase tracking-widest text-center flex items-center justify-center gap-2">
                              ✅ COMPLETED
+                             {(() => {
+                               const stored = localStorage.getItem("ragecube_gd_speed_clears");
+                               if (!stored) return null;
+                               const clears = JSON.parse(stored)[currentLevel.id] || [];
+                               return (
+                                 <div className="flex gap-1">
+                                   {clears.includes(1) && <span className="text-blue-400">★</span>}
+                                   {clears.includes(1.25) && <span className="text-orange-400">★</span>}
+                                   {clears.includes(1.5) && <span className="text-red-500">★</span>}
+                                 </div>
+                               );
+                             })()}
                            </div>
                         )}
                         {(() => {
@@ -9649,6 +9743,12 @@ const App: React.FC = () => {
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
                           {gdLevelsList.map((lvl, idx) => {
                             const completed = gameState.playedLevelIds.includes(lvl.id);
+                            let speedClears: number[] = [];
+                            try {
+                              const stored = localStorage.getItem("ragecube_gd_speed_clears");
+                              if (stored) speedClears = JSON.parse(stored)[lvl.id] || [];
+                            } catch(e) {}
+                            
                             let highscore: number | undefined;
                             try {
                               const stored = localStorage.getItem("ragecube_highscores");
@@ -9667,7 +9767,7 @@ const App: React.FC = () => {
                                   } catch (e) {}
                                   setGdSelectedLevelIndex(idx);
                                 }}
-                                className={`p-2 rounded border cursor-pointer transition-all flex flex-col items-center justify-between text-center min-h-[55px] select-none ${
+                                className={`p-2 rounded border cursor-pointer transition-all flex flex-col items-center justify-between text-center min-h-[55px] select-none relative ${
                                   isSelected
                                     ? "bg-cyan-500/20 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
                                     : "bg-black/40 border-neutral-800 hover:border-cyan-700 hover:bg-black/60"
@@ -9675,6 +9775,11 @@ const App: React.FC = () => {
                               >
                                 <div className="text-[9px] font-black text-neutral-300 tracking-wider">
                                   {idx + 1}. {lvl.name}
+                                </div>
+                                <div className="absolute top-0 right-1 flex gap-0.5 mt-0.5">
+                                  {speedClears.includes(1) && <span className="text-blue-400 text-[8px]">★</span>}
+                                  {speedClears.includes(1.25) && <span className="text-orange-400 text-[8px]">★</span>}
+                                  {speedClears.includes(1.5) && <span className="text-red-500 text-[8px]">★</span>}
                                 </div>
                                 <div className="flex flex-col items-center gap-0.5 mt-1">
                                   {completed ? (
@@ -10316,6 +10421,12 @@ const App: React.FC = () => {
                       if (isBrawler) return filterBrawlerLevels(list);
                       return list;
                     };
+
+                    if (gameState.onlineMode === "editor") {
+                      return [
+                        { name: t.customLevels || "Custom Levels", levels: process(customLevels) },
+                      ];
+                    }
 
                     return [
                       { name: "Beginner", levels: process(INITIAL_LEVELS) },

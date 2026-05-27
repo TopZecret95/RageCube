@@ -90,6 +90,7 @@ export interface PlayerCustomization {
   deathSound?: string;
   trailType?: string;
   brawlerClass?: "standard" | "fighter" | "dasher" | "jumper" | "tank" | "ninja" | "heavy" | "vampire";
+  continuousRotation?: boolean;
 }
 
 export interface Keybindings {

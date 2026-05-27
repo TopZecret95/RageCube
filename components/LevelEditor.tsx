@@ -1218,10 +1218,10 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
       else if (ent.type === "checkpoint") ctx.fillStyle = COLORS.CHECKPOINT;
       else if (ent.type === "powerup_remover")
         ctx.fillStyle = COLORS.REMOVE_ABILITY;
+      else if (ent.type === "gravity_reverse") ctx.fillStyle = "rgba(168, 85, 247, 0.25)";
+      else if (ent.type === "gravity_zero") ctx.fillStyle = "rgba(14, 165, 233, 0.25)";
       else if (isMoving) ctx.fillStyle = "#f97316";
       else if (isFragile) ctx.fillStyle = "#d6d3d1";
-      else if (ent.type === "gravity_reverse") ctx.fillStyle = "#a855f7";
-      else if (ent.type === "gravity_zero") ctx.fillStyle = "#0ea5e9";
       else ctx.fillStyle = "#fff";
 
       if (ent.type === "coin") {
@@ -1248,7 +1248,8 @@ const LevelEditor: React.FC<LevelEditorProps> = ({
         ctx.stroke();
       } else {
         if (ent.type === "gravity_reverse" || ent.type === "gravity_zero") {
-          ctx.strokeStyle = ctx.fillStyle as string;
+          ctx.fillRect(ent.x, ent.y, ent.w, ent.h);
+          ctx.strokeStyle = ent.type === "gravity_reverse" ? "#a855f7" : "#0ea5e9";
           ctx.lineWidth = 2;
           ctx.strokeRect(ent.x, ent.y, ent.w, ent.h);
         } else {
