@@ -4263,7 +4263,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         if (foundGround) {
           p.surfaceType = dominantSurface;
-        } else if (!geometryDashMode) {
+        } else {
           p.surfaceType = "none";
         }
 
