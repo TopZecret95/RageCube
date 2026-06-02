@@ -32,6 +32,7 @@ const AchievementsView: React.FC<AchievementsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {ACHIEVEMENTS_LIST.map((ach) => {
               const isUnlocked = gameState.unlockedAchievements.includes(ach.id);
+              const localized = t.achievements_data?.[ach.id];
               return (
                 <div 
                   key={ach.id}
@@ -53,10 +54,10 @@ const AchievementsView: React.FC<AchievementsViewProps> = ({
                     </div>
                     <div className="flex-1">
                       <h3 className={`font-arcade text-lg leading-tight mb-1 ${isUnlocked ? 'text-white' : 'text-neutral-500'}`}>
-                        {ach.title.toUpperCase()}
+                        {(localized?.title || ach.title || ach.id).toUpperCase()}
                       </h3>
                       <p className="text-xs text-neutral-400 leading-relaxed">
-                        {ach.description}
+                        {localized?.desc || ach.description}
                       </p>
                     </div>
                   </div>

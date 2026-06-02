@@ -43,7 +43,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           
           {/* LEFT COLUMN: Player & Audio */}
           <div className="flex flex-col gap-2 w-80 h-full justify-center">
-            <h3 className="text-lg text-neutral-400 font-arcade">Player & Audio</h3>
+            <h3 className="text-lg text-neutral-400 font-arcade">
+              {lang === Language.DE ? "Spieler & Audio" : lang === Language.ES ? "Jugador y Audio" : "Player & Audio"}
+            </h3>
             
             <div
               className={`p-2 border transition-all ${menuSelection === 0 ? "border-white bg-neutral-800" : "border-transparent"}`}
@@ -69,7 +71,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
                 </div>
               </div>
               <div className="text-[7px] text-neutral-600 mt-1 text-center uppercase tracking-widest">
-                Max. 10 {lang === Language.DE ? "Zeichen" : "Chars"}
+                Max. 10 {lang === Language.DE ? "Zeichen" : lang === Language.ES ? "Caract." : "Chars"}
               </div>
             </div>
 
@@ -113,7 +115,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
 
             <div className="scale-90 origin-left">
               <SettingsSlider
-                label={t.opponentOpacity || "OPPONENT OPACITY"}
+                label={t.opponentOpacity || (lang === Language.DE ? "GEGNER TRANSPARENZ" : lang === Language.ES ? "TRANSPARENCIA DE RIVALES" : "OPPONENT OPACITY")}
                 value={settings.opponentOpacity ?? 0.5}
                 index={4}
                 colorClass="bg-cyan-500"
@@ -128,7 +130,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
 
           {/* RIGHT COLUMN: Graphics & Gameplay */}
           <div className="flex flex-col gap-2 w-80 h-full justify-center">
-            <h3 className="text-lg text-neutral-400 font-arcade">Graphics & Gameplay</h3>
+            <h3 className="text-lg text-neutral-400 font-arcade">
+              {lang === Language.DE ? "Grafik & Gameplay" : lang === Language.ES ? "Gráficos y Juego" : "Graphics & Gameplay"}
+            </h3>
 
             <div
               className={`p-2 border cursor-pointer ${menuSelection === 5 ? "border-white bg-neutral-800" : "border-transparent"}`}
@@ -143,9 +147,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               }}
             >
               <div className="flex justify-between items-center text-xs">
-                <span>MAX FPS</span>
+                <span>{t.maxFps || "MAX FPS"}</span>
                 <span className="text-blue-400 font-bold">
-                  {settings.fpsCap === 0 ? "UNLIMITED" : settings.fpsCap}
+                  {settings.fpsCap === 0 ? (t.unlimited || "UNLIMITED") : settings.fpsCap}
                 </span>
               </div>
             </div>
@@ -185,7 +189,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
               }}
             >
               <div className="flex justify-between items-center text-xs">
-                <span>AUFLÖSUNG</span>
+                <span>{lang === Language.DE ? "AUFLÖSUNG" : lang === Language.ES ? "RESOLUCIÓN" : "RESOLUTION"}</span>
                 <span className="text-blue-400 font-bold">
                   {settings.resolutionScale === 720 ? "720p" : settings.resolutionScale === 1080 ? "1080p" : settings.resolutionScale === 1440 ? "1440p" : "2160p"}
                 </span>
@@ -194,7 +198,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
 
             <div className="scale-90 origin-left mt-[-8px]">
               <SettingsSlider
-                label="SCREEN SHAKE"
+                label={lang === Language.DE ? "BILDSCHIRM-WACKELN" : lang === Language.ES ? "AGITACIÓN DE PANTALLA" : "SCREEN SHAKE"}
                 value={settings.screenShake ?? 1}
                 index={8}
                 colorClass="bg-yellow-500"
@@ -215,7 +219,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             >
               <div className="flex flex-col gap-1 text-xs">
                 <div className="flex justify-between items-center">
-                  <span>{lang === Language.DE ? "INVERTIERE L/R" : "INVERT L/R"}</span>
+                  <span>{lang === Language.DE ? "INVERTIERE L/R" : lang === Language.ES ? "INVERTIR L/R" : "INVERT L/R"}</span>
                   <span className="text-blue-400 font-bold">
                     {settings.invertXOnGravityReverse ? "ON" : "OFF"}
                   </span>
@@ -232,7 +236,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
             >
               <div className="flex flex-col gap-1 text-xs">
                 <div className="flex justify-between items-center">
-                  <span>{lang === Language.DE ? "INVERTIERE O/U" : "INVERT U/D"}</span>
+                  <span>{lang === Language.DE ? "INVERTIERE O/U" : lang === Language.ES ? "INVERTIR ARRIBA/ABAJO" : "INVERT U/D"}</span>
                   <span className="text-blue-400 font-bold">
                     {settings.invertYOnGravityReverse ? "ON" : "OFF"}
                   </span>

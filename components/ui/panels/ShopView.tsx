@@ -241,7 +241,7 @@ const ShopList: React.FC<ShopListProps> = ({ title, items, isUnlocked, isEquippe
 
         return (
           <div 
-            key={item.id}
+            key={`${item.type}_${item.id}`}
             onMouseEnter={() => setHovered(item)}
             onMouseLeave={() => setHovered(null)}
             onClick={() => onAction(item)}

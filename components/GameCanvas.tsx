@@ -5020,6 +5020,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillStyle = "#f59e0b";
         } else if (ent.type === "block_shrink") {
           ctx.fillStyle = "#10b981";
+        } else if (ent.type === "block_grow") {
+          ctx.fillStyle = "#ef4444";
         } else if (ent.type === "block_gravity") {
           ctx.fillStyle = "#8b5cf6";
         } else if (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") {
@@ -5371,27 +5373,27 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             gameMode === "brawler" ? Math.sin(time + ent.x) * 3 : 0;
 
           ctx.save();
-          ctx.translate(ent.x + ent.w / 2, ent.y + ent.h / 2 + floatY);
+          ctx.translate(drawX + ent.w / 2, drawY + ent.h / 2 + floatY);
 
           // Glowing aura for the emoji
           ctx.shadowColor = ctx.fillStyle as string;
           ctx.shadowBlur = 15;
 
-          // Text/Icon
+          // Text/Icon - using a standard UI sans-serif font of elegant size so symbols fit beautifully
           ctx.fillStyle = "white";
-          ctx.font = '24px "Press Start 2P", monospace';
+          ctx.font = "bold 18px 'Inter', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
           let letter = "❓";
           if (ent.type === "powerup_build") letter = "🧱";
           if (ent.type === "powerup_hook") letter = "🪝";
-          if (ent.type === "powerup_double_jump") letter = "⏫";
+          if (ent.type === "powerup_double_jump") letter = "⇈";
           if (ent.type === "powerup_triple_jump") letter = "🚀";
           if (ent.type === "powerup_slow_mo") letter = "⏱️";
           if (ent.type === "powerup_xray") letter = "👁️";
           if (ent.type === "powerup_ice_block") letter = "🧊";
-          if (ent.type === "powerup_slime_block") letter = "🟩";
+          if (ent.type === "powerup_slime_block") letter = "🧪";
           if (ent.type === "powerup_fireball") letter = "🔥";
           if (ent.type === "powerup_teleport") letter = "🌀";
           if (ent.type === "powerup_bomb") letter = "💣";
@@ -5401,12 +5403,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (ent.type === "powerup_melee") letter = "🥊";
           if (ent.type === "powerup_shrink") letter = "🤏";
           if (ent.type === "powerup_grow") letter = "🍄";
-          if (ent.type === "powerup_dash") letter = "💨";
-          if (ent.type === "block_dash") letter = "💨";
+          if (ent.type === "powerup_dash") letter = "⚡";
+          if (ent.type === "block_dash") letter = "⚡";
           if (ent.type === "block_shrink") letter = "🤏";
-          if (ent.type === "block_gravity") letter = "🔃";
+          if (ent.type === "block_grow") letter = "💪";
+          if (ent.type === "block_gravity") letter = "⇅";
 
-          ctx.fillText(letter, 0, 1);
+          ctx.fillText(letter, 0, 0);
           ctx.restore();
         }
         ctx.globalAlpha = 1.0;
@@ -5994,7 +5997,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             }
             if (p.inventory === "powerup_slime_block") {
               indColor = COLORS.SLIME;
-              letter = "🟩";
+              letter = "🧪";
             }
             if (p.inventory === "powerup_fireball") {
               indColor = "#ff4500";

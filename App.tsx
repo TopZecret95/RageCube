@@ -11,7 +11,6 @@ import GameCanvas from "./components/GameCanvas";
 import LevelEditor from "./components/LevelEditor";
 import CustomLevelSelect from "./components/CustomLevelSelect";
 import LevelPreview from "./components/LevelPreview";
-import Book from "./components/Book";
 import {
   GameState,
   Language,
@@ -756,7 +755,7 @@ const LevelMenu = ({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-5">
-                  {cat.levels.map((lvl) => {
+                  {cat.levels.map((lvl, idx) => {
                     const isSelected = selectedLevels.some(
                       (s) => s.id === lvl.id,
                     );
@@ -766,7 +765,7 @@ const LevelMenu = ({
 
                     return (
                       <div
-                        key={lvl.id}
+                        key={`${lvl.id || ""}_${idx}`}
                         onClick={() => onToggleLevel(lvl)}
                         className={`relative aspect-video border-2 cursor-pointer transition-all duration-300 group overflow-hidden rounded-xl ${
                           isSelected
@@ -979,7 +978,7 @@ const Chat: React.FC<{
           )}
           {messages.map((m, i) => (
             <div
-              key={m.id || i}
+              key={`${m.id || ""}_${i}`}
               className={`flex flex-col ${m.type === "system" ? "items-center" : ""}`}
             >
               {m.type === "system" ? (
@@ -1635,6 +1634,37 @@ const App: React.FC = () => {
     loadAssets();
   }, []);
 
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const prevStatusRef = useRef(gameState.status);
+
+  useEffect(() => {
+    if (prevStatusRef.current !== gameState.status) {
+      const oldStatus = prevStatusRef.current;
+      const newStatus = gameState.status;
+      prevStatusRef.current = newStatus;
+
+      // Only block if the new status is a menu status (prevent blocking mouse/touch in game)
+      const isMenu = (status: string) => {
+        return ![
+          "playing",
+          "vs_playing",
+          "brawler_playing",
+          "testing",
+          "brawler_testing",
+          "random_run",
+        ].includes(status);
+      };
+
+      if (isMenu(newStatus)) {
+        setIsTransitioning(true);
+        const timer = setTimeout(() => {
+          setIsTransitioning(false);
+        }, 200); // block input for 200ms during transition
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameState.status]);
+
   // Track Difficulty for Story Mode flow
   const [selectedDifficultySet, setSelectedDifficultySet] =
     useState<LevelData[]>(INITIAL_LEVELS);
@@ -1720,6 +1750,8 @@ const App: React.FC = () => {
             alert(
               lang === Language.DE
                 ? "Fehler: Die Datei ist kein gültiges Speicherstand-Format (Ungültiges JSON)."
+                : lang === Language.ES
+                ? "Error: El archivo no tiene un formato de guardado válido (JSON inválido)."
                 : "Error: The file is not a valid save format (Invalid JSON).",
             );
             return;
@@ -1731,6 +1763,8 @@ const App: React.FC = () => {
             showToast(
               lang === Language.DE
                 ? "Der Import hat wegen Dateimanipulation nicht funktioniert."
+                : lang === Language.ES
+                ? "La importación falló debido a la manipulación del archivo."
                 : "The import failed due to file manipulation.",
             );
             return;
@@ -1741,6 +1775,8 @@ const App: React.FC = () => {
             alert(
               lang === Language.DE
                 ? "Fehler: Die Datei enthält keine gültigen Daten."
+                : lang === Language.ES
+                ? "Error: El archivo no contiene datos válidos."
                 : "Error: The file does not contain valid data.",
             );
             return;
@@ -1799,6 +1835,8 @@ const App: React.FC = () => {
           showToast(
             lang === Language.DE
               ? "Speicherstand erfolgreich importiert! Das Spiel wird nun neu gestartet..."
+              : lang === Language.ES
+              ? "¡Datos de guardado importados de manera correcta! El juego se reiniciará..."
               : "Save loaded successfully! The game will now restart...",
           );
 
@@ -1811,6 +1849,8 @@ const App: React.FC = () => {
           alert(
             lang === Language.DE
               ? "Fehler beim Importieren!"
+              : lang === Language.ES
+              ? "¡Error al importar!"
               : "Error importing save data!",
           );
         }
@@ -1830,6 +1870,7 @@ const App: React.FC = () => {
   // --- STATE REF PATTERN FOR PERFORMANCE ---
   const stateRef = useRef({
     gameState,
+    isTransitioning: false,
     menuSelection,
     editingKey,
     level,
@@ -2054,6 +2095,7 @@ const App: React.FC = () => {
   useEffect(() => {
     Object.assign(stateRef.current, {
       gameState,
+      isTransitioning,
       menuSelection,
       editingKey,
       level,
@@ -2815,6 +2857,11 @@ const App: React.FC = () => {
       return;
     }
     const st = stateRef.current; // Read from Ref
+    if (st.isTransitioning) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const status = st.gameState.status;
 
     // Secret Cheat Code Detection
@@ -2918,20 +2965,20 @@ const App: React.FC = () => {
     const sel = st.menuSelection;
 
     if (status === "menu") {
-      const maxItems = 11;
+      const maxItems = 10;
 
       if (e.code === "ArrowRight" || e.code === "KeyD") {
-        if (sel % 2 === 0 && sel < 11) setMenuSelection(sel + 1);
+        if (sel % 2 === 0 && sel < 10) setMenuSelection(sel + 1);
       }
       if (e.code === "ArrowLeft" || e.code === "KeyA") {
-        if (sel % 2 !== 0 && sel <= 11) setMenuSelection(sel - 1);
+        if (sel % 2 !== 0 && sel <= 10) setMenuSelection(sel - 1);
       }
       if (e.code === "ArrowDown" || e.code === "KeyS") {
-        if (sel === 8 || sel === 9) setMenuSelection(sel + 2);
+        if (sel === 8 || sel === 9) setMenuSelection(10);
         else if (sel + 2 <= 9) setMenuSelection(sel + 2);
       }
       if (e.code === "ArrowUp" || e.code === "KeyW") {
-        if (sel === 10 || sel === 11) setMenuSelection(sel - 2);
+        if (sel === 10) setMenuSelection(8);
         else if (sel - 2 >= 0) setMenuSelection(sel - 2);
       }
 
@@ -2987,9 +3034,6 @@ const App: React.FC = () => {
               status: "settings",
               previousStatus: "menu",
             }));
-            break;
-          case 11: // Book
-            setGameState((p) => ({ ...p, status: "book" }));
             break;
         }
       }
@@ -5286,7 +5330,7 @@ const App: React.FC = () => {
               if (!currentAchievements.includes("rage_master")) {
                 const newAch = [...currentAchievements, "rage_master"];
                 secureSave("ragecube_achievements", newAch);
-                showToast(lang === Language.DE ? "RAGE RUN MEISTER FREIGESCHALTET!" : "RAGE RUN MASTER UNLOCKED!");
+                showToast(lang === Language.DE ? "RAGE RUN MEISTER FREIGESCHALTET!" : lang === Language.ES ? "¡RAGE RUN MAESTRO DESBLOQUEADO!" : "RAGE RUN MASTER UNLOCKED!");
               }
             }
           }
@@ -5399,13 +5443,21 @@ const App: React.FC = () => {
   };
 
   const startRandomRun = () => {
-    const normalLevels = customLevels;
-    if (normalLevels.length === 0) {
-      showToast(t.noCustomLevels);
+    const storyLevels: LevelData[] = [
+      ...INITIAL_LEVELS,
+      ...ADVANCED_LEVELS,
+      ...EXPERT_LEVELS,
+      ...GOD_LEVELS,
+      ...BRAWLER_LEVELS,
+    ];
+    const allAvailableLevels = [...customLevels, ...storyLevels];
+
+    if (allAvailableLevels.length === 0) {
+      showToast(t.noCustomLevels || "Keine Level verfügbar");
       return;
     }
 
-    const shuffled = [...normalLevels]
+    const shuffled = [...allAvailableLevels]
       .sort(() => 0.5 - Math.random())
       .slice(0, 10);
 
@@ -5527,6 +5579,25 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {isTransitioning && (
+        <div
+          id="transition-blocker"
+          className="fixed inset-0 z-[9999] pointer-events-auto bg-transparent cursor-default"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        />
+      )}
 
       <div className="w-full h-full absolute inset-0 bg-neutral-900 flex flex-col p-2 font-arcade text-white select-none overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-900 to-black z-0 pointer-events-none"></div>
@@ -5682,224 +5753,250 @@ const App: React.FC = () => {
           <div className="flex-1 relative flex items-center justify-center min-h-0 min-w-0 w-full">
             {/* Aspect Ratio Container */}
             <div className="aspect-video h-full w-full max-w-full max-h-full bg-black shadow-[0_0_50px_rgba(255,0,68,0.2)] border-4 border-neutral-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center">
-              {/* Editor Type Select */}
-              {gameState.status === "editor_type_select" && (
-                <div className="flex flex-col items-center justify-center gap-12 w-full p-8">
-                  <div className="flex flex-col items-center gap-4">
-                    <h2 className="text-4xl text-white font-arcade tracking-widest text-center">
-                      {t.editorTypeTitle}
-                    </h2>
-                    <div className="h-1 w-24 bg-cyan-500 rounded-full" />
-                  </div>
+              <AnimatePresence mode="wait">
+                {/* Editor Type Select */}
+                {gameState.status === "editor_type_select" && (
+                  <motion.div
+                    key="editor_type_select"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex flex-col items-center justify-center gap-12 w-full p-8 absolute inset-0 bg-neutral-950/95 z-30 overflow-hidden"
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      <h2 className="text-4xl text-white font-arcade tracking-widest text-center">
+                        {t.editorTypeTitle}
+                      </h2>
+                      <div className="h-1 w-24 bg-cyan-500 rounded-full" />
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
-                    {/* Normal Level Option */}
-                    <button
-                      onClick={() => startNewEditor(false)}
-                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-cyan-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                        🚩
-                      </div>
-                      <div>
-                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-cyan-400">
-                          {t.editorTypeNormal}
-                        </h3>
-                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                          {t.editorTypeNormalDesc}
-                        </p>
-                      </div>
-                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-cyan-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                        Select
-                      </div>
-                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+                      {/* Normal Level Option */}
+                      <button
+                        onClick={() => startNewEditor(false)}
+                        className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-cyan-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-20 h-20 bg-neutral-800 group-hover:bg-cyan-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                          🚩
+                        </div>
+                        <div>
+                          <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-cyan-400">
+                            {t.editorTypeNormal}
+                          </h3>
+                          <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                            {t.editorTypeNormalDesc}
+                          </p>
+                        </div>
+                        <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-cyan-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                          Select
+                        </div>
+                      </button>
 
-                    {/* Brawler Level Option */}
-                    <button
-                      onClick={() => startNewEditor(true)}
-                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-red-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-red-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                        ⚔️
-                      </div>
-                      <div>
-                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-red-400">
-                          {t.editorTypeBrawler}
-                        </h3>
-                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                          {t.editorTypeBrawlerDesc}
-                        </p>
-                      </div>
-                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-red-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                        Select
-                      </div>
-                    </button>
+                      {/* Brawler Level Option */}
+                      <button
+                        onClick={() => startNewEditor(true)}
+                        className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-red-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-20 h-20 bg-neutral-800 group-hover:bg-red-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                          ⚔️
+                        </div>
+                        <div>
+                          <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-red-400">
+                            {t.editorTypeBrawler}
+                          </h3>
+                          <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                            {t.editorTypeBrawlerDesc}
+                          </p>
+                        </div>
+                        <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-red-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                          Select
+                        </div>
+                      </button>
 
-                    {/* Coop Editor Level Option */}
-                    <button
-                      onClick={() => createOnlineLobby("editor")}
-                      className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-purple-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-20 h-20 bg-neutral-800 group-hover:bg-purple-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
-                        🤝
-                      </div>
-                      <div>
-                        <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-purple-400">
-                          COOP EDITOR
-                        </h3>
-                        <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
-                          CREATE A LOBBY TO BUILD A LEVEL TOGETHER
-                        </p>
-                      </div>
-                      <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-purple-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
-                        HOST
-                      </div>
-                    </button>
-                  </div>
+                      {/* Coop Editor Level Option */}
+                      <button
+                        onClick={() => createOnlineLobby("editor")}
+                        className="group relative bg-neutral-900/50 border-2 border-neutral-800 hover:border-purple-500 rounded-xl p-8 flex flex-col items-center gap-6 transition-all active:scale-95 text-center overflow-hidden"
+                      >
+                        <div className="absolute inset-0 bg-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="w-20 h-20 bg-neutral-800 group-hover:bg-purple-500/20 rounded-full flex items-center justify-center text-3xl transition-colors">
+                          🤝
+                        </div>
+                        <div>
+                          <h3 className="text-xl text-white font-arcade mb-3 group-hover:text-purple-400">
+                            COOP EDITOR
+                          </h3>
+                          <p className="text-neutral-400 text-sm leading-relaxed max-w-xs mx-auto">
+                            CREATE A LOBBY TO BUILD A LEVEL TOGETHER
+                          </p>
+                        </div>
+                        <div className="mt-4 px-6 py-2 bg-neutral-800 group-hover:bg-purple-600 text-neutral-400 group-hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-full transition-all">
+                          HOST
+                        </div>
+                      </button>
+                    </div>
 
-                  <div className="flex flex-col items-center gap-4 w-full max-w-md mt-4">
-                    <div className="flex w-full gap-2">
-                      <input
-                        type="text"
-                        value={onlineLobbyInput}
-                        onChange={(e) =>
-                          setOnlineLobbyInput(e.target.value.toUpperCase())
-                        }
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === "Enter") {
-                            e.preventDefault();
+                    <div className="flex flex-col items-center gap-4 w-full max-w-md mt-4">
+                      <div className="flex w-full gap-2">
+                        <input
+                          type="text"
+                          value={onlineLobbyInput}
+                          onChange={(e) =>
+                            setOnlineLobbyInput(e.target.value.toUpperCase())
+                          }
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (onlineLobbyInput.trim()) {
+                                joinOnlineLobby(onlineLobbyInput.trim());
+                              }
+                            }
+                          }}
+                          placeholder="ENTER ANY LOBBY CODE"
+                          className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
+                        />
+                        <button
+                          onClick={() => {
                             if (onlineLobbyInput.trim()) {
                               joinOnlineLobby(onlineLobbyInput.trim());
                             }
-                          }
-                        }}
-                        placeholder="ENTER ANY LOBBY CODE"
-                        className="flex-1 bg-black border-2 border-neutral-800 text-white font-arcade p-3 text-center rounded-lg focus:border-purple-500 outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          if (onlineLobbyInput.trim()) {
-                            joinOnlineLobby(onlineLobbyInput.trim());
-                          }
-                        }}
-                        className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-arcade rounded-lg border-b-4 border-purple-800 hover:border-purple-600 active:border-b-0 active:translate-y-4 transition-all"
-                      >
-                        JOIN
-                      </button>
+                          }}
+                          className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-arcade rounded-lg border-b-4 border-purple-800 hover:border-purple-600 active:border-b-0 active:translate-y-4 transition-all"
+                        >
+                          JOIN
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {onlineError && (
-                    <div className="text-red-500 font-arcade text-[10px] md:text-xs mb-3 animate-pulse max-w-sm text-center uppercase tracking-wider">
-                      {onlineError}
-                    </div>
-                  )}
+                    {onlineError && (
+                      <div className="text-red-500 font-arcade text-[10px] md:text-xs mb-3 animate-pulse max-w-sm text-center uppercase tracking-wider">
+                        {onlineError}
+                      </div>
+                    )}
 
-                  <button
-                    onClick={() =>
-                      setGameState((p) => ({ ...p, status: "menu" }))
-                    }
-                    className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
-                  >
-                    ← {t.back}
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={() =>
+                        setGameState((p) => ({ ...p, status: "menu" }))
+                      }
+                      className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-neutral-400 hover:text-white font-bold uppercase tracking-[0.3em] transition-all"
+                    >
+                      ← {t.back}
+                    </button>
+                  </motion.div>
+                )}
 
               {/* Editor Layer */}
               {gameState.status === "editor" && (
-                <LevelEditor
-                  onSave={handleSaveLevel}
-                  onExit={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                  onTest={(levelData, history, historyIndex) => {
-                    setEditorData(levelData);
-                    setEditorHistory({
-                      history: history || [],
-                      index: historyIndex || 0,
-                    }); // Preserve History
-                    setLevel(levelData);
+                <motion.div
+                  key="editor"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-30 bg-black/95"
+                >
+                  <LevelEditor
+                    onSave={handleSaveLevel}
+                    onExit={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    onTest={(levelData, history, historyIndex) => {
+                      setEditorData(levelData);
+                      setEditorHistory({
+                        history: history || [],
+                        index: historyIndex || 0,
+                      }); // Preserve History
+                      setLevel(levelData);
 
-                    if (
-                      gameState.onlineMode === "editor" &&
-                      onlineService.lobbyCode
-                    ) {
-                      if (onlineService.isHost) {
-                        onlineService.broadcastLobbyState("editor", levelData);
-                      } else {
-                        onlineService.sendEvent("editor-sync", levelData);
+                      if (
+                        gameState.onlineMode === "editor" &&
+                        onlineService.lobbyCode
+                      ) {
+                        if (onlineService.isHost) {
+                          onlineService.broadcastLobbyState("editor", levelData);
+                        } else {
+                          onlineService.sendEvent("editor-sync", levelData);
+                        }
+                        setVoteConfirmType("test_level");
+                        return;
                       }
-                      setVoteConfirmType("test_level");
-                      return;
-                    }
 
-                    setRespawnTrigger(0);
-                    processedCoins.current.clear(); // Reset coins for testing session
-                    setGameState((p) => ({
-                      ...p,
-                      status: levelData.isBrawler
-                        ? "brawler_testing"
-                        : "testing",
-                      collectedCoins: [],
-                    }));
-                  }}
-                  lang={lang}
-                  initialLevel={editorData}
-                  isVerified={editorVerified}
-                  initialHistory={editorHistory?.history}
-                  initialHistoryIndex={editorHistory?.index}
-                  showToast={showToast}
-                  settings={settings}
-                  onSettingsChange={setSettings}
-                  externalLevelSync={
-                    gameState.onlineMode === "editor" ? editorData : undefined
-                  }
-                  onLevelChange={(levelData) => {
-                    if (
-                      gameState.onlineMode === "editor" &&
-                      onlineService.lobbyCode
-                    ) {
-                      if (onlineService.isHost) {
-                        setEditorData(levelData);
-                        setLevel(levelData);
-                        onlineService.broadcastLobbyState("editor", levelData);
-                      } else {
-                        setEditorData(levelData);
-                        onlineService.sendEvent("editor-sync", levelData);
-                      }
+                      setRespawnTrigger(0);
+                      processedCoins.current.clear(); // Reset coins for testing session
+                      setGameState((p) => ({
+                        ...p,
+                        status: levelData.isBrawler
+                          ? "brawler_testing"
+                          : "testing",
+                        collectedCoins: [],
+                      }));
+                    }}
+                    lang={lang}
+                    initialLevel={editorData}
+                    isVerified={editorVerified}
+                    initialHistory={editorHistory?.history}
+                    initialHistoryIndex={editorHistory?.index}
+                    showToast={showToast}
+                    settings={settings}
+                    onSettingsChange={setSettings}
+                    externalLevelSync={
+                      gameState.onlineMode === "editor" ? editorData : undefined
                     }
-                  }}
-                />
+                    onLevelChange={(levelData) => {
+                      if (
+                        gameState.onlineMode === "editor" &&
+                        onlineService.lobbyCode
+                      ) {
+                        if (onlineService.isHost) {
+                          setEditorData(levelData);
+                          setLevel(levelData);
+                          onlineService.broadcastLobbyState("editor", levelData);
+                        } else {
+                          setEditorData(levelData);
+                          onlineService.sendEvent("editor-sync", levelData);
+                        }
+                      }
+                    }}
+                  />
+                </motion.div>
               )}
 
               {/* Custom Level Select Layer */}
               {gameState.status === "custom_level_select" && (
-                <CustomLevelSelect
-                  levels={sortedCustomLevels}
-                  storyCategories={storyCategories}
-                  onPlay={playSingleCustomLevelHook}
-                  onPlayRun={startStoryRun}
-                  onEdit={handleEditLevel}
-                  onDelete={handleDeleteLevel}
-                  onImport={handleImportLevel}
-                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                  lang={lang}
-                  selectedIndex={menuSelection}
-                  setSelectedIndex={setMenuSelection}
-                  sortMode={levelSortMode}
-                  onSortChange={(mode) => {
-                    setLevelSortMode(mode);
-                    setMenuSelection(0);
-                  }}
-                  showToast={showToast}
-                  showGhost={settings.showGhost || false}
-                  onToggleGhost={() =>
-                    setSettings((p) => ({ ...p, showGhost: !p.showGhost }))
-                  }
-                />
+                <motion.div
+                  key="custom_level_select"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-30 bg-black/95"
+                >
+                  <CustomLevelSelect
+                    levels={sortedCustomLevels}
+                    storyCategories={storyCategories}
+                    onPlay={playSingleCustomLevelHook}
+                    onPlayRun={startStoryRun}
+                    onEdit={handleEditLevel}
+                    onDelete={handleDeleteLevel}
+                    onImport={handleImportLevel}
+                    onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    lang={lang}
+                    selectedIndex={menuSelection}
+                    setSelectedIndex={setMenuSelection}
+                    sortMode={levelSortMode}
+                    onSortChange={(mode) => {
+                      setLevelSortMode(mode);
+                      setMenuSelection(0);
+                    }}
+                    showToast={showToast}
+                    showGhost={settings.showGhost || false}
+                    onToggleGhost={() =>
+                      setSettings((p) => ({ ...p, showGhost: !p.showGhost }))
+                    }
+                  />
+                </motion.div>
               )}
 
               {/* Delete Confirm Modal */}
@@ -5933,12 +6030,11 @@ const App: React.FC = () => {
               )}
 
               {/* Game Layer */}
-              {[
+              {([
                 "playing",
                 "dead",
                 "won",
                 "paused",
-                "settings",
                 "random_run",
                 "tutorial",
                 "testing",
@@ -5948,7 +6044,23 @@ const App: React.FC = () => {
                 "brawler_playing",
                 "brawler_won",
                 "online_summary",
-              ].includes(gameState.status) && (
+              ].includes(gameState.status) || (
+                gameState.status === "settings" && [
+                  "playing",
+                  "dead",
+                  "won",
+                  "paused",
+                  "random_run",
+                  "tutorial",
+                  "testing",
+                  "brawler_testing",
+                  "vs_playing",
+                  "vs_won",
+                  "brawler_playing",
+                  "brawler_won",
+                  "online_summary",
+                ].includes(gameState.previousStatus || "")
+              )) && (
                 <GameCanvas
                   level={gamescreenLevel}
                   customization={customization}
@@ -6248,7 +6360,14 @@ const App: React.FC = () => {
 
               {/* Difficulty Select */}
               {gameState.status === "difficulty_select" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30 overflow-y-auto py-10">
+                <motion.div
+                  key="difficulty_select"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30 overflow-y-auto py-10"
+                >
                   <h2 className="text-2xl mb-8 text-white uppercase tracking-widest">
                     {t.selectDifficulty || "SELECT DIFFICULTY"}
                   </h2>
@@ -6310,12 +6429,19 @@ const App: React.FC = () => {
                       ⚙️ {t.settings || "SETTINGS"}
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Random Run Setup Screen */}
               {gameState.status === "random_run_setup" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
+                <motion.div
+                  key="random_run_setup"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30"
+                >
                   <h2 className="text-3xl mb-8 text-white uppercase">
                     {t.randomRun || "ZUFALLS-LAUF"}
                   </h2>
@@ -6349,13 +6475,20 @@ const App: React.FC = () => {
                       ⚙️ {t.settings || "SETTINGS"}
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* VS Setup Screen - IMPROVED */}
               {(gameState.status === "vs_setup" ||
                 gameState.status === "brawler_setup") && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-10">
+                <motion.div
+                  key="vs_brawler_setup"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-10"
+                >
                   <h2 className="text-3xl mb-4 text-rage-red">
                     {gameState.status === "brawler_setup"
                       ? "BRAWLER MODE"
@@ -6781,7 +6914,7 @@ const App: React.FC = () => {
                               <div className="text-[8px] text-white flex flex-col gap-0.5 w-full text-center overflow-hidden">
                                 {selectedLevels.slice(0, 4).map((sl, i) => (
                                   <div
-                                    key={sl.id}
+                                    key={`${sl.id || ""}_${i}`}
                                     className="truncate px-1 bg-white/10 rounded"
                                   >
                                     {i + 1}. {sl.name}
@@ -6902,12 +7035,19 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Brawler Powerup Setup Screen */}
               {gameState.status === "brawler_powerup_setup" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
+                <motion.div
+                  key="brawler_powerup_setup"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30"
+                >
                   <h2 className="text-3xl mb-4 text-rage-red">
                     {t.brawlerSettings || "BRAWLER SETTINGS"}
                   </h2>
@@ -7164,31 +7304,39 @@ const App: React.FC = () => {
                       onHover={setMenuSelection}
                     />
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Achievements Menu */}
               {gameState.status === "achievements" && (
-                <AchievementsView
-                  t={t}
-                  gameState={gameState}
-                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                  ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
-                  MenuButton={MenuButton}
-                />
+                <motion.div
+                  key="achievements"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-30"
+                >
+                  <AchievementsView
+                    t={t}
+                    gameState={gameState}
+                    onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+                    MenuButton={MenuButton}
+                  />
+                </motion.div>
               )}
 
               {/* Comic Intro & Menu Transition */}
-              <AnimatePresence mode="wait">
-                {gameState.status === "intro" && (
-                  <motion.div
-                    key="intro"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute inset-0 z-50"
-                  >
+              {gameState.status === "intro" && (
+                <motion.div
+                  key="intro"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-50"
+                >
                     <ComicIntro
                       onComplete={() => {
                         localStorage.setItem("ragecube_intro_seen", "true");
@@ -7204,7 +7352,7 @@ const App: React.FC = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.8 }}
+                    transition={{ duration: 0.15 }}
                     className="absolute inset-0 flex flex-col items-center justify-between p-8 z-30 overflow-hidden bg-neutral-950"
                   >
                     {/* Volcanic Background */}
@@ -7701,7 +7849,7 @@ const App: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-3 w-full max-w-3xl mb-12">
+                      <div className="grid grid-cols-1 gap-y-3 w-full max-w-3xl mb-12">
                         <MenuButton
                           index={10}
                           label={t.settings}
@@ -7713,15 +7861,6 @@ const App: React.FC = () => {
                             }))
                           }
                           isSelected={menuSelection === 10}
-                          onHover={setMenuSelection}
-                        />
-                        <MenuButton
-                          index={11}
-                          label={t.book}
-                          onClick={() =>
-                            setGameState((p) => ({ ...p, status: "book" }))
-                          }
-                          isSelected={menuSelection === 11}
                           onHover={setMenuSelection}
                         />
                       </div>
@@ -7742,11 +7881,17 @@ const App: React.FC = () => {
                     </div>
                   </motion.div>
                 )}
-              </AnimatePresence>
 
               {/* Online Menu */}
               {gameState.status === "online_menu" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30">
+                <motion.div
+                  key="online_menu"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30"
+                >
                   <h1 className="text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 font-bold font-arcade mb-8">
                     {t.onlineMultiplayer}
                   </h1>
@@ -7891,12 +8036,19 @@ const App: React.FC = () => {
                       </form>
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Online Lobby Screen */}
               {gameState.status === "online_lobby" && (
-                <div className="absolute inset-0 flex flex-col items-center p-4 md:p-8 bg-black/95 z-30 overflow-y-auto">
+                <motion.div
+                  key="online_lobby"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center p-4 md:p-8 bg-black/95 z-30 overflow-y-auto"
+                >
                   <div className="w-full max-w-4xl flex flex-col min-h-full">
                     {/* Lobby Header */}
                     <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-neutral-900/50 p-6 rounded-2xl border border-neutral-800">
@@ -8031,7 +8183,7 @@ const App: React.FC = () => {
 
                             return (
                               <div
-                                key={p.id}
+                                key={`${p.id || ""}_${idx}`}
                                 className="flex flex-col items-center bg-neutral-900 p-4 border-2 border-neutral-700 rounded-lg w-40 relative group"
                               >
                                 <div
@@ -8297,7 +8449,7 @@ const App: React.FC = () => {
                                           .slice(0, 4)
                                           .map((sl, i) => (
                                             <div
-                                              key={sl.id || i}
+                                              key={`${sl.id || ""}_${i}`}
                                               className="truncate px-1 bg-white/10 rounded"
                                             >
                                               {i + 1}. {sl.name}
@@ -8500,12 +8652,19 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Customization Menu */}
               {gameState.status === "customizing" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30">
+                <motion.div
+                  key="customizing"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30"
+                >
                   <h2 className="text-2xl mb-4 text-white">{t.customize}</h2>
 
                   {/* Character Preview (Live Canvas) */}
@@ -8813,7 +8972,7 @@ const App: React.FC = () => {
                   <div className="text-[10px] text-neutral-500 mt-2">
                     {t.adjustControls || "ARROWS to adjust • ENTER to cycle"}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* ... (Other Menus remain similar but condensed in existing code) ... */}
@@ -9106,6 +9265,8 @@ const App: React.FC = () => {
                               label={
                                 lang === Language.DE
                                   ? "NOCHMAL SPIELEN"
+                                  : lang === Language.ES
+                                  ? "VOLVER A JUGAR"
                                   : "PLAY AGAIN"
                               }
                               onClick={() => {
@@ -9119,6 +9280,8 @@ const App: React.FC = () => {
                               label={
                                 lang === Language.DE
                                   ? "ZURÜCK ZUR LOBBY"
+                                  : lang === Language.ES
+                                  ? "VOLVER A LA LOBBY"
                                   : "BACK TO LOBBY"
                               }
                               onClick={() => {
@@ -9553,6 +9716,8 @@ const App: React.FC = () => {
                               label={
                                 lang === Language.DE
                                   ? "NOCHMAL SPIELEN"
+                                  : lang === Language.ES
+                                  ? "VOLVER A JUGAR"
                                   : "PLAY AGAIN"
                               }
                               onClick={() => {
@@ -9596,30 +9761,29 @@ const App: React.FC = () => {
 
               {/* Shop UI */}
               {gameState.status === "shop" && (
-                <ShopView
-                  t={t}
-                  customization={customization}
-                  setCustomization={setCustomization}
-                  shopTab={shopTab}
-                  setShopTab={setShopTab}
-                  hoveredShopItem={hoveredShopItem}
-                  setHoveredShopItem={setHoveredShopItem}
-                  gameState={gameState}
-                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                  CharacterPreview={CharacterPreview}
-                  SHOP_ITEMS={SHOP_ITEMS}
-                  ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
-                />
-              )}
-
-              {/* Book Menu */}
-              {gameState.status === "book" && (
-                <Book
-                  onClose={() =>
-                    setGameState((p) => ({ ...p, status: "menu" }))
-                  }
-                  lang={lang || Language.DE}
-                />
+                <motion.div
+                  key="shop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-30"
+                >
+                  <ShopView
+                    t={t}
+                    customization={customization}
+                    setCustomization={setCustomization}
+                    shopTab={shopTab}
+                    setShopTab={setShopTab}
+                    hoveredShopItem={hoveredShopItem}
+                    setHoveredShopItem={setHoveredShopItem}
+                    gameState={gameState}
+                    onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    CharacterPreview={CharacterPreview}
+                    SHOP_ITEMS={SHOP_ITEMS}
+                    ACHIEVEMENTS_LIST={ACHIEVEMENTS_LIST}
+                  />
+                </motion.div>
               )}
 
               {/* Geometry Dash Style Menu */}
@@ -9630,7 +9794,14 @@ const App: React.FC = () => {
                     gdLevelsList[gdSelectedLevelIndex] || GD_LEVELS[0];
 
                   return (
-                    <div className="absolute inset-0 flex flex-col items-center justify-between p-8 bg-neutral-950 font-sans text-white z-40 overflow-hidden">
+                    <motion.div
+                      key="geometry_dash_menu"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute inset-0 flex flex-col items-center justify-between p-8 bg-neutral-950 font-sans text-white z-40 overflow-hidden"
+                    >
                       {/* Neon Grid Background */}
                       <div className="absolute inset-0 z-[-1] opacity-25">
                         <div className="w-full h-full bg-[linear-gradient(to_right,#00ffcc_1px,transparent_1px),linear-gradient(to_bottom,#00ffcc_1px,transparent_1px)] bg-[size:40px_40px] shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
@@ -9763,7 +9934,7 @@ const App: React.FC = () => {
                             const isSelected = gdSelectedLevelIndex === idx;
                             return (
                               <div
-                                key={lvl.id}
+                                key={`${lvl.id || ""}_${idx}`}
                                 onClick={() => {
                                   try {
                                     audio.playSfx("secret");
@@ -9885,36 +10056,52 @@ const App: React.FC = () => {
                           ◀ BACK TO MAIN
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })()}
 
               {/* Settings Menu */}
               {gameState.status === "settings" && (
-                <SettingsMenu
-                  t={t}
-                  settings={settings}
-                  setSettings={setSettings}
-                  lang={lang}
-                  menuSelection={menuSelection}
-                  setMenuSelection={setMenuSelection}
-                  onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
-                  onKeybindings={() => {
-                    setGameState((p) => ({ ...p, status: "keybindings" }));
-                    setMenuSelection(0);
-                  }}
-                  FPS_OPTIONS={FPS_OPTIONS}
-                  UI_SCALE_OPTIONS={UI_SCALE_OPTIONS}
-                  RESOLUTION_OPTIONS={RESOLUTION_OPTIONS}
-                  setPlayerName={setPlayerName}
-                  MenuButton={MenuButton}
-                  SettingsSlider={SettingsSlider}
-                />
+                <motion.div
+                  key="settings"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 z-30"
+                >
+                  <SettingsMenu
+                    t={t}
+                    settings={settings}
+                    setSettings={setSettings}
+                    lang={lang}
+                    menuSelection={menuSelection}
+                    setMenuSelection={setMenuSelection}
+                    onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    onKeybindings={() => {
+                      setGameState((p) => ({ ...p, status: "keybindings" }));
+                      setMenuSelection(0);
+                    }}
+                    FPS_OPTIONS={FPS_OPTIONS}
+                    UI_SCALE_OPTIONS={UI_SCALE_OPTIONS}
+                    RESOLUTION_OPTIONS={RESOLUTION_OPTIONS}
+                    setPlayerName={setPlayerName}
+                    MenuButton={MenuButton}
+                    SettingsSlider={SettingsSlider}
+                  />
+                </motion.div>
               )}
 
               {/* Keybindings Menu */}
               {gameState.status === "keybindings" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto custom-scrollbar py-10">
+                <motion.div
+                  key="keybindings"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto custom-scrollbar py-10"
+                >
                   <h2 className="text-3xl mb-4 text-rage-red uppercase">
                     {t.keybindings}
                   </h2>
@@ -10065,12 +10252,19 @@ const App: React.FC = () => {
                       onHover={setMenuSelection}
                     />
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* Highscores Menu (Per Level) */}
               {gameState.status === "highscores" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30">
+                <motion.div
+                  key="highscores"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30"
+                >
                   <h2 className="text-3xl mb-4 text-troll-green">
                     {t.highscores}
                   </h2>
@@ -10362,8 +10556,9 @@ const App: React.FC = () => {
                       onHover={setMenuSelection}
                     />
                   </div>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
               {/* Global Toast */}
               <AnimatePresence>
