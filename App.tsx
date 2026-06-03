@@ -1,11 +1,14 @@
 import React, {
   useState,
   useEffect,
-  useCallback,
-  useRef,
   useMemo,
+  useRef,
+  useCallback,
 } from "react";
+
 import { motion, AnimatePresence } from "motion/react";
+
+
 import { secureSave, secureLoad, signData, verifyData } from "./utils/storage";
 import GameCanvas from "./components/GameCanvas";
 import LevelEditor from "./components/LevelEditor";
@@ -417,7 +420,7 @@ const GD_LEVEL_7_JUMPER = createGDLevel({
   coins: [
     { x: 1230, y: 350 },
     { x: 1750, y: 200 },
-    { x: 2150, y: 180 },
+    { x: 2250, y: 200 },
     { x: 2500, y: 350 },
     { x: 3215, y: 350 },
   ],

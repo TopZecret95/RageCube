@@ -1,42 +1,15 @@
-743:        {categories.map(
-758:                  {cat.levels.map((lvl, idx) => {
-935:              {STANDARD_EMOJIS.map((e) => (
-950:              {SPECIAL_EMOJIS.map((se) => {
-979:          {messages.map((m, i) => (
-1487:    const allDeathAnims = SHOP_ITEMS.filter((i) => i.type === "deathAnim").map(
-1492:    ).map((i) => i.id);
-1493:    const allTrails = SHOP_ITEMS.filter((i) => i.type === "trailType").map(
-1496:    const allEyes = SHOP_ITEMS.filter((i) => i.type === "eyes").map(
-1499:    const allAccessories = SHOP_ITEMS.filter((i) => i.type === "accessory").map(
-1524:    const allAchievementIds = ACHIEVEMENTS_LIST.map((a) => a.id);
-2279:    const newLevels = customLevels.map((l) =>
-2410:          minX = Math.min(...walls.map((e) => e.x)) + 40;
-2411:          maxX = Math.max(...walls.map((e) => e.x + e.w)) - 40;
-2412:          minY = Math.min(...walls.map((e) => e.y)) + 40;
-2413:          maxY = Math.max(...walls.map((e) => e.y + e.h)) - 40;
-4765:          ).map((p) => {
-5323:            const allLevels = GD_LEVELS.map(l => l.id);
-5493:    level?.entities?.filter((e) => e.type === "coin").map((e) => e.id!) || [];
-6154:                        .map((p) => (
-6915:                                {selectedLevels.slice(0, 4).map((sl, i) => (
-7153:                        ).map((mode) => (
-7184:                    {Object.keys(brawlerPowerups).map((key, idx) => {
-7416:                            ].map((c) => (
-7869:                        {Object.keys(Language).map((l) => (
-8170:                          {onlinePlayers.map((p, idx) => {
-8243:                                        {[0, 1, 2, 3, 4, 5, 6, 7].map((t) => (
-8301:                                    {onlineSuggestions.map((s, idx) => (
-8382:                                        .map((l, idx) => (
-8417:                                      .map((s, idx) => (
-8450:                                          .map((sl, i) => (
-8504:                          {PINGS.map((ping) => (
-8573:                                      .map((p) => p.team),
-8849:                             const allLevels = GD_LEVELS.map(l => l.id);
-9153:                      return buttons.map((btn, i) => (
-9471:                        {onlineResults.map((res, i) => (
-9918:                          {gdLevelsList.map((lvl, idx) => {
-10118:                      {["up", "down", "left", "right", "action", "dash"].map(
-10131:                            .map((k) =>
-10182:                      {["up", "down", "left", "right", "action", "dash"].map(
-10196:                            .map((k) =>
-10525:                      return scores.map((h, i) => (
+53:  ChatMessage,
+889:const Chat: React.FC<{
+890:  messages: ChatMessage[];
+925:            Lobby Chat
+1691:  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+2800:      onlineService.sendChatMessage(
+2842:      onlineService.sendChatMessage(
+4575:    onlineService.onChatUpdate = (msgs) => {
+4576:      setChatMessages([...msgs]);
+4601:        setChatMessages((prev) => [
+4722:      onlineService.onChatUpdate = undefined;
+8485:                        <Chat
+8488:                            onlineService.sendChatMessage(text);
+8502:                        {/* Quick Chat Pings */}
+8508:                                onlineService.sendChatMessage(ping)
