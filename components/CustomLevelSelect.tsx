@@ -250,7 +250,7 @@ const CustomLevelSelect: React.FC<CustomLevelSelectProps> = ({
                     
                     return (
                         <div 
-                            key={level.id}
+                            key={`${level.id || ""}_${index}`}
                             data-index={index}
                             onClick={() => setSelectedIndex(index)}
                             className={`group flex items-center justify-between p-2 cursor-pointer border-l-4 transition-all

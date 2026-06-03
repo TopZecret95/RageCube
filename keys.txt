@@ -1,0 +1,6 @@
+530:const GD_LEVELS: LevelData[] = [
+5323:            const allLevels = GD_LEVELS.map(l => l.id);
+8849:                             const allLevels = GD_LEVELS.map(l => l.id);
+9792:                  const gdLevelsList = GD_LEVELS;
+9794:                    gdLevelsList[gdSelectedLevelIndex] || GD_LEVELS[0];
+10033:                              customLevelsQueue: GD_LEVELS,

@@ -8300,7 +8300,7 @@ const App: React.FC = () => {
                                   <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
                                     {onlineSuggestions.map((s, idx) => (
                                       <div
-                                        key={s.id}
+                                        key={`${s.id}_${idx}`}
                                         className="flex items-center justify-between bg-black/40 p-2 rounded border border-white/5"
                                       >
                                         <div className="flex flex-col min-w-0">
@@ -8379,9 +8379,9 @@ const App: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
                                       {customLevels
                                         .filter((l) => l.isVerified)
-                                        .map((l) => (
+                                        .map((l, idx) => (
                                           <button
-                                            key={l.id}
+                                            key={`${l.id}_${idx}`}
                                             onClick={() => {
                                               onlineService.suggestLevel(l);
                                               setShowSuggestionMenu(false);
@@ -8414,9 +8414,9 @@ const App: React.FC = () => {
                                           s.playerId ===
                                           onlineService.localPlayer?.id,
                                       )
-                                      .map((s) => (
+                                      .map((s, idx) => (
                                         <span
-                                          key={s.id}
+                                          key={`${s.id}_${idx}`}
                                           className={`ml-2 ${s.status === "accepted" ? "text-green-500" : s.status === "declined" ? "text-red-500" : "text-blue-400"}`}
                                         >
                                           {s.level.name}
@@ -9470,7 +9470,7 @@ const App: React.FC = () => {
                       <tbody className="text-sm">
                         {onlineResults.map((res, i) => (
                           <tr
-                            key={res.id}
+                            key={`${res.id}_${i}`}
                             className={`border-b border-neutral-800/50 ${res.id === onlineService.localPlayer?.id ? "bg-cyan-900/20" : ""}`}
                           >
                             <td className="py-3 font-arcade text-yellow-500">
