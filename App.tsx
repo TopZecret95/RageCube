@@ -6079,7 +6079,7 @@ const App: React.FC = () => {
           <div className="flex-1 relative flex items-center justify-center min-h-0 min-w-0 w-full">
             {/* Aspect Ratio Container */}
             <div className="aspect-video h-full w-full max-w-full max-h-full bg-black shadow-[0_0_50px_rgba(255,0,68,0.2)] border-4 border-neutral-800 rounded-lg overflow-hidden relative flex flex-col items-center justify-center">
-              <AnimatePresence mode="wait">
+              <AnimatePresence>
                 {/* Editor Type Select */}
                 {gameState.status === "editor_type_select" && (
                   <motion.div
