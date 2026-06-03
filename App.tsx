@@ -309,7 +309,7 @@ const GD_LEVEL_4_DRY_OUT = createGDLevel({
     { x: 1450, y: 420 },
     { x: 2500, y: 210 },
   ],
-  hazards: [500, 800, 830, 1200, 2800, 3200, 3600, 3630],
+  hazards: [500, 800, 830, 1200, 2800, 3200, 3600],
   upsideDownHazards: [1700, 2100, 2130, 2300],
   platforms: [
     { x: 1000, y: 450, w: 120, type: "wall" },
@@ -323,7 +323,7 @@ const GD_LEVEL_4_DRY_OUT = createGDLevel({
     { x: 815, y: 350 },
     { x: 1600, y: 250 },
     { x: 2115, y: 250 },
-    { x: 3615, y: 350 },
+    { x: 3615, y: 380 },
   ],
 });
 
