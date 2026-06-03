@@ -102,6 +102,7 @@ const createGDLevel = (spec: {
   floorSegments?: { start: number; end: number; type: string }[];
   additionalEntities?: any[];
   goalY?: number;
+  goalX?: number;
 }): LevelData => {
   const entities: any[] = [];
 
@@ -191,7 +192,7 @@ const createGDLevel = (spec: {
 
   // 10. Generate final Goal automatically
   entities.push({
-    x: spec.length - 200,
+    x: spec.goalX !== undefined ? spec.goalX : spec.length - 200,
     y: spec.goalY !== undefined ? spec.goalY : 420,
     w: 30,
     h: 60,
@@ -429,7 +430,7 @@ const GD_LEVEL_7_JUMPER = createGDLevel({
 
 const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
   id: "gd_time_machine",
-  goalY: 250,
+  
   name: "Time Machine",
   length: 6000,
   ceilings: [
@@ -446,7 +447,7 @@ const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
     [3800, 3950]
   ],
   hazards: [
-    400, 600, 1000, 1030, 2050, 2300, 2600, 3100, 4100, 4500, 5000, 5030, 5060, 5090
+    400, 600, 1000, 1030, 2050, 2300, 2600, 3100, 4100, 4500, 5000, 5030, 5060
   ],
   upsideDownHazards: [
     1200, 1300, 3400, 3430, 3460, 4200, 4230
@@ -475,7 +476,7 @@ const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
     { x: 1445, y: 250 },
     { x: 2650, y: 200 },
     { x: 4230, y: 250 },
-    { x: 5800, y: 420 } // swapped with goal
+    { x: 5250, y: 300 }
   ]
 });
 
