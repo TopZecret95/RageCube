@@ -453,14 +453,10 @@ const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
     1200, 1300, 3400, 3430, 3460, 4200, 4230
   ],
   additionalEntities: [
-    { x: 5650, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
     { x: 1200, y: 350, w: 90, h: 30, type: "walkthrough_wall" },
     { x: 2500, y: 380, w: 60, h: 30, type: "ghost_hazard" },
-    
-    { x: 3500, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
     { x: 4000, y: 390, w: 30, h: 30, type: "powerup_double_jump" },
-    { x: 4400, y: 150, w: 90, h: 30, type: "walkthrough_wall" },
-    { x: 4600, y: 350, w: 30, h: 30, type: "powerup_remover" }
+    { x: 4400, y: 150, w: 90, h: 30, type: "walkthrough_wall" }
   ],
   platforms: [
     { x: 800, y: 400, w: 60, type: "wall" },
@@ -470,72 +466,72 @@ const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
     { x: 4200, y: 300, w: 90, type: "wall" },
     { x: 5200, y: 350, w: 150, type: "ice" }
   ],
-  trampolines: [900, 1400, 2510, 4700],
+  trampolines: [900, 1400, 2510],
   coins: [
     { x: 815, y: 350 },
     { x: 1445, y: 250 },
     { x: 2650, y: 200 },
     { x: 4230, y: 250 },
-    { x: 5250, y: 300 }
+    { x: 5310, y: 300 }
   ]
 });
 
 const GD_LEVEL_9_CYCLES = createGDLevel({
   id: "gd_cycles",
   name: "Cycles",
-  length: 6500,
+  length: 5000,
   ceilings: [
-    [1000, 2500],
-    [3500, 5500]
+    [900, 1500],
+    [1800, 2400],
+    [3500, 4200]
   ],
   gravityBlocks: [
-    { x: 1050, y: 420 },
-    { x: 2400, y: 210 },
-    { x: 3550, y: 420 },
-    { x: 5400, y: 210 }
+    { x: 950, y: 420 },
+    { x: 1400, y: 210 },
+    { x: 1850, y: 420 },
+    { x: 2300, y: 210 },
+    { x: 3600, y: 420 },
+    { x: 4100, y: 210 }
   ],
   floorSegments: [
-    { start: 2500, end: 3500, type: "slime" },
-    { start: 5000, end: 6000, type: "ice" }
+    { start: 1200, end: 1800, type: "slime" },
+    { start: 3000, end: 4000, type: "ice" }
   ],
   gaps: [
-    [2800, 2900],
-    [4500, 4600]
+    [800, 890],
+    [1500, 1560],
+    [2400, 2510],
+    [3400, 3520]
   ],
   hazards: [
-    500, 900, 2600, 2630, 2660, 3200, 5200, 5230, 6000, 6030, 6060
+    400, 600, 1100, 1300, 2000, 2200, 2700, 2730, 2760, 3100, 3300, 4500, 4530, 4560, 4700
   ],
   upsideDownHazards: [
-    1200, 1500, 1530, 2000, 2030, 3800, 4200, 4230, 4500, 5000, 5030, 5200
+    1050, 1250, 1950, 2150, 3750, 3950
   ],
   platforms: [
-    { x: 700, y: 400, w: 60, type: "wall" },
-    { x: 1300, y: 250, w: 90, type: "ice" },
-    { x: 1700, y: 300, w: 120, type: "walkthrough_wall" },
-    { x: 2800, y: 350, w: 150, type: "slime" },
-    { x: 4000, y: 250, w: 90, type: "ice" },
-    { x: 4300, y: 350, w: 60, type: "wall" },
-    { x: 4600, y: 350, w: 90, type: "walkthrough_wall" },
-    { x: 5500, y: 400, w: 150, type: "wall" },
-    { x: 5800, y: 300, w: 90, type: "slime" }
+    { x: 700, y: 390, w: 90, type: "wall" },
+    { x: 1000, y: 300, w: 60, type: "walkthrough_wall" },
+    { x: 1650, y: 350, w: 90, type: "slime" },
+    { x: 2600, y: 380, w: 120, type: "wall" },
+    { x: 2850, y: 320, w: 90, type: "ice" },
+    { x: 3200, y: 350, w: 90, type: "wall" },
+    { x: 4300, y: 390, w: 120, type: "wall" },
+    { x: 4500, y: 330, w: 90, type: "walkthrough_wall" }
   ],
   additionalEntities: [
-    { x: 1100, y: 200, w: 30, h: 30, type: "powerup_double_jump" },
-    { x: 2200, y: 150, w: 90, h: 30, type: "ghost_hazard" },
-    { x: 2850, y: 320, w: 30, h: 30, type: "powerup_double_jump" },
-    { x: 3700, y: 200, w: 30, h: 30, type: "powerup_double_jump" },
-    { x: 5000, y: 250, w: 30, h: 30, type: "powerup_remover" },
-    { x: 5700, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
-    { x: 6200, y: 400, w: 30, h: 30, type: "fake_goal" }
+    { x: 1100, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 2100, y: 390, w: 60, h: 30, type: "ghost_hazard" },
+    { x: 3100, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 4600, y: 400, w: 30, h: 30, type: "fake_goal" }
   ],
-  trampolines: [3600, 4200, 4800, 5300],
+  trampolines: [1680, 2650, 3230, 4345],
   coins: [
-    { x: 715, y: 350 },
-    { x: 1330, y: 150 },
-    { x: 1750, y: 250 },
-    { x: 3000, y: 400 },
-    { x: 4315, y: 300 },
-    { x: 5830, y: 250 }
+    { x: 730, y: 320 },
+    { x: 1200, y: 250 },
+    { x: 2650, y: 300 },
+    { x: 3850, y: 250 },
+    { x: 4400, y: 300 }
   ]
 });
 

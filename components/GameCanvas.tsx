@@ -2220,9 +2220,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
     };
 
-    const handleMouseJumpDown = () => {
+    const handleMouseJumpDown = (e: MouseEvent | TouchEvent) => {
+      if (e.target && (e.target as HTMLElement).closest('button, a')) return;
       if (geometryDashMode) {
         keys.current["Click"] = true;
+        
+        if (isStartingRef.current || paused) return;
+        hasStartedMoving.current = true;
+        
+        players.current.forEach((p) => {
+          if (!p) return;
+          const isLocal = !isOnline || p.onlineId === onlineService.localPlayer?.id;
+          if (!isLocal) return;
+          
+          if (!p.hasStartedMove) {
+            p.hasStartedMove = true;
+            const scrollSpeed = level.autoScrollSpeed || 150;
+            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
+            p.scrollX = startWallX;
+          }
+          
+          p.jumpBufferTimer = 6;
+          triggerJump(p);
+        });
       }
     };
     const handleMouseJumpUp = () => {
