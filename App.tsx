@@ -101,6 +101,7 @@ const createGDLevel = (spec: {
   platforms?: { x: number; y: number; w: number; h?: number; type?: string }[];
   floorSegments?: { start: number; end: number; type: string }[];
   additionalEntities?: any[];
+  goalY?: number;
 }): LevelData => {
   const entities: any[] = [];
 
@@ -191,7 +192,7 @@ const createGDLevel = (spec: {
   // 10. Generate final Goal automatically
   entities.push({
     x: spec.length - 200,
-    y: 420,
+    y: spec.goalY !== undefined ? spec.goalY : 420,
     w: 30,
     h: 60,
     type: "goal",
@@ -428,60 +429,113 @@ const GD_LEVEL_7_JUMPER = createGDLevel({
 
 const GD_LEVEL_8_TIME_MACHINE = createGDLevel({
   id: "gd_time_machine",
+  goalY: 250,
   name: "Time Machine",
-  length: 5000,
-  floorSegments: [{ start: 3000, end: 4000, type: "slime" }],
+  length: 6000,
+  ceilings: [
+    [1000, 2000],
+    [3200, 4800]
+  ],
+  floorSegments: [
+    { start: 2000, end: 3200, type: "slime" },
+    { start: 3500, end: 4500, type: "ice" }
+  ],
+  gaps: [
+    [1500, 1560],
+    [2800, 2860],
+    [3800, 3950]
+  ],
   hazards: [
-    400, 800, 830, 1200, 1230, 1700, 1730, 2400, 2430, 2900, 3330, 4100, 4130,
+    400, 600, 1000, 1030, 2050, 2300, 2600, 3100, 4100, 4500, 5000, 5030, 5060, 5090
+  ],
+  upsideDownHazards: [
+    1200, 1300, 3400, 3430, 3460, 4200, 4230
+  ],
+  additionalEntities: [
+    { x: 5650, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 1200, y: 350, w: 90, h: 30, type: "walkthrough_wall" },
+    { x: 2500, y: 380, w: 60, h: 30, type: "ghost_hazard" },
+    
+    { x: 3500, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 4000, y: 390, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 4400, y: 150, w: 90, h: 30, type: "walkthrough_wall" },
+    { x: 4600, y: 350, w: 30, h: 30, type: "powerup_remover" }
   ],
   platforms: [
-    { x: 1100, y: 390, w: 90, type: "ice" },
-    { x: 1900, y: 450, w: 30, type: "wall" },
-    { x: 1930, y: 420, w: 30, type: "wall" },
-    { x: 1960, y: 390, w: 120, type: "wall" },
-    { x: 2700, y: 450, w: 120, type: "wall" },
-    { x: 3100, y: 420, w: 90, type: "slime" },
+    { x: 800, y: 400, w: 60, type: "wall" },
+    { x: 1800, y: 390, w: 90, type: "ice" },
+    { x: 2300, y: 350, w: 60, type: "walkthrough_wall" },
+    { x: 2600, y: 250, w: 120, type: "slime" },
+    { x: 4200, y: 300, w: 90, type: "wall" },
+    { x: 5200, y: 350, w: 150, type: "ice" }
   ],
-  trampolines: [3600],
-  additionalEntities: [{ x: 3750, y: 250, w: 150, h: 30, type: "wall" }],
+  trampolines: [900, 1400, 2510, 4700],
   coins: [
-    { x: 500, y: 380 },
-    { x: 1230, y: 350 },
-    { x: 2430, y: 350 },
-    { x: 2800, y: 400 },
-    { x: 3330, y: 350 },
-  ],
+    { x: 815, y: 350 },
+    { x: 1445, y: 250 },
+    { x: 2650, y: 200 },
+    { x: 4230, y: 250 },
+    { x: 5800, y: 420 } // swapped with goal
+  ]
 });
 
 const GD_LEVEL_9_CYCLES = createGDLevel({
   id: "gd_cycles",
   name: "Cycles",
-  length: 5200,
+  length: 6500,
   ceilings: [
-    [1000, 2000],
-    [3000, 4200],
+    [1000, 2500],
+    [3500, 5500]
   ],
   gravityBlocks: [
     { x: 1050, y: 420 },
-    { x: 1900, y: 210 },
-    { x: 3050, y: 420 },
-    { x: 4100, y: 210 },
+    { x: 2400, y: 210 },
+    { x: 3550, y: 420 },
+    { x: 5400, y: 210 }
   ],
-  floorSegments: [{ start: 2000, end: 3000, type: "ice" }],
-  hazards: [400, 600, 800, 830, 2300, 2330, 2360, 2700, 4500, 4530, 4560],
-  upsideDownHazards: [1200, 1400, 1430, 1700, 3200, 3230, 3500, 3530, 3800],
+  floorSegments: [
+    { start: 2500, end: 3500, type: "slime" },
+    { start: 5000, end: 6000, type: "ice" }
+  ],
+  gaps: [
+    [2800, 2900],
+    [4500, 4600]
+  ],
+  hazards: [
+    500, 900, 2600, 2630, 2660, 3200, 5200, 5230, 6000, 6030, 6060
+  ],
+  upsideDownHazards: [
+    1200, 1500, 1530, 2000, 2030, 3800, 4200, 4230, 4500, 5000, 5030, 5200
+  ],
   platforms: [
-    { x: 1200, y: 420, w: 90, type: "slime" },
-    { x: 1600, y: 390, w: 120, type: "wall" },
-    { x: 2500, y: 450, w: 90, type: "ice" },
+    { x: 700, y: 400, w: 60, type: "wall" },
+    { x: 1300, y: 250, w: 90, type: "ice" },
+    { x: 1700, y: 300, w: 120, type: "walkthrough_wall" },
+    { x: 2800, y: 350, w: 150, type: "slime" },
+    { x: 4000, y: 250, w: 90, type: "ice" },
+    { x: 4300, y: 350, w: 60, type: "wall" },
+    { x: 4600, y: 350, w: 90, type: "walkthrough_wall" },
+    { x: 5500, y: 400, w: 150, type: "wall" },
+    { x: 5800, y: 300, w: 90, type: "slime" }
   ],
+  additionalEntities: [
+    { x: 1100, y: 200, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 2200, y: 150, w: 90, h: 30, type: "ghost_hazard" },
+    { x: 2850, y: 320, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 3700, y: 200, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 5000, y: 250, w: 30, h: 30, type: "powerup_remover" },
+    { x: 5700, y: 350, w: 30, h: 30, type: "powerup_double_jump" },
+    { x: 6200, y: 400, w: 30, h: 30, type: "fake_goal" }
+  ],
+  trampolines: [3600, 4200, 4800, 5300],
   coins: [
-    { x: 1415, y: 250 },
-    { x: 2330, y: 350 },
-    { x: 3515, y: 250 },
-    { x: 4000, y: 250 },
-    { x: 4800, y: 380 },
-  ],
+    { x: 715, y: 350 },
+    { x: 1330, y: 150 },
+    { x: 1750, y: 250 },
+    { x: 3000, y: 400 },
+    { x: 4315, y: 300 },
+    { x: 5830, y: 250 }
+  ]
 });
 
 const GD_LEVEL_10_CLUBSTEP = createGDLevel({
@@ -5582,6 +5636,278 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+{/* Online Pause Overlay */}
+              {onlineService.lobbyCode && onlineService.isPaused && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-[60] backdrop-blur-sm">
+                  <div className="bg-neutral-900 border-4 border-yellow-500 p-10 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(234,179,8,0.3)]">
+                    <div className="text-6xl font-arcade text-yellow-500 tracking-widest drop-shadow-[0_0_20px_#eab308]">
+                      GAME PAUSED
+                    </div>
+                    <div className="text-neutral-400 font-bold uppercase tracking-[0.3em]">
+                      HOST HAS PAUSED THE MATCH
+                    </div>
+                    {onlineService.isHost && (
+                      <button
+                        onClick={() => onlineService.togglePause()}
+                        className="mt-4 bg-green-600 hover:bg-green-500 text-white px-10 py-5 font-arcade text-2xl border-b-8 border-green-900 active:translate-y-2 active:border-b-0 transition-all rounded-xl"
+                      >
+                        RESUME GAME
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              
+{/* Delete Confirm Modal */}
+              {showDeleteConfirm && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50">
+                  <h2 className="text-2xl mb-8 text-white">DELETE LEVEL?</h2>
+                  <div className="text-neutral-400 mb-8">
+                    This action cannot be undone.
+                  </div>
+                  <div className="w-72 flex flex-col gap-2">
+                    <MenuButton
+                      index={0}
+                      label="CANCEL"
+                      onClick={() => setShowDeleteConfirm(null)}
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={1}
+                      label="DELETE"
+                      danger
+                      onClick={() => {
+                        handleDeleteLevel(showDeleteConfirm);
+                        setShowDeleteConfirm(null);
+                      }}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </div>
+              )}
+
+              
+{/* Votekick Menu */}
+              {kickMenuOpen && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-red-600 p-6 rounded-2xl flex flex-col items-center gap-4 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-md w-full">
+                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter mb-2">
+                      {t.kickPlayer || "VOTE KICK"}
+                    </div>
+                    <div className="w-full max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                      {Array.from(onlineService.players.values())
+                        .filter((p) => p.id !== onlineService.localPlayer?.id)
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setKickConfirmTarget(p);
+                              setKickMenuOpen(false);
+                            }}
+                            className="w-full p-4 bg-neutral-800 hover:bg-red-900/40 border border-neutral-700 hover:border-red-500 text-left flex items-center gap-4 transition-all rounded-xl"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center border border-neutral-700 p-2">
+                              <CharacterPreview
+                                customization={p.customization}
+                                scale={1.5}
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-white text-lg leading-none">
+                                {p.name}
+                              </span>
+                              <span className="text-[8px] text-neutral-500 uppercase tracking-widest mt-1">
+                                Player ID: {p.id.slice(0, 8)}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      {Array.from(onlineService.players.values()).filter(
+                        (p) => p.id !== onlineService.localPlayer?.id,
+                      ).length === 0 && (
+                        <div className="text-neutral-500 text-center py-10 font-bold uppercase tracking-widest border-2 border-dashed border-neutral-800 rounded-xl">
+                          {t.noPlayersToKick || "NO PLAYERS TO KICK"}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setKickMenuOpen(false)}
+                      className="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                    >
+                      {t.back || "BACK"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Votekick Confirmation */}
+              {kickConfirmTarget && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-red-600 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-sm w-full">
+                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter leading-tight">
+                      {t.voteKickFor?.replace(
+                        "{name}",
+                        kickConfirmTarget.name.toUpperCase(),
+                      ) || `KICK ${kickConfirmTarget.name.toUpperCase()}?`}
+                    </div>
+                    <div className="text-neutral-400 text-center text-xs font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                      {t.reallyStartVote || "THIS WILL START A VOTE"}
+                    </div>
+                    <div className="flex gap-4 w-full">
+                      <button
+                        onClick={() => {
+                          onlineService.initiateVote(
+                            "kick",
+                            kickConfirmTarget.id,
+                          );
+                          setKickConfirmTarget(null);
+                        }}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 font-arcade border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(220,38,38,0.4)]"
+                      >
+                        {t.yes || "YES"}
+                      </button>
+                      <button
+                        onClick={() => setKickConfirmTarget(null)}
+                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                      >
+                        {t.no || "NO"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic Vote Confirmation (Restart, Skip) */}
+              {voteConfirmType && (
+                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
+                  <div className="bg-neutral-900 border-4 border-cyan-500 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-sm w-full">
+                    <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
+                      {voteConfirmType === "restart"
+                        ? "RESTART VOTE?"
+                        : voteConfirmType === "skip"
+                          ? "SKIP VOTE?"
+                          : voteConfirmType === "test_level"
+                            ? "TEST LEVEL VOTE?"
+                            : "START VOTE?"}
+                    </div>
+                    <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
+                      {t.reallyStartVote || "THIS WILL START A VOTE"}
+                    </div>
+                    <div className="flex gap-4 w-full">
+                      <button
+                        onClick={() => {
+                          onlineService.initiateVote(voteConfirmType);
+                          setVoteConfirmType(null);
+                        }}
+                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 font-arcade border-b-4 border-cyan-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.4)]"
+                      >
+                        {t.yes || "YES"}
+                      </button>
+                      <button
+                        onClick={() => setVoteConfirmType(null)}
+                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
+                      >
+                        {t.no || "NO"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Voting UI Overlay */}
+              {onlineService.lobbyCode && currentVote && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[70] w-full max-w-md pt-2">
+                  <div className="bg-black/90 border-b-2 border-x-2 border-cyan-500 p-4 rounded-b-2xl shadow-[0_10px_30px_rgba(6,182,212,0.5)] flex flex-col items-center animate-in slide-in-from-top duration-500 ease-out backdrop-blur-md">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+                      <span className="text-cyan-400 text-xs font-black uppercase tracking-[0.3em] drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
+                        {t.voteRunning || "VOTING IN PROGRESS"}
+                      </span>
+                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+                    </div>
+
+                    <div className="text-white text-lg font-arcade mb-4 uppercase tracking-tight text-center px-4 leading-tight">
+                      {currentVote.type === "restart" ||
+                      currentVote.type === "repeat"
+                        ? "RESTART LEVEL?"
+                        : currentVote.type === "skip" ||
+                            currentVote.type === "next"
+                          ? "SKIP LEVEL?"
+                          : currentVote.type === "kick"
+                            ? `KICK ${onlineService.players.get(currentVote.targetId || "")?.name.toUpperCase() || "PLAYER"}?`
+                            : "CALL A VOTE?"}
+                    </div>
+
+                    <div className="flex gap-4 w-full px-6 mb-4">
+                      <button
+                        onClick={() => onlineService.castVote("yes")}
+                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${
+                          onlineService.localPlayer &&
+                          currentVote.votes[onlineService.localPlayer.id] ===
+                            "yes"
+                            ? "bg-green-700 text-white border-green-950 scale-105 opacity-100"
+                            : "bg-green-600 hover:bg-green-500 text-white/80 border-green-900 active:translate-y-1 active:border-b-0 opacity-80"
+                        }`}
+                      >
+                        <span className="block mb-1">JA [1]</span>
+                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                          {
+                            Object.values(currentVote.votes).filter(
+                              (v) => v === "yes",
+                            ).length
+                          }
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => onlineService.castVote("no")}
+                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
+                        ${
+                          onlineService.localPlayer &&
+                          currentVote.votes[onlineService.localPlayer.id] ===
+                            "no"
+                            ? "bg-red-700 text-white border-red-950 scale-105 opacity-100"
+                            : "bg-red-600 hover:bg-red-500 text-white/80 border-red-900 active:translate-y-1 active:border-b-0 opacity-80"
+                        }`}
+                      >
+                        <span className="block mb-1">NEIN [2]</span>
+                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
+                          {
+                            Object.values(currentVote.votes).filter(
+                              (v) => v === "no",
+                            ).length
+                          }
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="w-full px-6">
+                      <div className="relative h-2 bg-neutral-800/80 rounded-full w-full overflow-hidden border border-white/5">
+                        <div
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-100 linear"
+                          style={{
+                            width: `${Math.max(0, ((currentVote.endTime - Date.now()) / 15000) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 text-[10px] text-neutral-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
+                      <span>{Object.keys(currentVote.votes).length}</span>
+                      <span className="opacity-30">/</span>
+                      <span>
+                        {Array.from(onlineService.players.values()).length}{" "}
+                        {t.players?.toUpperCase() || "PLAYERS"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              
 
       {isTransitioning && (
         <div
@@ -6002,36 +6328,6 @@ const App: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* Delete Confirm Modal */}
-              {showDeleteConfirm && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50">
-                  <h2 className="text-2xl mb-8 text-white">DELETE LEVEL?</h2>
-                  <div className="text-neutral-400 mb-8">
-                    This action cannot be undone.
-                  </div>
-                  <div className="w-72 flex flex-col gap-2">
-                    <MenuButton
-                      index={0}
-                      label="CANCEL"
-                      onClick={() => setShowDeleteConfirm(null)}
-                      isSelected={menuSelection === 0}
-                      onHover={setMenuSelection}
-                    />
-                    <MenuButton
-                      index={1}
-                      label="DELETE"
-                      danger
-                      onClick={() => {
-                        handleDeleteLevel(showDeleteConfirm);
-                        setShowDeleteConfirm(null);
-                      }}
-                      isSelected={menuSelection === 1}
-                      onHover={setMenuSelection}
-                    />
-                  </div>
-                </div>
-              )}
-
               {/* Game Layer */}
               {([
                 "playing",
@@ -6065,6 +6361,7 @@ const App: React.FC = () => {
                 ].includes(gameState.previousStatus || "")
               )) && (
                 <GameCanvas
+                  key="game_layer"
                   level={gamescreenLevel}
                   customization={customization}
                   customizationP2={customizationP2}
@@ -6120,245 +6417,6 @@ const App: React.FC = () => {
                   geometryDashMode={!!gameState.geometryDashMode}
                   levelDeaths={gameState.levelDeaths}
                 />
-              )}
-
-              {/* Online Pause Overlay */}
-              {onlineService.lobbyCode && onlineService.isPaused && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-[60] backdrop-blur-sm">
-                  <div className="bg-neutral-900 border-4 border-yellow-500 p-10 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(234,179,8,0.3)]">
-                    <div className="text-6xl font-arcade text-yellow-500 tracking-widest drop-shadow-[0_0_20px_#eab308]">
-                      GAME PAUSED
-                    </div>
-                    <div className="text-neutral-400 font-bold uppercase tracking-[0.3em]">
-                      HOST HAS PAUSED THE MATCH
-                    </div>
-                    {onlineService.isHost && (
-                      <button
-                        onClick={() => onlineService.togglePause()}
-                        className="mt-4 bg-green-600 hover:bg-green-500 text-white px-10 py-5 font-arcade text-2xl border-b-8 border-green-900 active:translate-y-2 active:border-b-0 transition-all rounded-xl"
-                      >
-                        RESUME GAME
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Votekick Menu */}
-              {kickMenuOpen && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-md animate-fade-in">
-                  <div className="bg-neutral-900 border-4 border-red-600 p-6 rounded-2xl flex flex-col items-center gap-4 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-md w-full">
-                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter mb-2">
-                      {t.kickPlayer || "VOTE KICK"}
-                    </div>
-                    <div className="w-full max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2">
-                      {Array.from(onlineService.players.values())
-                        .filter((p) => p.id !== onlineService.localPlayer?.id)
-                        .map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={() => {
-                              setKickConfirmTarget(p);
-                              setKickMenuOpen(false);
-                            }}
-                            className="w-full p-4 bg-neutral-800 hover:bg-red-900/40 border border-neutral-700 hover:border-red-500 text-left flex items-center gap-4 transition-all rounded-xl"
-                          >
-                            <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center border border-neutral-700 p-2">
-                              <CharacterPreview
-                                customization={p.customization}
-                                scale={1.5}
-                              />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-white text-lg leading-none">
-                                {p.name}
-                              </span>
-                              <span className="text-[8px] text-neutral-500 uppercase tracking-widest mt-1">
-                                Player ID: {p.id.slice(0, 8)}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      {Array.from(onlineService.players.values()).filter(
-                        (p) => p.id !== onlineService.localPlayer?.id,
-                      ).length === 0 && (
-                        <div className="text-neutral-500 text-center py-10 font-bold uppercase tracking-widest border-2 border-dashed border-neutral-800 rounded-xl">
-                          {t.noPlayersToKick || "NO PLAYERS TO KICK"}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setKickMenuOpen(false)}
-                      className="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                    >
-                      {t.back || "BACK"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Votekick Confirmation */}
-              {kickConfirmTarget && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
-                  <div className="bg-neutral-900 border-4 border-red-600 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(255,0,0,0.3)] max-w-sm w-full">
-                    <div className="text-2xl font-arcade text-red-500 text-center uppercase tracking-tighter leading-tight">
-                      {t.voteKickFor?.replace(
-                        "{name}",
-                        kickConfirmTarget.name.toUpperCase(),
-                      ) || `KICK ${kickConfirmTarget.name.toUpperCase()}?`}
-                    </div>
-                    <div className="text-neutral-400 text-center text-xs font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
-                      {t.reallyStartVote || "THIS WILL START A VOTE"}
-                    </div>
-                    <div className="flex gap-4 w-full">
-                      <button
-                        onClick={() => {
-                          onlineService.initiateVote(
-                            "kick",
-                            kickConfirmTarget.id,
-                          );
-                          setKickConfirmTarget(null);
-                        }}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 font-arcade border-b-4 border-red-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(220,38,38,0.4)]"
-                      >
-                        {t.yes || "YES"}
-                      </button>
-                      <button
-                        onClick={() => setKickConfirmTarget(null)}
-                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                      >
-                        {t.no || "NO"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Generic Vote Confirmation (Restart, Skip) */}
-              {voteConfirmType && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[110] backdrop-blur-md animate-fade-in">
-                  <div className="bg-neutral-900 border-4 border-cyan-500 p-8 rounded-2xl flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(6,182,212,0.3)] max-w-sm w-full">
-                    <div className="text-2xl font-arcade text-cyan-400 text-center uppercase tracking-tighter leading-tight">
-                      {voteConfirmType === "restart"
-                        ? "RESTART VOTE?"
-                        : voteConfirmType === "skip"
-                          ? "SKIP VOTE?"
-                          : voteConfirmType === "test_level"
-                            ? "TEST LEVEL VOTE?"
-                            : "START VOTE?"}
-                    </div>
-                    <div className="text-neutral-400 text-center text-[10px] font-bold uppercase tracking-widest bg-black/50 px-4 py-2 rounded-lg border border-white/5">
-                      {t.reallyStartVote || "THIS WILL START A VOTE"}
-                    </div>
-                    <div className="flex gap-4 w-full">
-                      <button
-                        onClick={() => {
-                          onlineService.initiateVote(voteConfirmType);
-                          setVoteConfirmType(null);
-                        }}
-                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 font-arcade border-b-4 border-cyan-900 active:translate-y-1 active:border-b-0 rounded-xl transition-all shadow-[0_4px_15px_rgba(6,182,212,0.4)]"
-                      >
-                        {t.yes || "YES"}
-                      </button>
-                      <button
-                        onClick={() => setVoteConfirmType(null)}
-                        className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-3 font-arcade border-b-4 border-neutral-950 active:translate-y-1 active:border-b-0 rounded-xl transition-all"
-                      >
-                        {t.no || "NO"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Voting UI Overlay */}
-              {onlineService.lobbyCode && currentVote && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[70] w-full max-w-md pt-2">
-                  <div className="bg-black/90 border-b-2 border-x-2 border-cyan-500 p-4 rounded-b-2xl shadow-[0_10px_30px_rgba(6,182,212,0.5)] flex flex-col items-center animate-in slide-in-from-top duration-500 ease-out backdrop-blur-md">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
-                      <span className="text-cyan-400 text-xs font-black uppercase tracking-[0.3em] drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]">
-                        {t.voteRunning || "VOTING IN PROGRESS"}
-                      </span>
-                      <div className="w-2 h-2 bg-cyan-500 animate-pulse rounded-full shadow-[0_0_10px_#06b6d4]"></div>
-                    </div>
-
-                    <div className="text-white text-lg font-arcade mb-4 uppercase tracking-tight text-center px-4 leading-tight">
-                      {currentVote.type === "restart" ||
-                      currentVote.type === "repeat"
-                        ? "RESTART LEVEL?"
-                        : currentVote.type === "skip" ||
-                            currentVote.type === "next"
-                          ? "SKIP LEVEL?"
-                          : currentVote.type === "kick"
-                            ? `KICK ${onlineService.players.get(currentVote.targetId || "")?.name.toUpperCase() || "PLAYER"}?`
-                            : "CALL A VOTE?"}
-                    </div>
-
-                    <div className="flex gap-4 w-full px-6 mb-4">
-                      <button
-                        onClick={() => onlineService.castVote("yes")}
-                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
-                        ${
-                          onlineService.localPlayer &&
-                          currentVote.votes[onlineService.localPlayer.id] ===
-                            "yes"
-                            ? "bg-green-700 text-white border-green-950 scale-105 opacity-100"
-                            : "bg-green-600 hover:bg-green-500 text-white/80 border-green-900 active:translate-y-1 active:border-b-0 opacity-80"
-                        }`}
-                      >
-                        <span className="block mb-1">JA [1]</span>
-                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
-                          {
-                            Object.values(currentVote.votes).filter(
-                              (v) => v === "yes",
-                            ).length
-                          }
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => onlineService.castVote("no")}
-                        className={`flex-1 py-3 px-4 font-arcade text-sm border-b-4 rounded-xl transition-all shadow-lg flex flex-col items-center
-                        ${
-                          onlineService.localPlayer &&
-                          currentVote.votes[onlineService.localPlayer.id] ===
-                            "no"
-                            ? "bg-red-700 text-white border-red-950 scale-105 opacity-100"
-                            : "bg-red-600 hover:bg-red-500 text-white/80 border-red-900 active:translate-y-1 active:border-b-0 opacity-80"
-                        }`}
-                      >
-                        <span className="block mb-1">NEIN [2]</span>
-                        <span className="text-xs opacity-80 bg-black/30 px-2 py-0.5 rounded-full">
-                          {
-                            Object.values(currentVote.votes).filter(
-                              (v) => v === "no",
-                            ).length
-                          }
-                        </span>
-                      </button>
-                    </div>
-
-                    <div className="w-full px-6">
-                      <div className="relative h-2 bg-neutral-800/80 rounded-full w-full overflow-hidden border border-white/5">
-                        <div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-600 to-blue-400 transition-all duration-100 linear"
-                          style={{
-                            width: `${Math.max(0, ((currentVote.endTime - Date.now()) / 15000) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 text-[10px] text-neutral-400 font-bold tracking-[0.2em] uppercase flex items-center gap-2">
-                      <span>{Object.keys(currentVote.votes).length}</span>
-                      <span className="opacity-30">/</span>
-                      <span>
-                        {Array.from(onlineService.players.values()).length}{" "}
-                        {t.players?.toUpperCase() || "PLAYERS"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
               )}
 
               {/* Difficulty Select */}
@@ -8981,7 +9039,7 @@ const App: React.FC = () => {
               {/* ... (Other Menus remain similar but condensed in existing code) ... */}
               {/* Pause Menu */}
               {gameState.status === "paused" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50">
+                <div key="paused" className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50">
                   <h2 className="text-4xl text-white mb-8">{t.paused}</h2>
                   <div className="flex flex-col gap-2 w-72">
                     {(() => {
@@ -9173,7 +9231,7 @@ const App: React.FC = () => {
               {(gameState.status === "won" ||
                 gameState.status === "vs_won" ||
                 gameState.status === "brawler_won") && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-green-900/80 backdrop-blur-md z-40">
+                <div key="won_screen" className="absolute inset-0 flex flex-col items-center justify-center bg-green-900/80 backdrop-blur-md z-40">
                   {gameState.status === "vs_won" ||
                   gameState.status === "brawler_won" ? (
                     <>
@@ -9401,7 +9459,7 @@ const App: React.FC = () => {
 
               {/* Online Summary Screen */}
               {gameState.status === "online_summary" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
+                <div key="online_summary" className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4 overflow-y-auto pt-20 pb-10">
                   <h2 className="text-4xl text-cyan-400 font-arcade mb-2 tracking-widest">
                     {t.gameResults || "SPIEL-ERGEBNISSE"}
                   </h2>
