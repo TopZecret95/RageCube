@@ -4850,9 +4850,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       
       const visualAlpha = typeof alpha === "number" ? alpha : 0;
 
-      // In auto-scroll and GD mode, camera is already up-to-date with Date.now().
-      // Extrapolating it with visualAlpha will double the movement and cause stuttering.
-      const useCamAlpha = (level.autoScroll || geometryDashMode) && !isSpectatingNowLocal ? 0 : visualAlpha;
+      // Enable camera interpolation always to align player and world elements with sub-frame precision.
+      // Disabling visualAlpha for the camera in auto-scroll/GD mode introduces sub-frame judder/stutter.
+      const useCamAlpha = visualAlpha;
 
       let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * useCamAlpha);
       let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * useCamAlpha);
