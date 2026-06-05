@@ -190,6 +190,7 @@ export const TRANSLATIONS = {
     gameResults: "GAME RESULTS",
     achievements: "ACHIEVEMENTS",
     vsMode: "VS RACE (2P)",
+    buildBattleMode: "BUILD-BATTLE (2P)",
     brawlerMode: "BRAWLER (2P)",
     book: "BOOK / WIKI",
     generate: "AI CHAOS MODE",
@@ -299,6 +300,8 @@ export const TRANSLATIONS = {
     puShrink: "Shrink",
     puGrow: "Grow",
     puDash: "Dash",
+    localMultiplayer: "LOCAL MULTIPLAYER",
+    multiplayer: "MULTIPLAYER",
     onlineMultiplayer: "ONLINE MULTIPLAYER",
     enterLobbyCode: "ENTER LOBBY CODE",
     nameRequired: "NAME IS REQUIRED TO JOIN OR CREATE A LOBBY",
@@ -734,6 +737,7 @@ export const TRANSLATIONS = {
     gameResults: "SPIEL-ERGEBNISSE",
     achievements: "ERFOLGE",
     vsMode: "VS RENNEN (2P)",
+    buildBattleMode: "BUILD-BATTLE (2P)",
     brawlerMode: "KAMPF (2P)",
     book: "BUCH / WIKI",
     generate: "KI CHAOS MODUS",
@@ -843,6 +847,8 @@ export const TRANSLATIONS = {
     puShrink: "Schrumpfen",
     puGrow: "Wachsen",
     puDash: "Dash",
+    localMultiplayer: "LOKALER MULTIPLAYER",
+    multiplayer: "MULTIPLAYER",
     onlineMultiplayer: "ONLINE MULTIPLAYER",
     enterLobbyCode: "LOBBY-CODE EINGEBEN",
     nameRequired: "NAME ERFORDERLICH ZUM BEITRETEN ODER ERSTELLEN",
@@ -1269,6 +1275,7 @@ export const TRANSLATIONS = {
     highscores: "PUNTUACIONES",
     achievements: "LOGROS",
     vsMode: "CARRERA VS (2P)",
+    buildBattleMode: "BATALLA CONSTRUC. (2P)",
     brawlerMode: "PELEA (2P)",
     book: "LIBRO / WIKI",
     generate: "MODO CAOS IA",
@@ -1378,7 +1385,9 @@ export const TRANSLATIONS = {
     puShrink: "Encoger",
     puGrow: "Crecer",
     puDash: "Dash",
-    onlineMultiplayer: "MULTIJUGADOR ONLINE",
+    localMultiplayer: "MULTIJUGADOR LOCAL",
+    multiplayer: "MULTIJUGADOR",
+    onlineMultiplayer: "ONLINE MULTIPLAYER",
     enterLobbyCode: "INTRODUCE CÓDIGO DE SALA",
     nameRequired: "SE REQUIERE NOMBRE PARA UNIRSE O CREAR",
     joinLobby: "UNIRSE A SALA",
@@ -2076,6 +2085,50 @@ export const BRAWLER_LEVELS: LevelData[] = [
       { x: 710, y: 300, w: 100, h: 30, type: 'ice' },
       { x: 430, y: 450, w: 100, h: 30, type: 'trampoline' },
       { x: 380, y: 150, w: 200, h: 30, type: 'wall' }
+    ]
+  }
+];
+
+export const BUILD_BATTLE_LEVELS: LevelData[] = [
+  {
+    id: 'build1',
+    name: 'Build Battle 1: Die Schlucht',
+    start: { x: 100, y: 390 },
+    startP2: { x: 140, y: 390 },
+    allowedAbility: 'double_jump',
+    entities: [
+      { x: 50, y: 420, w: 150, h: 120, type: 'wall' },
+      { x: 1300, y: 420, w: 150, h: 120, type: 'wall' },
+      { x: 1360, y: 360, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build2',
+    name: 'Build Battle 2: Das Hochplateau',
+    start: { x: 100, y: 440 },
+    startP2: { x: 140, y: 440 },
+    allowedAbility: 'double_jump',
+    entities: [
+      { x: 50, y: 470, w: 150, h: 70, type: 'wall' },
+      { x: 1300, y: 230, w: 150, h: 310, type: 'wall' },
+      { x: 1360, y: 170, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build3',
+    name: 'Build Battle 3: Zwillingssäulen',
+    start: { x: 100, y: 290 },
+    startP2: { x: 140, y: 290 },
+    allowedAbility: 'double_jump',
+    entities: [
+      { x: 50, y: 320, w: 120, h: 220, type: 'wall' },
+      { x: 1310, y: 320, w: 120, h: 220, type: 'wall' },
+      { x: 1350, y: 260, w: 30, h: 60, type: 'goal' },
+      { x: 500, y: 200, w: 60, h: 340, type: 'wall' },
+      { x: 900, y: 100, w: 60, h: 440, type: 'wall' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
     ]
   }
 ];

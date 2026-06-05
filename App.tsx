@@ -42,6 +42,7 @@ import {
   EXPERT_LEVELS,
   GOD_LEVELS,
   BRAWLER_LEVELS,
+  BUILD_BATTLE_LEVELS,
   TRANSLATIONS,
   ACHIEVEMENTS_LIST,
   STANDARD_EMOJIS,
@@ -1626,6 +1627,18 @@ const App: React.FC = () => {
   const [brawlerComboPowerups, setBrawlerComboPowerups] =
     useState<boolean>(false);
   const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
+
+  // --- BUILD-BATTLE STATES ---
+  const [buildBattlePhase, setBuildBattlePhase] = useState<'build' | 'run'>('build');
+  const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2
+  const [selectedBuildItem, setSelectedBuildItem] = useState<string>('wall');
+  const [buildBattleScores, setBuildBattleScores] = useState<Record<string, number>>({ P1: 0, P2: 0 });
+  const [buildBattleScoresOnline, setBuildBattleScoresOnline] = useState<Record<string, number>>({});
+  const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
+  const [buildBattlePlacedEntities, setBuildBattlePlacedEntities] = useState<any[]>([]);
+  const [buildBattlePlacedThisRound, setBuildBattlePlacedThisRound] = useState<Record<string, boolean>>({});
+  const [buildBattleSelectedMapId, setBuildBattleSelectedMapId] = useState<string>('build1');
+  const [buildBattleHoverPos, setBuildBattleHoverPos] = useState<{x: number, y: number} | null>(null);
   const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">(
     "effects",
   );
@@ -2509,10 +2522,21 @@ const App: React.FC = () => {
     return () => clearInterval(spawnInterval);
   }, [gameState.status, brawlerPowerups]);
 
+  // --- BUILD-BATTLE SETUP INITIALIZER ---
+  useEffect(() => {
+    if (gameState.status === 'build_battle_setup') {
+      if (selectedLevels.length === 0 || !BUILD_BATTLE_LEVELS.some(b => b.id === selectedLevels[0].id)) {
+        setSelectedLevels([BUILD_BATTLE_LEVELS[0]]);
+      }
+    }
+  }, [gameState.status, selectedLevels]);
+
   // Reset selection on state change
   useEffect(() => {
     const resetStates = [
       "menu",
+      "multiplayer_menu",
+      "local_multiplayer_menu",
       "custom_level_select",
       "customizing",
       "difficulty_select",
@@ -2523,6 +2547,8 @@ const App: React.FC = () => {
       "won",
       "vs_won",
       "brawler_won",
+      "build_battle_setup",
+      "build_battle_won",
       "settings",
       "keybindings",
       "highscores",
@@ -3018,22 +3044,98 @@ const App: React.FC = () => {
       setMenuSelection((prev) => Math.min(max, prev + 1));
     const sel = st.menuSelection;
 
-    if (status === "menu") {
-      const maxItems = 10;
+    if (status === "multiplayer_menu") {
+      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
+      if (e.code === "Enter" || e.code === "Space") {
+        switch (sel) {
+          case 0: // Local
+            setMenuSelection(0);
+            setGameState((p) => ({ ...p, status: "local_multiplayer_menu" }));
+            break;
+          case 1: // Online
+            setMenuSelection(1);
+            setGameState((p) => ({ ...p, status: "online_menu" }));
+            break;
+          case 2: // Back
+            setMenuSelection(1); // Set hover back to "Multiplayer" (index 1) in main menu
+            setGameState((p) => ({ ...p, status: "menu" }));
+            break;
+        }
+      }
+      if (e.code === "Escape") {
+        setMenuSelection(1);
+        setGameState((p) => ({ ...p, status: "menu" }));
+      }
+      return;
+    }
 
+    if (status === "local_multiplayer_menu") {
+      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(3);
+      if (e.code === "Enter" || e.code === "Space") {
+        switch (sel) {
+          case 0: // VS
+            setLevelSource("builtin");
+            setHighscoreLevelIndex(0);
+            setMenuSelection(0);
+            setGameState((p) => ({ ...p, status: "vs_setup" }));
+            break;
+          case 1: // Brawler
+            setLevelSource("builtin");
+            setHighscoreLevelIndex(0);
+            setMenuSelection(0);
+            setGameState((p) => ({ ...p, status: "brawler_setup" }));
+            break;
+          case 2: // Build Battle Local
+            setLevelSource("build_battle");
+            setHighscoreLevelIndex(0);
+            setMenuSelection(0);
+            setGameState((p) => ({
+              ...p,
+              status: "build_battle_setup",
+              onlineMode: undefined,
+            }));
+            break;
+          case 3: // Back
+            setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
+            setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+            break;
+        }
+      }
+      if (e.code === "Escape") {
+        setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
+        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+      }
+      return;
+    }
+
+    if (status === "menu") {
       if (e.code === "ArrowRight" || e.code === "KeyD") {
-        if (sel % 2 === 0 && sel < 10) setMenuSelection(sel + 1);
+        if (sel % 2 === 0 && sel < 8) {
+          setMenuSelection(sel + 1);
+        }
       }
       if (e.code === "ArrowLeft" || e.code === "KeyA") {
-        if (sel % 2 !== 0 && sel <= 10) setMenuSelection(sel - 1);
+        if (sel % 2 !== 0 && sel < 8) {
+          setMenuSelection(sel - 1);
+        }
       }
       if (e.code === "ArrowDown" || e.code === "KeyS") {
-        if (sel === 8 || sel === 9) setMenuSelection(10);
-        else if (sel + 2 <= 9) setMenuSelection(sel + 2);
+        if (sel === 6 || sel === 7) {
+          setMenuSelection(8);
+        } else if (sel === 8) {
+          // bottom row, do nothing on down
+        } else if (sel + 2 <= 7) {
+          setMenuSelection(sel + 2);
+        }
       }
       if (e.code === "ArrowUp" || e.code === "KeyW") {
-        if (sel === 10) setMenuSelection(8);
-        else if (sel - 2 >= 0) setMenuSelection(sel - 2);
+        if (sel === 8) {
+          setMenuSelection(6); // Default to Editor
+        } else if (sel - 2 >= 0) {
+          setMenuSelection(sel - 2);
+        }
       }
 
       if (e.code === "Enter" || e.code === "Space") {
@@ -3041,48 +3143,33 @@ const App: React.FC = () => {
           case 0:
             setGameState((p) => ({ ...p, status: "difficulty_select" }));
             break; // Story
-          case 1: // VS
-            setLevelSource("builtin");
-            setHighscoreLevelIndex(0);
+          case 1: // Unified Multiplayer Menu
             setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "vs_setup" }));
+            setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
             break;
           case 2:
             setGameState((p) => ({ ...p, status: "custom_level_select" }));
-            break; // Custom
-          case 3: // Brawler
-            setLevelSource("builtin");
-            setHighscoreLevelIndex(0);
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "brawler_setup" }));
-            break;
-          case 4: // Editor
-            setEditorData(null);
-            setEditorHistory(null);
-            setEditorVerified(false);
-            setGameState((p) => ({ ...p, status: "editor" }));
-            break;
-          case 5: // Random
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "random_run_setup" }));
-            break;
-          case 6: // Highscores
+            break; // Custom Levels
+          case 3: // Highscores
             setLevelSource("builtin");
             setHighscoreLevelIndex(0);
             setGameState((p) => ({ ...p, status: "highscores" }));
             break;
-          case 7:
+          case 4: // Random Run
+            setMenuSelection(0);
+            setGameState((p) => ({ ...p, status: "random_run_setup" }));
+            break;
+          case 5: // Achievements
             setGameState((p) => ({ ...p, status: "achievements" }));
-            break; // Achievs
-          case 8: // Shop
+            break;
+          case 6: // Editor
+            setGameState((p) => ({ ...p, status: "editor_type_select" }));
+            break;
+          case 7: // Shop
             setMenuSelection(0);
             setGameState((p) => ({ ...p, status: "shop" }));
             break;
-          case 9: // Online
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "online_menu" }));
-            break;
-          case 10: // Settings
+          case 8: // Settings
             setGameState((p) => ({
               ...p,
               status: "settings",
@@ -3772,7 +3859,7 @@ const App: React.FC = () => {
       }
     } else if (status === "online_menu") {
       if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(4);
+      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(5);
       if (e.code === "Enter" || e.code === "Space") {
         if (sel === 0) {
           setGameState((p) => ({
@@ -3787,13 +3874,20 @@ const App: React.FC = () => {
           // Create VS Lobby
           createOnlineLobby("vs");
         } else if (sel === 3) {
+          // Create Build-Battle Lobby
+          createOnlineLobby("build_battle");
+        } else if (sel === 4) {
           // Join Lobby
           setShowJoinPrompt(true);
-        } else if (sel === 4) {
-          setGameState((p) => ({ ...p, status: "menu" }));
+        } else if (sel === 5) {
+          setMenuSelection(1); // Set hover to "Online Multiplayer"
+          setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
         }
       }
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
+      if (e.code === "Escape") {
+        setMenuSelection(1); // Set hover to "Online Multiplayer"
+        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+      }
     } else if (status === "online_lobby") {
       if (e.code === "Escape") {
         const isEditor = st.gameState.onlineMode === "editor";
@@ -4268,7 +4362,7 @@ const App: React.FC = () => {
   }, [handleKeyboardNavigation]);
 
   // --- ONLINE LOBBY LOGIC ---
-  const createOnlineLobby = async (mode: "brawler" | "vs" | "editor") => {
+  const createOnlineLobby = async (mode: "brawler" | "vs" | "editor" | "build_battle") => {
     let activeName = playerName.trim();
     if (!activeName) {
       activeName = "CUBE_PLAYER_" + Math.floor(1000 + Math.random() * 9000);
@@ -4286,7 +4380,11 @@ const App: React.FC = () => {
         team: 0, // Team 1
       };
 
-      const list = mode === "brawler" ? BRAWLER_LEVELS : INITIAL_LEVELS;
+      const list = mode === "brawler" 
+        ? BRAWLER_LEVELS 
+        : mode === "build_battle"
+          ? BUILD_BATTLE_LEVELS
+          : INITIAL_LEVELS;
       let initialLevel = list[0];
       if (mode === "editor") {
         initialLevel = {
@@ -4305,9 +4403,11 @@ const App: React.FC = () => {
       const initialQueue =
         mode === "brawler"
           ? BRAWLER_LEVELS
-          : mode === "editor"
-            ? []
-            : filterVSLevels(INITIAL_LEVELS);
+          : mode === "build_battle"
+            ? BUILD_BATTLE_LEVELS
+            : mode === "editor"
+              ? []
+              : filterVSLevels(INITIAL_LEVELS);
 
       const code = await onlineService.createLobby(localPlayer, mode, {
         level: initialLevel,
@@ -4923,7 +5023,8 @@ const App: React.FC = () => {
   const handleDie = useCallback(async () => {
     if (
       gameState.status === "vs_playing" ||
-      gameState.status === "brawler_playing"
+      gameState.status === "brawler_playing" ||
+      gameState.status === "build_battle_playing"
     ) {
       return;
     }
@@ -5066,6 +5167,24 @@ const App: React.FC = () => {
       isLocal?: boolean,
     ) => {
       audio.playWin();
+
+      if (gameState.status === "build_battle_playing") {
+        const customName = customization.name || "P1";
+        const isPlayer1 = winnerName === customName || winnerName === "Player 1" || winnerName === "P1" || (winnerName && winnerName.toLowerCase().includes("1"));
+        const winnerKey = isPlayer1 ? "P1" : "P2";
+        setBuildBattleScores(prev => ({
+          ...prev,
+          [winnerKey]: (prev[winnerKey] || 0) + 1
+        }));
+        showToast(winnerName ? `Ziel erreicht! Punkt für ${winnerName}!` : "Ziel erreicht!");
+        
+        setGameState(p => ({
+          ...p,
+          status: "build_battle_won",
+          winner: winnerName || "Spieler",
+        }));
+        return;
+      }
 
       if (
         gameState.status === "testing" ||
@@ -5578,29 +5697,38 @@ const App: React.FC = () => {
   };
 
   const gamescreenLevel = useMemo(() => {
+    let activeLevel = level;
+    if (gameState.status.includes("build_battle")) {
+      activeLevel = {
+        ...level,
+        entities: [...level.entities, ...buildBattlePlacedEntities]
+      };
+    }
+
     if (
       !gameState.status.includes("vs") &&
       !gameState.status.includes("brawler") &&
-      level.isBrawler &&
-      !level.entities.some((e) => e.type === "goal")
+      !gameState.status.includes("build_battle") &&
+      activeLevel.isBrawler &&
+      !activeLevel.entities.some((e) => e.type === "goal")
     ) {
       return {
-        ...level,
+        ...activeLevel,
         entities: [
-          ...level.entities,
+          ...activeLevel.entities,
           {
             id: "auto_goal",
             type: "goal",
-            x: level.startP2?.x || level.start.x + 100,
-            y: level.startP2?.y || level.start.y,
+            x: activeLevel.startP2?.x || activeLevel.start.x + 100,
+            y: activeLevel.startP2?.y || activeLevel.start.y,
             w: 20,
             h: 20,
           },
         ],
       };
     }
-    return level;
-  }, [level, gameState.status]);
+    return activeLevel;
+  }, [level, gameState.status, buildBattlePlacedEntities]);
 
   return (
     <>
@@ -6340,6 +6468,8 @@ const App: React.FC = () => {
                 "brawler_playing",
                 "brawler_won",
                 "online_summary",
+                "build_battle_playing",
+                "build_battle_won",
               ].includes(gameState.status) || (
                 gameState.status === "settings" && [
                   "playing",
@@ -6355,6 +6485,8 @@ const App: React.FC = () => {
                   "brawler_playing",
                   "brawler_won",
                   "online_summary",
+                  "build_battle_playing",
+                  "build_battle_won",
                 ].includes(gameState.previousStatus || "")
               )) && (
                 <GameCanvas
@@ -6378,6 +6510,8 @@ const App: React.FC = () => {
                     gameState.status === "vs_won" ||
                     gameState.status === "brawler_won" ||
                     gameState.status === "online_summary" ||
+                    gameState.status === "build_battle_won" ||
+                    (gameState.status === "build_battle_playing" && buildBattlePhase === "build") ||
                     onlineService.isPaused
                   }
                   respawnTrigger={respawnTrigger}
@@ -6386,7 +6520,11 @@ const App: React.FC = () => {
                     (gameState.status === "paused"
                       ? gameState.previousStatus || "playing"
                       : gameState.status
-                    ).includes("vs")
+                    ).includes("vs") ||
+                    (gameState.status === "paused"
+                      ? gameState.previousStatus || "playing"
+                      : gameState.status
+                    ).includes("build_battle")
                       ? "vs"
                       : (gameState.status === "paused"
                             ? gameState.previousStatus || "playing"
@@ -6414,6 +6552,198 @@ const App: React.FC = () => {
                   geometryDashMode={!!gameState.geometryDashMode}
                   levelDeaths={gameState.levelDeaths}
                 />
+              )}
+
+              {/* Build Battle Interactive Overlay HUD */}
+              {gameState.status === "build_battle_playing" && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-between pointer-events-none p-4 select-none">
+                  {/* Top Bar Info Dashboard */}
+                  <div className="w-full max-w-4xl bg-neutral-950/90 border border-neutral-800 p-3 rounded-2xl flex items-center justify-between backdrop-blur-md pointer-events-auto shadow-2xl mt-2 animate-fade-in">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 px-3 py-1 rounded-xl font-arcade text-[10px] uppercase font-bold tracking-wider">
+                        Runde {buildBattleRound}
+                      </div>
+                      <div className="text-white text-xs font-arcade uppercase font-black tracking-widest">
+                        {buildBattlePhase === 'build' ? (
+                          <span className="text-yellow-400 animate-pulse">🛠️ BAU-PHASE</span>
+                        ) : (
+                          <span className="text-green-400">🏃 LAUF-PHASE</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Score display board */}
+                    <div className="flex items-center gap-6 font-arcade text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded bg-cyan-400" />
+                        <span className="text-neutral-400 text-[10px] uppercase">P1:</span>
+                        <span className="text-cyan-400 font-bold text-sm bg-neutral-900 px-2.5 py-0.5 rounded-lg border border-neutral-800">{buildBattleScores.P1}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded bg-amber-400" />
+                        <span className="text-neutral-400 text-[10px] uppercase">P2:</span>
+                        <span className="text-amber-400 font-bold text-sm bg-neutral-900 px-2.5 py-0.5 rounded-lg border border-neutral-800">{buildBattleScores.P2}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Middle interactive placement grid helper (only handles events in build mode) */}
+                  {buildBattlePhase === 'build' && (
+                    <div 
+                      className="absolute inset-[15%] flex items-center justify-center pointer-events-auto z-20 cursor-crosshair relative"
+                      onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const rawX = ((e.clientX - rect.left) / rect.width) * 960;
+                        const rawY = ((e.clientY - rect.top) / rect.height) * 540;
+                        const snappedX = Math.max(0, Math.min(930, Math.floor(rawX / 30) * 30));
+                        const snappedY = Math.max(0, Math.min(510, Math.floor(rawY / 30) * 30));
+                        setBuildBattleHoverPos({ x: snappedX, y: snappedY });
+                      }}
+                      onMouseLeave={() => {
+                        setBuildBattleHoverPos(null);
+                      }}
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const rawX = ((e.clientX - rect.left) / rect.width) * 960;
+                        const rawY = ((e.clientY - rect.top) / rect.height) * 540;
+                        
+                        const snappedX = Math.floor(rawX / 30) * 30;
+                        const snappedY = Math.floor(rawY / 30) * 30;
+                        
+                        // Validate placement boundaries
+                        if (snappedX < 30 || snappedX >= 930 || snappedY < 30 || snappedY >= 510) {
+                          showToast("Ungültige Position! Zu nah am Rand.");
+                          return;
+                        }
+
+                        // Prevent placing on player spawns
+                        const dStartP1 = Math.hypot(snappedX - level.start.x, snappedY - level.start.y);
+                        const startP2X = level.startP2?.x || level.start.x + 40;
+                        const startP2Y = level.startP2?.y || level.start.y;
+                        const dStartP2 = Math.hypot(snappedX - startP2X, snappedY - startP2Y);
+                        
+                        if (dStartP1 < 45 || dStartP2 < 45) {
+                          showToast("Zu nah am Startpunkt!");
+                          return;
+                        }
+
+                        // Prevent placing on objective goal area
+                        const goalEntity = level.entities.find(ent => ent.type === "goal");
+                        if (goalEntity) {
+                          const dGoal = Math.hypot(snappedX - goalEntity.x, snappedY - goalEntity.y);
+                          if (dGoal < 45) {
+                            showToast("Zu nah am Ziel!");
+                            return;
+                          }
+                        }
+
+                        // Play audio place sound
+                        audio.playBuild();
+
+                        const newEnt = {
+                          id: `placed_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                          type: selectedBuildItem,
+                          x: snappedX,
+                          y: snappedY,
+                          w: 30,
+                          h: 30,
+                        };
+
+                        setBuildBattlePlacedEntities(prev => [...prev, newEnt]);
+
+                        if (buildTurn === 0) {
+                          setBuildTurn(1);
+                          showToast("Spieler 2 ist am Zug!");
+                        } else {
+                          // Both players completed placement
+                          setBuildBattlePhase('run');
+                          setResetTrigger(p => p + 1);
+                          setRespawnTrigger(p => p + 1);
+                          showToast("Bauphase abgeschlossen! Erreicht das Ziel!");
+                        }
+                      }}
+                    >
+                      {/* Responsive Hover Snapping Preview */}
+                      {buildBattleHoverPos && (
+                        <div 
+                          className="absolute border-2 border-dashed border-yellow-400 bg-yellow-500/10 pointer-events-none flex items-center justify-center text-xs"
+                          style={{
+                            left: `${(buildBattleHoverPos.x / 960) * 100}%`,
+                            top: `${(buildBattleHoverPos.y / 540) * 100}%`,
+                            width: `${(30 / 960) * 100}%`,
+                            height: `${(30 / 540) * 100}%`,
+                          }}
+                        >
+                          {selectedBuildItem === 'wall' && '🧱'}
+                          {selectedBuildItem === 'slime' && '🟩'}
+                          {selectedBuildItem === 'ice' && '❄️'}
+                          {selectedBuildItem === 'trampoline' && '🟨'}
+                          {selectedBuildItem === 'hazard' && '🔺'}
+                          {selectedBuildItem === 'coin' && '🪙'}
+                        </div>
+                      )}
+
+                      {/* Display building instructions */}
+                      <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-neutral-950/95 px-6 py-2.5 border border-yellow-500/20 rounded-2xl flex flex-col items-center shadow-xl">
+                        <span className="text-yellow-400 font-bold font-arcade uppercase text-[10px] tracking-wider animate-pulse">
+                          {buildTurn === 0 ? "👉 SPIELER 1 BAUT (Rot)" : "👉 SPIELER 2 BAUT (Gelb)"}
+                        </span>
+                        <span className="text-[8px] text-neutral-400 mt-0.5 uppercase tracking-wide">Klicke auf das Spielfeld zum Platzieren</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Run Phase HUD Controls */}
+                  {buildBattlePhase === 'run' && (
+                    <div className="absolute top-20 left-4 pointer-events-auto animate-fade-in">
+                      <button
+                        onClick={() => {
+                          setBuildBattlePhase('build');
+                          setBuildTurn(0);
+                          setBuildBattleRound(p => p + 1);
+                          setResetTrigger(p => p + 1);
+                          setRespawnTrigger(p => p + 1);
+                          showToast(`Runde ${buildBattleRound + 1} Bauphase!`);
+                        }}
+                        className="bg-neutral-950 border border-neutral-800 hover:border-yellow-500 hover:text-yellow-400 text-yellow-500/90 py-1.5 px-3 rounded-xl text-[9px] font-arcade uppercase shadow-2xl transition-all font-bold tracking-wider"
+                      >
+                        🔄 NÄCHSTE BAUPHASE
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Grid Item Selector Footer (visible on build phase only) */}
+                  {buildBattlePhase === 'build' && (
+                    <div className="w-full max-w-xl bg-neutral-950/95 border border-neutral-800 p-2.5 rounded-2xl flex items-center justify-between gap-1.5 backdrop-blur-md pointer-events-auto shadow-2xl mb-2 animate-slide-up">
+                      <div className="flex items-center gap-1.5 w-full">
+                        {[
+                          { id: 'wall', label: 'WAND', icon: '🧱' },
+                          { id: 'slime', label: 'SCHLEIM', icon: '🟩' },
+                          { id: 'ice', label: 'EIS', icon: '❄️' },
+                          { id: 'trampoline', label: 'FEDER', icon: '🟨' },
+                          { id: 'hazard', label: 'STACHEL', icon: '🔺' },
+                          { id: 'coin', label: 'MÜNZE', icon: '🪙' },
+                        ].map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setSelectedBuildItem(item.id);
+                              audio.playJump();
+                            }}
+                            className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl border transition-all ${
+                              selectedBuildItem === item.id
+                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-500 scale-105 shadow-[0_0_12px_rgba(234,179,8,0.15)] font-black'
+                                : 'bg-neutral-900/40 border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-white'
+                            }`}
+                          >
+                            <span className="text-xl mb-0.5">{item.icon}</span>
+                            <span className="text-[7.5px] font-arcade uppercase tracking-tighter text-center">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Difficulty Select */}
@@ -6538,7 +6868,8 @@ const App: React.FC = () => {
 
               {/* VS Setup Screen - IMPROVED */}
               {(gameState.status === "vs_setup" ||
-                gameState.status === "brawler_setup") && (
+                gameState.status === "brawler_setup" ||
+                gameState.status === "build_battle_setup") && (
                 <motion.div
                   key="vs_brawler_setup"
                   initial={{ opacity: 0 }}
@@ -6550,7 +6881,9 @@ const App: React.FC = () => {
                   <h2 className="text-3xl mb-4 text-rage-red">
                     {gameState.status === "brawler_setup"
                       ? "BRAWLER MODE"
-                      : t.vsTitle}
+                      : gameState.status === "build_battle_setup"
+                        ? "BUILD-BATTLE MODE"
+                        : t.vsTitle}
                   </h2>
 
                   <div className="flex gap-8 w-full max-w-4xl px-4 mb-6">
@@ -7032,7 +7365,9 @@ const App: React.FC = () => {
                             levelSource === "builtin"
                               ? gameState.status === "brawler_setup"
                                 ? BRAWLER_LEVELS
-                                : INITIAL_LEVELS
+                                : gameState.status === "build_battle_setup"
+                                  ? BUILD_BATTLE_LEVELS
+                                  : INITIAL_LEVELS
                               : customLevels;
                           if (gameState.status === "vs_setup") {
                             currentList = filterVSLevels(currentList);
@@ -7045,19 +7380,39 @@ const App: React.FC = () => {
                               Math.max(0, highscoreLevelIndex),
                               Math.max(0, currentList.length - 1),
                             );
-                            setLevel(currentList[idx]);
-                            setGameState((p) => ({
-                              ...p,
-                              status:
-                                gameState.status === "brawler_setup"
-                                  ? "brawler_powerup_setup"
-                                  : "vs_playing",
-                              levelDeaths: 0,
-                              levelTime: 0,
-                              collectedCoins: [],
-                              deaths: 0,
-                              blocksPlaced: 0,
-                            }));
+                            const selectedLevel = currentList[idx];
+                            setLevel(selectedLevel);
+                            
+                            if (gameState.status === "build_battle_setup") {
+                              setBuildBattlePhase('build');
+                              setBuildTurn(0);
+                              setBuildBattleRound(1);
+                              setBuildBattleScores({ P1: 0, P2: 0 });
+                              setBuildBattlePlacedEntities([]);
+                              setBuildBattlePlacedThisRound({});
+                              setGameState((p) => ({
+                                ...p,
+                                status: "build_battle_playing",
+                                levelDeaths: 0,
+                                levelTime: 0,
+                                collectedCoins: [],
+                                deaths: 0,
+                                blocksPlaced: 0,
+                              }));
+                            } else {
+                              setGameState((p) => ({
+                                ...p,
+                                status:
+                                  gameState.status === "brawler_setup"
+                                    ? "brawler_powerup_setup"
+                                    : "vs_playing",
+                                levelDeaths: 0,
+                                levelTime: 0,
+                                collectedCoins: [],
+                                deaths: 0,
+                                blocksPlaced: 0,
+                              }));
+                            }
                             if (gameState.status !== "brawler_setup") {
                               setRespawnTrigger(0);
                               checkAchievements({ mode: "vs" });
@@ -7766,92 +8121,6 @@ const App: React.FC = () => {
                           />
                           <MenuButton
                             index={4}
-                            label={t.editor}
-                            onClick={() => {
-                              setGameState((p) => ({
-                                ...p,
-                                status: "editor_type_select",
-                              }));
-                            }}
-                            isSelected={menuSelection === 4}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={6}
-                            label={t.highscores}
-                            onClick={() => {
-                              setLevelSource("builtin");
-                              setHighscoreLevelIndex(0);
-                              setGameState((p) => ({
-                                ...p,
-                                status: "highscores",
-                              }));
-                            }}
-                            isSelected={menuSelection === 6}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={8}
-                            label={t.shop || "SHOP"}
-                            disabled={false}
-                            onClick={() => {
-                              setMenuSelection(0);
-                              setGameState((p) => ({ ...p, status: "shop" }));
-                            }}
-                            isSelected={menuSelection === 8}
-                            onHover={setMenuSelection}
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <MenuButton
-                            index={1}
-                            label={t.vsMode}
-                            disabled={
-                              !isUnlocked("eyes", customization.eyes) ||
-                              !isUnlocked(
-                                "accessory",
-                                customization.accessory,
-                              ) ||
-                              !isUnlocked("trail", customization.trailColor)
-                            }
-                            onClick={() => {
-                              setLevelSource("builtin");
-                              setHighscoreLevelIndex(0);
-                              setMenuSelection(0);
-                              setGameState((p) => ({
-                                ...p,
-                                status: "vs_setup",
-                              }));
-                            }}
-                            isSelected={menuSelection === 1}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={3}
-                            label={t.brawlerMode}
-                            disabled={
-                              !isUnlocked("eyes", customization.eyes) ||
-                              !isUnlocked(
-                                "accessory",
-                                customization.accessory,
-                              ) ||
-                              !isUnlocked("trail", customization.trailColor)
-                            }
-                            onClick={() => {
-                              setLevelSource("builtin");
-                              setHighscoreLevelIndex(0);
-                              setMenuSelection(0);
-                              setGameState((p) => ({
-                                ...p,
-                                status: "brawler_setup",
-                              }));
-                            }}
-                            isSelected={menuSelection === 3}
-                            onHover={setMenuSelection}
-                          />
-                          <MenuButton
-                            index={5}
                             label={t.randomRun}
                             disabled={
                               !isUnlocked("eyes", customization.eyes) ||
@@ -7868,24 +8137,27 @@ const App: React.FC = () => {
                                 status: "random_run_setup",
                               }));
                             }}
-                            isSelected={menuSelection === 5}
+                            isSelected={menuSelection === 4}
                             onHover={setMenuSelection}
                           />
                           <MenuButton
-                            index={7}
-                            label={t.achievements}
-                            onClick={() =>
+                            index={6}
+                            label={t.editor}
+                            onClick={() => {
                               setGameState((p) => ({
                                 ...p,
-                                status: "achievements",
-                              }))
-                            }
-                            isSelected={menuSelection === 7}
+                                status: "editor_type_select",
+                              }));
+                            }}
+                            isSelected={menuSelection === 6}
                             onHover={setMenuSelection}
                           />
+                        </div>
+
+                        <div className="space-y-3">
                           <MenuButton
-                            index={9}
-                            label={t.onlineMultiplayer}
+                            index={1}
+                            label={t.multiplayer || "MULTIPLAYER"}
                             disabled={
                               !isUnlocked("eyes", customization.eyes) ||
                               !isUnlocked(
@@ -7898,10 +8170,47 @@ const App: React.FC = () => {
                               setMenuSelection(0);
                               setGameState((p) => ({
                                 ...p,
-                                status: "online_menu",
+                                status: "multiplayer_menu",
                               }));
                             }}
-                            isSelected={menuSelection === 9}
+                            isSelected={menuSelection === 1}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={3}
+                            label={t.highscores}
+                            onClick={() => {
+                              setLevelSource("builtin");
+                              setHighscoreLevelIndex(0);
+                              setGameState((p) => ({
+                                ...p,
+                                status: "highscores",
+                              }));
+                            }}
+                            isSelected={menuSelection === 3}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={5}
+                            label={t.achievements}
+                            onClick={() =>
+                               setGameState((p) => ({
+                                 ...p,
+                                 status: "achievements",
+                               }))
+                            }
+                            isSelected={menuSelection === 5}
+                            onHover={setMenuSelection}
+                          />
+                          <MenuButton
+                            index={7}
+                            label={t.shop || "SHOP"}
+                            disabled={false}
+                            onClick={() => {
+                              setMenuSelection(0);
+                              setGameState((p) => ({ ...p, status: "shop" }));
+                            }}
+                            isSelected={menuSelection === 7}
                             onHover={setMenuSelection}
                           />
                         </div>
@@ -7909,7 +8218,7 @@ const App: React.FC = () => {
 
                       <div className="grid grid-cols-1 gap-y-3 w-full max-w-3xl mb-12">
                         <MenuButton
-                          index={10}
+                          index={8}
                           label={t.settings}
                           onClick={() =>
                             setGameState((p) => ({
@@ -7918,7 +8227,7 @@ const App: React.FC = () => {
                               previousStatus: "menu",
                             }))
                           }
-                          isSelected={menuSelection === 10}
+                          isSelected={menuSelection === 8}
                           onHover={setMenuSelection}
                         />
                       </div>
@@ -7939,6 +8248,190 @@ const App: React.FC = () => {
                     </div>
                   </motion.div>
                 )}
+
+              {/* Multiplayer Menu (Unified hub) */}
+              {gameState.status === "multiplayer_menu" && (
+                <motion.div
+                  key="multiplayer_menu"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30"
+                >
+                  <h1 className="text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-pink-400 to-indigo-500 font-bold font-arcade mb-8 text-center uppercase tracking-wider">
+                    {t.multiplayer || "MULTIPLAYER"}
+                  </h1>
+
+                  {/* Character Preview Showcase representing group play */}
+                  <div className="mb-8 flex items-center justify-center gap-6 md:gap-12">
+                    <div className="w-24 h-24 md:w-32 md:h-32 bg-neutral-900 border-2 border-cyan-500/20 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                      <CharacterPreview
+                        customization={customization}
+                        scale={3.5}
+                      />
+                    </div>
+                    <div className="text-lg md:text-2xl text-neutral-600 font-arcade tracking-widest font-extrabold">
+                      {"&"}
+                    </div>
+                    <div className="w-24 h-24 md:w-32 md:h-32 bg-neutral-900 border-2 border-yellow-500/20 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(234,179,8,0.1)] animate-pulse">
+                      <CharacterPreview
+                        customization={{
+                          ...customization,
+                          color: "#eab308",
+                          trailColor: "#eab308",
+                        }}
+                        scale={3.5}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Menu Buttons selection */}
+                  <div className="flex flex-col gap-3 w-full max-w-[325px]">
+                    <MenuButton
+                      index={0}
+                      label={t.localMultiplayer || "LOKALER MULTIPLAYER"}
+                      onClick={() => {
+                        setMenuSelection(0);
+                        setGameState((p) => ({
+                          ...p,
+                          status: "local_multiplayer_menu",
+                        }));
+                      }}
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={1}
+                      label={t.onlineMultiplayer || "ONLINE MULTIPLAYER"}
+                      onClick={() => {
+                        setMenuSelection(1);
+                        setGameState((p) => ({
+                          ...p,
+                          status: "online_menu",
+                        }));
+                      }}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={2}
+                      label={t.back || "ZURÜCK"}
+                      onClick={() => {
+                        setMenuSelection(1); // hover on unified "Multiplayer" button in main menu
+                        setGameState((p) => ({ ...p, status: "menu" }));
+                      }}
+                      danger
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Local Multiplayer Menu */}
+              {gameState.status === "local_multiplayer_menu" && (
+                <motion.div
+                  key="local_multiplayer_menu"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/95 z-30"
+                >
+                  <h1 className="text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 font-bold font-arcade mb-8 text-center uppercase tracking-wider">
+                    {t.localMultiplayer || "LOKALER MULTIPLAYER"}
+                  </h1>
+
+                  {/* Dual Character Preview HUD Showcase */}
+                  <div className="mb-8 flex items-center justify-center gap-8 md:gap-16">
+                    {/* Player 1 */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-28 h-28 md:w-36 md:h-36 bg-neutral-900 border-2 border-cyan-500/30 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                        <CharacterPreview
+                          customization={customization}
+                          scale={4}
+                        />
+                      </div>
+                      <span className="text-[10px] text-cyan-400 font-arcade uppercase tracking-widest font-black">P1</span>
+                    </div>
+
+                    <div className="text-xl md:text-3xl text-neutral-500 font-arcade tracking-wider font-extrabold pb-4">
+                      VS
+                    </div>
+
+                    {/* Player 2 */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-28 h-28 md:w-36 md:h-36 bg-neutral-900 border-2 border-yellow-500/30 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(234,179,8,0.15)]">
+                        <CharacterPreview
+                          customization={{
+                            ...customization,
+                            color: "#eab308", // Golden Yellow for Player 2
+                            trailColor: "#eab308",
+                          }}
+                          scale={4}
+                        />
+                      </div>
+                      <span className="text-[10px] text-yellow-400 font-arcade uppercase tracking-widest font-black">P2</span>
+                    </div>
+                  </div>
+
+                  {/* Options Menu Grid */}
+                  <div className="flex flex-col gap-3 w-full max-w-[325px]">
+                    <MenuButton
+                      index={0}
+                      label={t.vsMode}
+                      onClick={() => {
+                        setLevelSource("builtin");
+                        setHighscoreLevelIndex(0);
+                        setMenuSelection(0);
+                        setGameState((p) => ({ ...p, status: "vs_setup" }));
+                      }}
+                      isSelected={menuSelection === 0}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={1}
+                      label={t.brawlerMode}
+                      onClick={() => {
+                        setLevelSource("builtin");
+                        setHighscoreLevelIndex(0);
+                        setMenuSelection(0);
+                        setGameState((p) => ({ ...p, status: "brawler_setup" }));
+                      }}
+                      isSelected={menuSelection === 1}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={2}
+                      label={t.buildBattleMode || "BUILD-BATTLE (2P)"}
+                      onClick={() => {
+                        setLevelSource("build_battle");
+                        setHighscoreLevelIndex(0);
+                        setMenuSelection(0);
+                        setGameState((p) => ({
+                          ...p,
+                          status: "build_battle_setup",
+                          onlineMode: undefined,
+                        }));
+                      }}
+                      isSelected={menuSelection === 2}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={3}
+                      label={t.back}
+                      onClick={() => {
+                        setMenuSelection(0); // Set hover to "Local Multiplayer"
+                        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+                      }}
+                      danger
+                      isSelected={menuSelection === 3}
+                      onHover={setMenuSelection}
+                    />
+                  </div>
+                </motion.div>
+              )}
 
               {/* Online Menu */}
               {gameState.status === "online_menu" && (
@@ -7996,23 +8489,31 @@ const App: React.FC = () => {
                     />
                     <MenuButton
                       index={3}
+                      label={lang === Language.DE ? "BUILD-BATTLE LOBBY ERSTELLEN" : lang === Language.ES ? "CREAR LOBBY BUILD-BATTLE" : "CREATE BUILD-BATTLE LOBBY"}
+                      onClick={() => createOnlineLobby("build_battle")}
+                      isSelected={menuSelection === 3}
+                      onHover={setMenuSelection}
+                    />
+                    <MenuButton
+                      index={4}
                       label={t.joinLobby}
                       onClick={() => {
                         setShowJoinPrompt(true);
                         setOnlineError("");
                         setOnlineLobbyInput("");
                       }}
-                      isSelected={menuSelection === 3}
+                      isSelected={menuSelection === 4}
                       onHover={setMenuSelection}
                     />
                     <MenuButton
-                      index={4}
+                      index={5}
                       label={t.back}
-                      onClick={() =>
-                        setGameState((p) => ({ ...p, status: "menu" }))
-                      }
+                      onClick={() => {
+                        setMenuSelection(1); // Set hover to "Online Multiplayer"
+                        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+                      }}
                       danger
-                      isSelected={menuSelection === 4}
+                      isSelected={menuSelection === 5}
                       onHover={setMenuSelection}
                     />
                     <button
@@ -9451,6 +9952,81 @@ const App: React.FC = () => {
                       )}
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Build Battle Won / Round Ended Screen overlay */}
+              {gameState.status === "build_battle_won" && (
+                <div key="build_battle_won_screen" className="absolute inset-0 flex flex-col items-center justify-center bg-yellow-950/80 backdrop-blur-md z-40">
+                  <div className="bg-neutral-950 p-8 border-2 border-yellow-500 rounded-3xl flex flex-col items-center w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.25)] animate-scale-up">
+                    <div className="text-5xl mb-4 animate-bounce">👑</div>
+                    
+                    <h2 className="text-2xl text-yellow-400 font-extrabold font-arcade mb-2 text-center uppercase tracking-wider">
+                      {gameState.winner ? `${gameState.winner} GEWINNT!` : "ZIEL ERREICHT!"}
+                    </h2>
+                    
+                    <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-6">
+                      RUNDE {buildBattleRound} BEENDET
+                    </div>
+
+                    <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 mb-6 flex flex-col gap-3">
+                      <div className="text-[9px] text-yellow-500/80 font-arcade uppercase tracking-wider text-center border-b border-neutral-800/80 pb-2">
+                        PUNKTESTAND
+                      </div>
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded bg-cyan-400" />
+                          <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 1</span>
+                        </div>
+                        <span className="text-cyan-400 text-lg font-bold font-arcade">{buildBattleScores.P1}</span>
+                      </div>
+                      <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded bg-amber-400" />
+                          <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 2</span>
+                        </div>
+                        <span className="text-amber-400 text-lg font-bold font-arcade">{buildBattleScores.P2}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 w-full">
+                      <button
+                        onClick={() => {
+                          setBuildBattlePhase('build');
+                          setBuildTurn(0);
+                          setBuildBattleRound(p => p + 1);
+                          setResetTrigger(p => p + 1);
+                          setRespawnTrigger(p => p + 1);
+                          setGameState(p => ({
+                            ...p,
+                            status: "build_battle_playing",
+                          }));
+                          showToast(`Start Runde ${buildBattleRound + 1}!`);
+                        }}
+                        className="py-3 px-6 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-yellow-700 active:translate-y-px active:border-b-0 text-center"
+                      >
+                        NÄCHSTE RUNDE (BAUEN)
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setGameState(p => ({ ...p, status: "build_battle_setup" }));
+                        }}
+                        className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                      >
+                        LEVEL-MENÜ
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setGameState(p => ({ ...p, status: "menu" }));
+                        }}
+                        className="py-2.5 px-6 bg-red-950/25 hover:bg-red-900/40 border border-red-900/30 text-red-400 font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                      >
+                        HAUPTMENÜ
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -141,7 +141,7 @@ async function startServer() {
           Object.assign(room, rest);
           
           // Reset finished state for all players when starting game
-          if (rest.status === 'playing' || rest.status === 'brawler_playing' || rest.status === 'vs_playing') {
+          if (rest.status === 'playing' || rest.status === 'brawler_playing' || rest.status === 'vs_playing' || rest.status === 'build_battle_playing') {
             room.players.forEach(p => {
               p.finished = false;
             });
