@@ -154,6 +154,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   geometryDashMode = false,
   gdSpeedMode = 1,
   levelDeaths = 0,
+  suppressCountdown = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -167,6 +168,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const explosions = useRef<Explosion[]>([]);
   const particles = useRef<Particle[]>([]);
   const cameraRef = useRef({ x: 0, y: 0 });
+  const cameraZoom = useRef(1.0);
+  const levelRef = useRef(level);
+  useEffect(() => {
+    levelRef.current = level;
+  }, [level]);
   const cameraVel = useRef({ x: 0, y: 0 });
   const [spectateTargetIdx, setSpectateTargetIdx] = useState(0);
 
@@ -289,14 +295,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }, []);
 
   useEffect(() => {
-    if (gameMode === "vs" || gameMode === "brawler" || isOnline) {
+    if (suppressCountdown) {
+      setStartCountdown(null);
+      isStartingRef.current = false;
+    } else if (gameMode === "vs" || gameMode === "brawler" || isOnline) {
       setStartCountdown(3);
       isStartingRef.current = true;
     } else {
       setStartCountdown(null);
       isStartingRef.current = false;
     }
-  }, [level.id, gameMode, isOnline]);
+  }, [level.id, gameMode, isOnline, suppressCountdown]);
 
   useEffect(() => {
     if (startCountdown === null) {
@@ -325,7 +334,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const getBrawlerSpawnPoints = () => {
     const spawns: { x: number; y: number; lastUsed: number }[] = [];
-    level.entities.forEach((e) => {
+    levelRef.current.entities.forEach((e) => {
       if (
         e.type === "wall" ||
         e.type === "ice" ||
@@ -333,7 +342,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         e.type === "fragile"
       ) {
         const playerBox = { x: e.x + 2, y: e.y - 22, w: e.w - 4, h: 20 };
-        const clear = !level.entities.some(
+        const clear = !levelRef.current.entities.some(
           (other) =>
             (other.type === "wall" ||
               other.type === "ice" ||
@@ -578,6 +587,37 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     [onWin, gameMode],
   );
 
+  const checkBuildBattleWinCondition = useCallback(() => {
+    const allPlayers = players.current;
+    if (allPlayers.length === 0) return false;
+
+    const alivePlayers = allPlayers.filter(p => !p.dead && !p.finished);
+    
+    // If there is still someone alive and not finished, the round continues!
+    if (alivePlayers.length > 0) return false;
+
+    // Okay, everyone is either dead or reached the goal.
+    const goalReachPlayers = allPlayers.filter(p => p.finished && !p.dead);
+    // Sort by finishTime if available to get the first to finish
+    goalReachPlayers.sort((a, b) => (a.finishTime || 0) - (b.finishTime || 0));
+    
+    if (goalReachPlayers.length === 0) {
+       // Everyone died. Nobody reached the goal. No points.
+       triggerWin(undefined);
+       return true;
+    }
+
+    if (goalReachPlayers.length === allPlayers.length) {
+       // Everyone reached the goal! The level is too easy! No points!
+       triggerWin("EVERYONE_FINISHED"); // Special flag
+       return true;
+    }
+
+    // Otherwise, whoever finished FIRST gets the win!
+    triggerWin(goalReachPlayers[0].name);
+    return true;
+  }, [triggerWin]);
+
   const checkBrawlerWinCondition = useCallback(() => {
     const allPlayers = players.current;
     if (allPlayers.length === 0) return false;
@@ -669,6 +709,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       canJump: true,
       trail: [],
       finished: false,
+      dead: false,
       gravity: GRAVITY,
       teleportCooldown: 0,
       teleportMaxCooldown: 120, // 2 seconds
@@ -1223,7 +1264,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       } else if (event === "block") {
         tempBlocks.current.push(data);
       } else if (event === "block_updated") {
-        const block = level.entities.find(
+        const block = levelRef.current.entities.find(
           (e) => e.x === data.x && e.y === data.y,
         );
         if (block) block.type = data.type;
@@ -1476,8 +1517,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const triggerJump = (p: PlayerState) => {
     if (!p || p.finished) return;
     const allowed = level.allowedAbility || "none";
+    const isBuildBattle = level.id.startsWith("build");
     const canDoubleJumpGlobal =
-      allowed === "double_jump" || gameMode === "brawler";
+      (allowed === "double_jump" && !isBuildBattle) || gameMode === "brawler";
     const isJumperClass = gameMode === "brawler" && p.brawlerClass === "jumper";
 
     if (!p.isGrounded && !p.isWallSliding && p.wallCoyoteTimer <= 0) {
@@ -1895,7 +1937,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         h: 5,
       };
       const blockBelow =
-        level.entities.find(
+        levelRef.current.entities.find(
           (e) =>
             (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
             checkCollision(checkRect, e),
@@ -2281,10 +2323,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const screenX = (e.clientX - rect.left) * scaleX;
     const screenY = (e.clientY - rect.top) * scaleY;
 
+    const cx = cameraRef.current.x + GAME_WIDTH / 2;
+    const cy = cameraRef.current.y + GAME_HEIGHT / 2;
+    const zoom = cameraZoom.current || 1.0;
+
     // Determine raw pos for hook, snapped for build
     mouseRef.current = {
-      x: screenX + cameraRef.current.x,
-      y: screenY + cameraRef.current.y,
+      x: (screenX - GAME_WIDTH / 2) / zoom + cx,
+      y: (screenY - GAME_HEIGHT / 2) / zoom + cy,
     }; // Raw for hook
   };
 
@@ -2315,8 +2361,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const screenX = (e.clientX - rect.left) * scaleX;
     const screenY = (e.clientY - rect.top) * scaleY;
-    const worldX = screenX + cameraRef.current.x;
-    const worldY = screenY + cameraRef.current.y;
+
+    const cx = cameraRef.current.x + GAME_WIDTH / 2;
+    const cy = cameraRef.current.y + GAME_HEIGHT / 2;
+    const zoom = cameraZoom.current || 1.0;
+
+    const worldX = (screenX - GAME_WIDTH / 2) / zoom + cx;
+    const worldY = (screenY - GAME_HEIGHT / 2) / zoom + cy;
 
     const allowed = level.allowedAbility || "none";
     const p =
@@ -2415,7 +2466,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         rayY += dirY * 10;
 
         // Check collisions
-        const colliders = [...level.entities, ...tempBlocks.current];
+        const colliders = [...levelRef.current.entities, ...tempBlocks.current];
         const hitEntity = colliders.find(
           (ent) =>
             ["wall", "ice", "slime"].includes(ent.type) && // Only hook onto solids
@@ -2546,10 +2597,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     let animationFrameId: number;
 
-    const levelCoinIds = level.entities
+    const levelCoinIds = levelRef.current.entities
       .filter((e) => e.type === "coin")
       .map((e) => e.id!);
-    const teleporters = level.entities.filter((e) => e.type === "teleport");
+    const teleporters = levelRef.current.entities.filter((e) => e.type === "teleport");
 
     // Game Loop Logic
     let lastTime = performance.now();
@@ -2562,6 +2613,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                         e.movingH || 
                         e.type === "moving_platform_v" || 
                         e.movingV || 
+                        (e.type as any) === "orbit" ||
                         e.type === "fragile" || 
                         e.fragile ||
                         collapsingStates.current[e.id || `${e.x}_${e.y}`];
@@ -2580,6 +2632,22 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const offset = Math.sin(time * speed) * range;
         const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
         updated = { ...updated, y: e.y + offset, dy: offset - prevOffset };
+      } else if ((e.type as any) === "orbit") {
+        const oSpeed = e.moveSpeed ?? 0.0025;
+        const oRange = e.moveRange ?? 80;
+        const angle = time * oSpeed;
+        const prevAngle = (time - 16.66 * dt) * oSpeed;
+        const offsetX = Math.cos(angle) * oRange;
+        const offsetY = Math.sin(angle) * oRange;
+        const prevOffsetX = Math.cos(prevAngle) * oRange;
+        const prevOffsetY = Math.sin(prevAngle) * oRange;
+        updated = {
+          ...updated,
+          x: e.x + offsetX,
+          y: e.y + offsetY,
+          dx: offsetX - prevOffsetX,
+          dy: offsetY - prevOffsetY
+        };
       }
 
       if (e.type === "fragile" || e.fragile) {
@@ -2629,6 +2697,183 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       return updated;
+    };
+
+    const updateCamera = () => {
+      // Camera Logic
+      let targetCameraX = 0;
+      let targetCameraY = 0;
+
+      const maxCamX = Math.max(0, (levelRef.current.width || GAME_WIDTH) - GAME_WIDTH);
+      const maxCamY = Math.max(0, (levelRef.current.height || GAME_HEIGHT) - GAME_HEIGHT);
+
+      const allFinished = players.current.every((p) => p.finished);
+
+      const liveLocalPlayer = players.current.find((p) => p.isLocal);
+      const isSpectatingNowLocal =
+        isOnline &&
+        (liveLocalPlayer
+          ? liveLocalPlayer.finished
+          : isSpectating ||
+            (players.current.length > 0 && status.includes("playing")));
+
+      // Calculate scrollWallX for the followed player so it can be used for drawing
+      let followedPlayer: PlayerState | undefined = liveLocalPlayer;
+      if (isSpectatingNowLocal) {
+        const activePlayers = players.current.filter((p) => !p.finished);
+        if (activePlayers.length > 0) {
+          followedPlayer =
+            activePlayers[spectateTargetIdx % activePlayers.length];
+        }
+      }
+
+      const dt = timeScaleRef.current; // Time Delta Factor
+
+      if (
+        (level.autoScroll || geometryDashMode) &&
+        followedPlayer &&
+        followedPlayer.hasStartedMove &&
+        !followedPlayer.finished
+      ) {
+        scrollWallX.current = followedPlayer.scrollX || 0;
+      } else if (
+        (level.autoScroll || geometryDashMode) &&
+        (!followedPlayer || !followedPlayer.hasStartedMove)
+      ) {
+        scrollWallX.current = cameraRef.current.x; // Stay where it was initialized, instead of resetting to 0
+      }
+
+      const isLocalBuildBattle = !isOnline && status === "build_battle_playing";
+
+      if (isLocalBuildBattle && players.current.length >= 2) {
+        const p1 = players.current[0];
+        const p2 = players.current[1];
+        if (p1 && p2) {
+          let minX = Math.min(p1.pos.x, p2.pos.x);
+          let maxX = Math.max(p1.pos.x + p1.w, p2.pos.x + p2.w);
+          let minY = Math.min(p1.pos.y, p2.pos.y);
+          let maxY = Math.max(p1.pos.y + p1.h, p2.pos.y + p2.h);
+
+          const buildPreviewEntities = levelRef.current.entities.filter(e => (e as any).isBuildPreview);
+
+          if (buildPreviewEntities.length > 0) {
+            minX = Math.min(minX, ...buildPreviewEntities.map(e => e.x));
+            maxX = Math.max(maxX, ...buildPreviewEntities.map(e => e.x + (e.w || 30)));
+            minY = Math.min(minY, ...buildPreviewEntities.map(e => e.y));
+            maxY = Math.max(maxY, ...buildPreviewEntities.map(e => e.y + (e.h || 30)));
+          }
+
+          const dx = maxX - minX;
+          const dy = maxY - minY;
+
+          // Compute target zoom based on the distance with a padding of 160
+          const zx = GAME_WIDTH / (dx + 160);
+          const zy = GAME_HEIGHT / (dy + 160);
+          const targetZoom = Math.max(0.2, Math.min(1.0, Math.min(zx, zy)));
+
+          // Smoothly interpolate zoom
+          cameraZoom.current += (targetZoom - cameraZoom.current) * 0.1;
+
+          // Target center is the midpoint of the bounding box
+          const cx = minX + dx / 2;
+          const cy = minY + dy / 2;
+
+          // Bound center so that the camera frame doesn't show beyond level boundaries
+          const levelW = levelRef.current.width || GAME_WIDTH;
+          const levelH = levelRef.current.height || GAME_HEIGHT;
+
+          const halfVisWidth = GAME_WIDTH / (2 * cameraZoom.current);
+          const halfVisHeight = GAME_HEIGHT / (2 * cameraZoom.current);
+
+          let centerX = cx;
+          let centerY = cy;
+
+          if (halfVisWidth * 2 > levelW) {
+            centerX = levelW / 2;
+          } else {
+            centerX = Math.max(halfVisWidth, Math.min(centerX, levelW - halfVisWidth));
+          }
+
+          if (halfVisHeight * 2 > levelH) {
+            centerY = levelH / 2;
+          } else {
+            centerY = Math.max(halfVisHeight, Math.min(centerY, levelH - halfVisHeight));
+          }
+
+          // Top-left coordinate of the camera:
+          targetCameraX = centerX - GAME_WIDTH / 2;
+          targetCameraY = centerY - GAME_HEIGHT / 2;
+        } else {
+          cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
+          let totalX = 0;
+          let totalY = 0;
+          let activeCount = 0;
+          players.current.forEach((p) => {
+            if (p.lives > 0 || gameMode !== "brawler") {
+              totalX += p.pos.x;
+              totalY += p.pos.y;
+              activeCount++;
+            }
+          });
+          if (activeCount > 0) {
+            targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
+            targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
+          }
+        }
+      } else {
+        cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
+
+        if (isSpectatingNowLocal) {
+          if (followedPlayer) {
+            targetCameraX = followedPlayer.pos.x - GAME_WIDTH / 2 + 15;
+            targetCameraY = followedPlayer.pos.y - GAME_HEIGHT / 2 + 15;
+          } else {
+            const localP = players.current.find(
+              (p) => p.onlineId === onlineService.localPlayer?.id,
+            );
+            if (localP) {
+              targetCameraX = localP.pos.x - GAME_WIDTH / 2 + 15;
+              targetCameraY = localP.pos.y - GAME_HEIGHT / 2 + 15;
+            }
+          }
+        } else {
+          let totalX = 0;
+          let totalY = 0;
+          let activeCount = 0;
+          players.current.forEach((p) => {
+            if (p.lives > 0 || gameMode !== "brawler") {
+              totalX += p.pos.x;
+              totalY += p.pos.y;
+              activeCount++;
+            }
+          });
+          if (activeCount > 0) {
+            targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
+            targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
+          }
+        }
+      }
+
+      if (!isLocalBuildBattle) {
+        targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
+        targetCameraY = Math.max(0, Math.min(targetCameraY, maxCamY));
+      }
+
+      // In auto-scroll mode, camera normally sits at the wall (left bound) for the player.
+      // However, spectators should follow their target smoothly.
+      const oldCamX = cameraRef.current.x;
+      const oldCamY = cameraRef.current.y;
+      
+      if ((level.autoScroll || geometryDashMode) && !isSpectatingNowLocal) {
+        cameraRef.current.x = scrollWallX.current;
+      } else {
+        // Smoothly transition both in normal levels and when spectating auto-scroll levels
+        cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
+      }
+      cameraRef.current.y += (targetCameraY - cameraRef.current.y) * 0.1;
+
+      cameraVel.current.x = cameraRef.current.x - oldCamX;
+      cameraVel.current.y = cameraRef.current.y - oldCamY;
     };
 
     const updatePhysics = () => {
@@ -2713,7 +2958,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (effectiveTime - lastHazardTriggerTime.current > 7000) {
           lastHazardTriggerTime.current = effectiveTime;
 
-          const candidates = level.entities.filter(
+          const candidates = levelRef.current.entities.filter(
             (e) =>
               (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
               !collapsingStates.current[e.id || `${e.x}_${e.y}`],
@@ -2740,7 +2985,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const fakeTypes = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
 
       const collidableEntities = [
-        ...level.entities,
+        ...levelRef.current.entities,
         ...tempBlocks.current,
         ...dynamicPowerups.current,
       ]
@@ -2815,7 +3060,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             selectedType = types[Math.floor(Math.random() * types.length)];
           }
 
-          const spawners = level.entities.filter(
+          const spawners = levelRef.current.entities.filter(
             (e) => e.type === "powerup_spawner",
           );
           if (spawners.length > 0) {
@@ -2841,7 +3086,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (isOnline) onlineService.sendEvent("powerup_spawned", powerup);
             }
           } else {
-            const solidBlocks = level.entities.filter((e) =>
+            const solidBlocks = levelRef.current.entities.filter((e) =>
               ["wall", "ice", "slime"].includes(e.type),
             );
             if (solidBlocks.length > 0) {
@@ -2851,7 +3096,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               const spawnY = block.y - 20;
               const rect = { x: spawnX, y: spawnY, w: 20, h: 20 };
               const isFree =
-                !level.entities.some((e) => checkCollision(rect, e)) &&
+                !levelRef.current.entities.some((e) => checkCollision(rect, e)) &&
                 !dynamicPowerups.current.some((e) => checkCollision(rect, e));
               if (isFree) {
                 const id = `dyn_${Date.now()}_${Math.random()}`;
@@ -3155,6 +3400,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         // Hook Physics override
         p.gravity = p.gravityFlipped ? -GRAVITY : GRAVITY;
         collidableEntities.forEach((entity) => {
+          if ((entity.type as any) === "fan") {
+            const windH = 185;
+            const inWindX = p.pos.x + p.w > entity.x && p.pos.x < entity.x + entity.w;
+            const inWindY = p.pos.y + p.h > entity.y - windH && p.pos.y < entity.y;
+            if (inWindX && inWindY) {
+              const distFrac = 1.0 - (entity.y - p.pos.y) / windH; // Stronger closer to the fan
+              const pushForce = 0.88 * Math.max(0.25, distFrac);
+              p.vel.y -= pushForce * (p.gravity < 0 ? -1 : 1);
+            }
+          }
+
           if (
             entity.type === "gravity_reverse" ||
             entity.type === "gravity_zero" ||
@@ -3555,15 +3811,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
-                p.pos = { ...currentRespawnPos.current };
-                p.ghostOverlapIndices = players.current
-                  .filter((op) => op.playerIndex !== p.playerIndex)
-                  .map((op) => op.playerIndex);
-                p.vel = { x: 0, y: 0 };
-                p.respawnTimer = Date.now();
-                resetPlayerSize(p);
-                shakeIntensity.current = 10;
-                audio.playDie(p.deathSound);
+                
+                if (status === "build_battle_playing") {
+                  p.dead = true;
+                  p.finished = true;
+                  p.vel = { x: 0, y: 0 };
+                  shakeIntensity.current = 10;
+                  audio.playDie(p.deathSound);
+                  checkBuildBattleWinCondition();
+                } else {
+                  p.pos = { ...currentRespawnPos.current };
+                  p.ghostOverlapIndices = players.current
+                    .filter((op) => op.playerIndex !== p.playerIndex)
+                    .map((op) => op.playerIndex);
+                  p.vel = { x: 0, y: 0 };
+                  p.respawnTimer = Date.now();
+                  resetPlayerSize(p);
+                  shakeIntensity.current = 10;
+                  audio.playDie(p.deathSound);
+                }
                 if (isOnline) onlineService.sendEvent("die", null);
               } else if (gameMode === "brawler") {
                 if (p.lives !== undefined) {
@@ -3654,7 +3920,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 }
 
                 p.finished = true;
-                triggerWin(p.name);
+                if (!p.finishTime) p.finishTime = Date.now();
+                if (status === "build_battle_playing") checkBuildBattleWinCondition();
+                else triggerWin(p.name);
 
                 if (isOnline) onlineService.sendEvent("win", null);
               }
@@ -4035,15 +4303,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
-                p.pos = { ...currentRespawnPos.current };
-                p.ghostOverlapIndices = players.current
-                  .filter((op) => op.playerIndex !== p.playerIndex)
-                  .map((op) => op.playerIndex);
-                p.vel = { x: 0, y: 0 };
-                p.respawnTimer = Date.now();
-                resetPlayerSize(p);
-                shakeIntensity.current = 10;
-                audio.playDie(p.deathSound);
+                
+                if (status === "build_battle_playing") {
+                  p.dead = true;
+                  p.finished = true;
+                  p.vel = { x: 0, y: 0 };
+                  shakeIntensity.current = 10;
+                  audio.playDie(p.deathSound);
+                  checkBuildBattleWinCondition();
+                } else {
+                  p.pos = { ...currentRespawnPos.current };
+                  p.ghostOverlapIndices = players.current
+                    .filter((op) => op.playerIndex !== p.playerIndex)
+                    .map((op) => op.playerIndex);
+                  p.vel = { x: 0, y: 0 };
+                  p.respawnTimer = Date.now();
+                  resetPlayerSize(p);
+                  shakeIntensity.current = 10;
+                  audio.playDie(p.deathSound);
+                }
                 if (isOnline) onlineService.sendEvent("die", null);
               } else if (gameMode === "brawler") {
                 if (p.lives !== undefined) {
@@ -4134,7 +4412,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 }
 
                 p.finished = true;
-                triggerWin(p.name);
+                if (!p.finishTime) p.finishTime = Date.now();
+                if (status === "build_battle_playing") checkBuildBattleWinCondition();
+                else triggerWin(p.name);
 
                 if (isOnline) onlineService.sendEvent("win", null);
               }
@@ -4430,7 +4710,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const SUDDEN_DEATH_START = 1800 * 2; // Wait 1800 frames = 30 seconds
         const LAVA_SPEED = 0.2 / 3;
-        const currentLevelHeight = level.height || GAME_HEIGHT;
+        const currentLevelHeight = levelRef.current.height || GAME_HEIGHT;
         let lavaY = currentLevelHeight + 100;
         if (
           gameMode === "brawler" &&
@@ -4511,15 +4791,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               20,
               "blood",
             );
-            p.pos = { ...currentRespawnPos.current };
-            p.ghostOverlapIndices = players.current
-              .filter((op) => op.playerIndex !== p.playerIndex)
-              .map((op) => op.playerIndex);
-            p.respawnTimer = Date.now();
-            p.vel = { x: 0, y: 0 };
-            resetPlayerSize(p);
-            shakeIntensity.current = 10;
-            audio.playDie(p.deathSound);
+            
+            if (status === "build_battle_playing") {
+              p.dead = true;
+              p.finished = true;
+              p.vel = { x: 0, y: 0 };
+              shakeIntensity.current = 10;
+              audio.playDie(p.deathSound);
+              checkBuildBattleWinCondition();
+            } else {
+              p.pos = { ...currentRespawnPos.current };
+              p.ghostOverlapIndices = players.current
+                .filter((op) => op.playerIndex !== p.playerIndex)
+                .map((op) => op.playerIndex);
+              p.respawnTimer = Date.now();
+              p.vel = { x: 0, y: 0 };
+              resetPlayerSize(p);
+              shakeIntensity.current = 10;
+              audio.playDie(p.deathSound);
+            }
             if (isOnline) onlineService.sendEvent("die", null);
           } else if (gameMode === "brawler") {
             if (p.lives !== undefined) {
@@ -4579,7 +4869,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Check collision with walls
         const projRect = { x: proj.x, y: proj.y, w: proj.w, h: proj.h };
-        const hitWall = [...level.entities, ...tempBlocks.current].some(
+        const hitWall = [...levelRef.current.entities, ...tempBlocks.current].some(
           (e) =>
             (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
             checkCollision(projRect, e),
@@ -4643,8 +4933,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         });
       });
-      const levelW = level.width || GAME_WIDTH;
-      const levelH = level.height || GAME_HEIGHT;
+      const levelW = levelRef.current.width || GAME_WIDTH;
+      const levelH = levelRef.current.height || GAME_HEIGHT;
       projectiles.current = projectiles.current.filter(
         (p) =>
           p.active &&
@@ -4714,95 +5004,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       });
       explosions.current = explosions.current.filter((e) => e.timer > 0);
 
-      // Camera Logic
-      let targetCameraX = 0;
-      let targetCameraY = 0;
-
-      const maxCamX = Math.max(0, (level.width || GAME_WIDTH) - GAME_WIDTH);
-      const maxCamY = Math.max(0, (level.height || GAME_HEIGHT) - GAME_HEIGHT);
-
-      const allFinished = players.current.every((p) => p.finished);
-
-      const liveLocalPlayer = players.current.find((p) => p.isLocal);
-      const isSpectatingNowLocal =
-        isOnline &&
-        (liveLocalPlayer
-          ? liveLocalPlayer.finished
-          : isSpectating ||
-            (players.current.length > 0 && status.includes("playing")));
-
-      // Calculate scrollWallX for the followed player so it can be used for drawing
-      let followedPlayer: PlayerState | undefined = liveLocalPlayer;
-      if (isSpectatingNowLocal) {
-        const activePlayers = players.current.filter((p) => !p.finished);
-        if (activePlayers.length > 0) {
-          followedPlayer =
-            activePlayers[spectateTargetIdx % activePlayers.length];
-        }
-      }
-
-      if (
-        (level.autoScroll || geometryDashMode) &&
-        followedPlayer &&
-        followedPlayer.hasStartedMove &&
-        !followedPlayer.finished
-      ) {
-        scrollWallX.current = followedPlayer.scrollX || 0;
-      } else if (
-        (level.autoScroll || geometryDashMode) &&
-        (!followedPlayer || !followedPlayer.hasStartedMove)
-      ) {
-        scrollWallX.current = cameraRef.current.x; // Stay where it was initialized, instead of resetting to 0
-      }
-
-      if (isSpectatingNowLocal) {
-        if (followedPlayer) {
-          targetCameraX = followedPlayer.pos.x - GAME_WIDTH / 2 + 15;
-          targetCameraY = followedPlayer.pos.y - GAME_HEIGHT / 2 + 15;
-        } else {
-          const localP = players.current.find(
-            (p) => p.onlineId === onlineService.localPlayer?.id,
-          );
-          if (localP) {
-            targetCameraX = localP.pos.x - GAME_WIDTH / 2 + 15;
-            targetCameraY = localP.pos.y - GAME_HEIGHT / 2 + 15;
-          }
-        }
-      } else {
-        let totalX = 0;
-        let totalY = 0;
-        let activeCount = 0;
-        players.current.forEach((p) => {
-          if (p.lives > 0 || gameMode !== "brawler") {
-            totalX += p.pos.x;
-            totalY += p.pos.y;
-            activeCount++;
-          }
-        });
-        if (activeCount > 0) {
-          targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
-          targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
-        }
-      }
-
-      targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
-      targetCameraY = Math.max(0, Math.min(targetCameraY, maxCamY));
-
-      // In auto-scroll mode, camera normally sits at the wall (left bound) for the player.
-      // However, spectators should follow their target smoothly.
-      const oldCamX = cameraRef.current.x;
-      const oldCamY = cameraRef.current.y;
-      
-      if ((level.autoScroll || geometryDashMode) && !isSpectatingNowLocal) {
-        cameraRef.current.x = scrollWallX.current;
-      } else {
-        // Smoothly transition both in normal levels and when spectating auto-scroll levels
-        cameraRef.current.x += (targetCameraX - cameraRef.current.x) * 0.1;
-      }
-      cameraRef.current.y += (targetCameraY - cameraRef.current.y) * 0.1;
-      
-      cameraVel.current.x = cameraRef.current.x - oldCamX;
-      cameraVel.current.y = cameraRef.current.y - oldCamY;
+      updateCamera();
 
       // Online Sync
       if (isOnline) {
@@ -4857,15 +5059,31 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * useCamAlpha);
       let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * useCamAlpha);
 
-      if (shakeIntensity.current > 0) {
-        const shakeMult = settings.screenShake ?? 1;
-        finalTranslateX +=
-          (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
-        finalTranslateY +=
-          (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
-      }
+      const isBuildBattle = level.id.startsWith("build") || status === "build_battle_playing";
+      const shakeMult = isBuildBattle ? 0 : (settings.screenShake ?? 1);
 
-      ctx.translate(Math.round(finalTranslateX), Math.round(finalTranslateY));
+      const zoom = cameraZoom.current || 1.0;
+      if (zoom !== 1.0) {
+        ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        ctx.scale(zoom, zoom);
+        const cx = (cameraRef.current.x + cameraVel.current.x * useCamAlpha) + GAME_WIDTH / 2;
+        const cy = (cameraRef.current.y + cameraVel.current.y * useCamAlpha) + GAME_HEIGHT / 2;
+        let targetX = -cx;
+        let targetY = -cy;
+        if (shakeIntensity.current > 0 && shakeMult > 0) {
+          targetX += ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
+          targetY += ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
+        }
+        ctx.translate(targetX, targetY);
+      } else {
+        if (shakeIntensity.current > 0 && shakeMult > 0) {
+          finalTranslateX +=
+            (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
+          finalTranslateY +=
+            (Math.random() - 0.5) * shakeIntensity.current * shakeMult;
+        }
+        ctx.translate(Math.round(finalTranslateX), Math.round(finalTranslateY));
+      }
 
       const collectedInLevelCount = levelCoinIds.filter((id) =>
         collectedCoinsRef.current.includes(id),
@@ -4902,7 +5120,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const fakeTypesRender = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.beginPath();
-      [...level.entities, ...tempBlocks.current]
+      [...levelRef.current.entities, ...tempBlocks.current]
         .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
         .forEach((baseEnt) => {
         const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
@@ -4927,7 +5145,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fill();
 
       // Draw Level Entities
-      [...level.entities, ...dynamicPowerups.current]
+      [...levelRef.current.entities, ...dynamicPowerups.current]
         .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
         .forEach((baseEnt) => {
         const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
@@ -4972,14 +5190,87 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         );
         const isXrayActive = xrayTimerRef.current > 0;
 
+        const isP1Cursor = (ent as any).isP1Cursor;
+        const isP2Cursor = (ent as any).isP2Cursor;
+
         let alpha = ent.opacity ?? 1.0;
+        if (isP1Cursor || isP2Cursor) {
+           alpha = 0.5 + Math.sin(Date.now() / 200) * 0.2;
+        }
+
         if (isFake && isXrayActive) {
           ctx.strokeStyle = "#facc15"; // Yellow outline for revealed fakes
           ctx.lineWidth = 2;
         }
         ctx.globalAlpha = alpha;
 
-        if (
+        let drawX = ent.x;
+        let drawY = ent.y;
+        if ((ent as any).shake) {
+          drawX += (Math.random() - 0.5) * 4;
+          drawY += (Math.random() - 0.5) * 4;
+        }
+
+        let skipDefaultFill = false;
+
+        if ((ent.type as any) === "fan") {
+          skipDefaultFill = true;
+          // Draw metal box
+          ctx.fillStyle = "#4b5563"; 
+          ctx.fillRect(drawX, drawY, ent.w, ent.h);
+          ctx.fillStyle = "#1f2937"; // Inner grate
+          ctx.fillRect(drawX + 4, drawY + 4, ent.w - 8, ent.h - 8);
+
+          // Draw rotating fan blades
+          const bladesAngle = (Date.now() / 60) % (Math.PI * 2);
+          ctx.strokeStyle = "#9ca3af";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const cx = drawX + ent.w / 2;
+          const cy = drawY + ent.h / 2;
+          for (let b = 0; b < 4; b++) {
+            const angle = bladesAngle + (b * Math.PI) / 2;
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(angle) * 10, cy + Math.sin(angle) * 10);
+          }
+          ctx.stroke();
+
+          // Beautiful rising updraft waves
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+          ctx.lineWidth = 1.5;
+          const time = Date.now();
+          for (let lineX = 8; lineX < ent.w; lineX += 16) {
+            const lineOffset = (lineX * 17) % 100;
+            const animProgress = ((time * 0.12 + lineOffset) % 180);
+            const lineY = drawY - animProgress;
+            if (lineY > drawY - 180) {
+              ctx.beginPath();
+              ctx.moveTo(drawX + lineX, lineY);
+              ctx.lineTo(drawX + lineX + Math.sin(time / 200 + lineX) * 3, lineY - 15);
+              ctx.stroke();
+            }
+          }
+        } else if ((ent.type as any) === "orbit") {
+          // Draw pivot anchor cable connects to the original baseX/baseY
+          const bx = (ent as any).baseX ?? ent.x;
+          const by = (ent as any).baseY ?? ent.y;
+          ctx.strokeStyle = "rgba(163, 163, 163, 0.5)"; // Dashed pivot cable
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(bx + ent.w / 2, by + ent.h / 2);
+          ctx.lineTo(drawX + ent.w / 2, drawY + ent.h / 2);
+          ctx.stroke();
+          ctx.setLineDash([]); // Reset line dash
+
+          // Draw base anchor peg
+          ctx.fillStyle = "#78716c";
+          ctx.beginPath();
+          ctx.arc(bx + ent.w / 2, by + ent.h / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#06b6d4"; // Neon cyan fill color for the platform itself
+        } else if (
           ent.type === "wall" ||
           ent.type === "walkthrough_wall" ||
           ent.type === "troll_wall"
@@ -5071,13 +5362,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillStyle = COLORS.REMOVE_ABILITY;
         } else {
           ctx.fillStyle = "#fff";
-        }
-
-        let drawX = ent.x;
-        let drawY = ent.y;
-        if ((ent as any).shake) {
-          drawX += (Math.random() - 0.5) * 4;
-          drawY += (Math.random() - 0.5) * 4;
         }
 
         if (ent.type === "coin") {
@@ -5224,7 +5508,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.moveTo(drawX + ent.w, drawY);
           ctx.lineTo(drawX, drawY + ent.h);
           ctx.stroke();
-        } else {
+        } else if (!skipDefaultFill) {
           if (ent.type === "gravity_reverse" || ent.type === "gravity_zero" || (ent as any).type === "grav_up" || (ent as any).type === "grav_down") {
             // Fill the area with the semi-transparent fillStyle
             ctx.fillRect(drawX, drawY, ent.w, ent.h);
@@ -5238,6 +5522,36 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (isFake && isXrayActive) {
             ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+          }
+
+          if (isP1Cursor || isP2Cursor) {
+            ctx.strokeStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            const label = isP1Cursor ? "P1" : "P2";
+            ctx.fillStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
+            ctx.font = '8px "Press Start 2P"';
+            ctx.textAlign = "center";
+            ctx.fillText(label, drawX + ent.w / 2, drawY - 5);
+          }
+
+          const isHoveredP1 = (ent as any).isHoveredByModifierP1;
+          const isHoveredP2 = (ent as any).isHoveredByModifierP2;
+          if (isHoveredP1 || isHoveredP2) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
+            // Draw animated dashed outline
+            const dashOffset = (Date.now() / 40) % 24;
+            ctx.setLineDash([6, 6]);
+            ctx.lineDashOffset = -dashOffset;
+            ctx.strokeRect(drawX - 2, drawY - 2, ent.w + 4, ent.h + 4);
+            ctx.setLineDash([]); // Reset immediately
+            
+            // Draw small "UPGRADE?" label above block
+            ctx.fillStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
+            ctx.font = '7px "Press Start 2P"';
+            ctx.textAlign = "center";
+            ctx.fillText("UPGRADE!", drawX + ent.w / 2, drawY - 9);
           }
 
           if (ent.type === "teleport") {
@@ -5597,8 +5911,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         roundTimerRef.current > 1800
       ) {
         const time = performance.now() / 200;
-        const currentLevelWidth = level.width || GAME_WIDTH;
-        const currentLevelHeight = level.height || GAME_HEIGHT;
+        const currentLevelWidth = levelRef.current.width || GAME_WIDTH;
+        const currentLevelHeight = levelRef.current.height || GAME_HEIGHT;
         const lavaY = Math.max(
           0,
           currentLevelHeight - (roundTimerRef.current - 1800) * (0.2 / 3),
@@ -5631,8 +5945,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       if (level.autoScroll && !geometryDashMode) {
-        const h = level.height
-          ? Math.max(level.height, GAME_HEIGHT)
+        const h = levelRef.current.height
+          ? Math.max(levelRef.current.height, GAME_HEIGHT)
           : GAME_HEIGHT;
         ctx.fillStyle = "rgba(255, 0, 0, 0.8)"; // Red wall of death
         ctx.fillRect(Math.round(scrollWallX.current), -1000, 10, h + 2000);
@@ -5683,154 +5997,158 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           // Rainbow effect
         }
 
-        p.trail.push({ x: p.pos.x, y: p.pos.y, w: p.w, h: p.h });
-        if (p.trail.length > 8) p.trail.shift();
-        p.trail.forEach((pos, i) => {
-          if (p.color && p.color.toLowerCase() === "#ffffff") {
-            return; // No trail for ghost mode
-          }
-          if (p.color === "#130009") {
-            ctx.fillStyle =
-              (Math.floor(Date.now() / 100) + i) % 2 === 0
-                ? "#ffff00"
-                : "#000000";
-          } else if (
-            p.slowTimer > 0 &&
-            Math.floor(Date.now() / 150) % 2 === 0
-          ) {
-            ctx.fillStyle = "#00ffff";
-          } else if (p.trailColor === "rainbow") {
-            ctx.fillStyle = `hsl(${Date.now() / 5 + i * 20}, 100%, 50%)`;
-          } else {
-            ctx.fillStyle = p.trailColor || "#ffffff";
-          }
+        if (p.dead) {
+          p.trail = [];
+        } else {
+          p.trail.push({ x: p.pos.x, y: p.pos.y, w: p.w, h: p.h });
+          if (p.trail.length > 8) p.trail.shift();
+          p.trail.forEach((pos, i) => {
+            if (p.color && p.color.toLowerCase() === "#ffffff") {
+              return; // No trail for ghost mode
+            }
+            if (p.color === "#130009") {
+              ctx.fillStyle =
+                (Math.floor(Date.now() / 100) + i) % 2 === 0
+                  ? "#ffff00"
+                  : "#000000";
+            } else if (
+              p.slowTimer > 0 &&
+              Math.floor(Date.now() / 150) % 2 === 0
+            ) {
+              ctx.fillStyle = "#00ffff";
+            } else if (p.trailColor === "rainbow") {
+              ctx.fillStyle = `hsl(${Date.now() / 5 + i * 20}, 100%, 50%)`;
+            } else {
+              ctx.fillStyle = p.trailColor || "#ffffff";
+            }
 
-          const currentAlpha = ctx.globalAlpha;
-          ctx.globalAlpha = shouldBeTransparent ? opponentOpacity * 0.4 : 0.4;
-          const sizeW = pos.w * (i / 8);
-          const sizeH = pos.h * (i / 8);
+            const currentAlpha = ctx.globalAlpha;
+            ctx.globalAlpha = shouldBeTransparent ? opponentOpacity * 0.4 : 0.4;
+            const sizeW = pos.w * (i / 8);
+            const sizeH = pos.h * (i / 8);
 
-          if (p.trailType === "stardust") {
-            ctx.beginPath();
-            ctx.arc(
-              pos.x + pos.w / 2,
-              pos.y + pos.h / 2,
-              sizeW / 2,
-              0,
-              Math.PI * 2,
-            );
-            ctx.fill();
-            if (i % 2 === 0) {
-              ctx.fillStyle = "#ffffff";
+            if (p.trailType === "stardust") {
+              ctx.beginPath();
+              ctx.arc(
+                pos.x + pos.w / 2,
+                pos.y + pos.h / 2,
+                sizeW / 2,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+              if (i % 2 === 0) {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(
+                  pos.x + pos.w / 2 + (Math.random() * 10 - 5),
+                  pos.y + pos.h / 2 + (Math.random() * 10 - 5),
+                  2,
+                  2,
+                );
+              }
+            } else if (p.trailType === "pixel-fire") {
               ctx.fillRect(
-                pos.x + pos.w / 2 + (Math.random() * 10 - 5),
-                pos.y + pos.h / 2 + (Math.random() * 10 - 5),
-                2,
-                2,
+                pos.x + (pos.w - sizeW) / 2 + (Math.random() * 4 - 2),
+                pos.y + (pos.h - sizeH) / 2 + (8 - i),
+                sizeW,
+                sizeH,
+              );
+              ctx.fillStyle = "#ffaa00";
+              ctx.globalAlpha = 0.6;
+              ctx.fillRect(
+                pos.x + (pos.w - sizeW) / 2 + (Math.random() * 6 - 3),
+                pos.y + (pos.h - sizeH) / 2 + (10 - i),
+                sizeW * 0.5,
+                sizeH * 0.5,
+              );
+            } else if (p.trailType === "slime") {
+              ctx.beginPath();
+              ctx.arc(
+                pos.x + pos.w / 2,
+                pos.y + pos.h / 2 + (8 - i),
+                sizeW / 2,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+              ctx.beginPath();
+              ctx.arc(
+                pos.x + pos.w / 2 - 2,
+                pos.y + pos.h / 2 + (8 - i) + 4,
+                sizeW / 3,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+            } else if (p.trailType === "rainbow-pulse") {
+              ctx.fillStyle = `hsl(${Date.now() / 5 + i * 20}, 80%, 60%)`;
+              ctx.globalAlpha = 0.4 * (i / 8);
+              ctx.fillRect(
+                pos.x + (pos.w - sizeW) / 2,
+                pos.y + (pos.h - sizeH) / 2,
+                sizeW,
+                sizeH,
+              );
+            } else if (p.trailType === "ghostly") {
+              ctx.fillStyle = "white";
+              ctx.globalAlpha =
+                (0.2 - (8 - i) * 0.02) * Math.abs(Math.sin(Date.now() / 500));
+              ctx.beginPath();
+              ctx.moveTo(pos.x, pos.y);
+              ctx.lineTo(pos.x + pos.w, pos.y);
+              ctx.lineTo(pos.x + pos.w / 2, pos.y + pos.h * 2);
+              ctx.fill();
+            } else if (p.trailType === "bubble-trail") {
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.arc(
+                pos.x + pos.w / 2,
+                pos.y + pos.h / 2 + Math.sin(Date.now() / 200 + i) * 10,
+                sizeW / 2,
+                0,
+                Math.PI * 2,
+              );
+              ctx.stroke();
+            } else if (p.trailType === "spark-trail") {
+              ctx.fillStyle = "#ffff00";
+              ctx.globalAlpha = 0.8;
+              if (Math.random() > 0.5) {
+                ctx.fillRect(
+                  pos.x + Math.random() * pos.w,
+                  pos.y + Math.random() * pos.h,
+                  2,
+                  2,
+                );
+              }
+            } else if (p.trailType === "shadow-trail") {
+              ctx.fillStyle = "black";
+              ctx.globalAlpha = (8 - i) * 0.05;
+              ctx.fillRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4);
+            } else if (p.trailType === "neon-trail") {
+              ctx.strokeStyle = "#00ff00";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(
+                pos.x + (pos.w - sizeW) / 2,
+                pos.y + (pos.h - sizeH) / 2,
+                sizeW,
+                sizeH,
+              );
+            } else if (p.trailType === "matrix_trail") {
+              ctx.fillStyle = "#00ff00";
+              ctx.font = `8px monospace`;
+              ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), pos.x + pos.w / 2 - sizeW/2, pos.y + pos.h / 2 + sizeH/2);
+            } else {
+              ctx.fillRect(
+                pos.x + (pos.w - sizeW) / 2,
+                pos.y + (pos.h - sizeH) / 2,
+                sizeW,
+                sizeH,
               );
             }
-          } else if (p.trailType === "pixel-fire") {
-            ctx.fillRect(
-              pos.x + (pos.w - sizeW) / 2 + (Math.random() * 4 - 2),
-              pos.y + (pos.h - sizeH) / 2 + (8 - i),
-              sizeW,
-              sizeH,
-            );
-            ctx.fillStyle = "#ffaa00";
-            ctx.globalAlpha = 0.6;
-            ctx.fillRect(
-              pos.x + (pos.w - sizeW) / 2 + (Math.random() * 6 - 3),
-              pos.y + (pos.h - sizeH) / 2 + (10 - i),
-              sizeW * 0.5,
-              sizeH * 0.5,
-            );
-          } else if (p.trailType === "slime") {
-            ctx.beginPath();
-            ctx.arc(
-              pos.x + pos.w / 2,
-              pos.y + pos.h / 2 + (8 - i),
-              sizeW / 2,
-              0,
-              Math.PI * 2,
-            );
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(
-              pos.x + pos.w / 2 - 2,
-              pos.y + pos.h / 2 + (8 - i) + 4,
-              sizeW / 3,
-              0,
-              Math.PI * 2,
-            );
-            ctx.fill();
-          } else if (p.trailType === "rainbow-pulse") {
-            ctx.fillStyle = `hsl(${Date.now() / 5 + i * 20}, 80%, 60%)`;
-            ctx.globalAlpha = 0.4 * (i / 8);
-            ctx.fillRect(
-              pos.x + (pos.w - sizeW) / 2,
-              pos.y + (pos.h - sizeH) / 2,
-              sizeW,
-              sizeH,
-            );
-          } else if (p.trailType === "ghostly") {
-            ctx.fillStyle = "white";
-            ctx.globalAlpha =
-              (0.2 - (8 - i) * 0.02) * Math.abs(Math.sin(Date.now() / 500));
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            ctx.lineTo(pos.x + pos.w, pos.y);
-            ctx.lineTo(pos.x + pos.w / 2, pos.y + pos.h * 2);
-            ctx.fill();
-          } else if (p.trailType === "bubble-trail") {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(
-              pos.x + pos.w / 2,
-              pos.y + pos.h / 2 + Math.sin(Date.now() / 200 + i) * 10,
-              sizeW / 2,
-              0,
-              Math.PI * 2,
-            );
-            ctx.stroke();
-          } else if (p.trailType === "spark-trail") {
-            ctx.fillStyle = "#ffff00";
-            ctx.globalAlpha = 0.8;
-            if (Math.random() > 0.5) {
-              ctx.fillRect(
-                pos.x + Math.random() * pos.w,
-                pos.y + Math.random() * pos.h,
-                2,
-                2,
-              );
-            }
-          } else if (p.trailType === "shadow-trail") {
-            ctx.fillStyle = "black";
-            ctx.globalAlpha = (8 - i) * 0.05;
-            ctx.fillRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4);
-          } else if (p.trailType === "neon-trail") {
-            ctx.strokeStyle = "#00ff00";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(
-              pos.x + (pos.w - sizeW) / 2,
-              pos.y + (pos.h - sizeH) / 2,
-              sizeW,
-              sizeH,
-            );
-          } else if (p.trailType === "matrix_trail") {
-            ctx.fillStyle = "#00ff00";
-            ctx.font = `8px monospace`;
-            ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), pos.x + pos.w / 2 - sizeW/2, pos.y + pos.h / 2 + sizeH/2);
-          } else {
-            ctx.fillRect(
-              pos.x + (pos.w - sizeW) / 2,
-              pos.y + (pos.h - sizeH) / 2,
-              sizeW,
-              sizeH,
-            );
-          }
-          ctx.globalAlpha = currentAlpha;
-        });
+            ctx.globalAlpha = currentAlpha;
+          });
+        }
 
         // Teleport Cooldown Indicator (Shrinking Ring)
         if (p.teleportCooldown > 0) {
@@ -5899,7 +6217,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         // Body color
-        if (p.color && p.color.toLowerCase() === "#ffffff") {
+        if (p.dead) {
+          ctx.fillStyle = "#3f3f46"; // dark slate gray
+        } else if (p.color && p.color.toLowerCase() === "#ffffff") {
           ctx.fillStyle = "rgba(0,0,0,0)";
         } else if (p.color === "#130009") {
           const time = Date.now() / 500;
@@ -5946,7 +6266,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.scale(1, -1);
             ctx.translate(-(px + w / 2), -(py + h / 2));
           }
-          if (p.color && p.color.toLowerCase() !== "#ffffff") {
+          if (p.dead || (p.color && p.color.toLowerCase() !== "#ffffff")) {
             ctx.fillRect(px, py, w, h);
             // Border for visibility
             ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
@@ -6220,17 +6540,22 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       players.current.forEach((p) => {
         if (!p.isLocal || !p.pos) return;
 
-        const camX = -finalTranslateX;
-        const camY = -finalTranslateY;
+        const zoom = cameraZoom.current || 1.0;
+        const cx = cameraRef.current.x + GAME_WIDTH / 2;
+        const cy = cameraRef.current.y + GAME_HEIGHT / 2;
+        const visW = GAME_WIDTH / zoom;
+        const visH = GAME_HEIGHT / zoom;
+        const leftX = cx - visW / 2;
+        const topY = cy - visH / 2;
 
-        const isOffLeft = p.pos.x + p.w < camX;
-        const isOffRight = p.pos.x > camX + GAME_WIDTH;
-        const isOffTop = p.pos.y + p.h < camY;
-        const isOffBottom = p.pos.y > camY + GAME_HEIGHT;
+        const isOffLeft = p.pos.x + p.w < leftX;
+        const isOffRight = p.pos.x > leftX + visW;
+        const isOffTop = p.pos.y + p.h < topY;
+        const isOffBottom = p.pos.y > topY + visH;
 
         if (isOffLeft || isOffRight || isOffTop || isOffBottom) {
-          const screenX = p.pos.x + p.w / 2 - camX;
-          const screenY = p.pos.y + p.h / 2 - camY;
+          const screenX = (p.pos.x + p.w / 2 - cx) * zoom + GAME_WIDTH / 2;
+          const screenY = (p.pos.y + p.h / 2 - cy) * zoom + GAME_HEIGHT / 2;
 
           const margin = 30;
           let targetX = Math.max(
@@ -6298,7 +6623,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         const hudT = TRANSLATIONS[lang];
         const totalCoinsAtLevel =
           gameMode === "vs" || gameMode === "story" || gameMode === "random_run" || geometryDashMode
-            ? level.entities.filter((e) => e.type === "coin").length
+            ? levelRef.current.entities.filter((e) => e.type === "coin").length
             : 0;
 
         const hudPadding = 10;
@@ -6485,7 +6810,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Draw Particles
       ctx.save();
-      ctx.translate(finalTranslateX, finalTranslateY);
+      const pZoom = cameraZoom.current || 1.0;
+      if (pZoom !== 1.0) {
+        ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+        ctx.scale(pZoom, pZoom);
+        const cx = (cameraRef.current.x + cameraVel.current.x * useCamAlpha) + GAME_WIDTH / 2;
+        const cy = (cameraRef.current.y + cameraVel.current.y * useCamAlpha) + GAME_HEIGHT / 2;
+        ctx.translate(-cx, -cy);
+      } else {
+        ctx.translate(finalTranslateX, finalTranslateY);
+      }
 
       particles.current.forEach((p) => {
         if (p.isDeathAnim) {
@@ -6774,6 +7108,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             hasStartedMoving.current
           ) {
             ghostFrameIndex.current++;
+          }
+        } else {
+          if (status === "build_battle_playing") {
+            updateCamera();
           }
         }
         accumulator -= PHYSICS_STEP;

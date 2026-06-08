@@ -2092,43 +2092,190 @@ export const BRAWLER_LEVELS: LevelData[] = [
 export const BUILD_BATTLE_LEVELS: LevelData[] = [
   {
     id: 'build1',
-    name: 'Build Battle 1: Die Schlucht',
-    start: { x: 100, y: 390 },
-    startP2: { x: 140, y: 390 },
-    allowedAbility: 'double_jump',
+    name: 'Build Battle 1: Zickzack-Klippen',
+    width: 1500,
+    height: 540,
+    start: { x: 100, y: 100 },
+    startP2: { x: 140, y: 100 },
+    allowedAbility: 'none',
     entities: [
-      { x: 50, y: 420, w: 150, h: 120, type: 'wall' },
-      { x: 1300, y: 420, w: 150, h: 120, type: 'wall' },
-      { x: 1360, y: 360, w: 30, h: 60, type: 'goal' },
-      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+      { x: 50, y: 130, w: 150, h: 30, type: 'wall' },
+      { x: 50, y: 350, w: 150, h: 30, type: 'wall' },
+      { x: 1300, y: 250, w: 150, h: 30, type: 'wall' },
+      { x: 1360, y: 190, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' },
+      { x: 400, y: 300, w: 60, h: 30, type: 'slime' },
+      { x: 800, y: 150, w: 60, h: 30, type: 'slime' }
     ]
   },
   {
     id: 'build2',
-    name: 'Build Battle 2: Das Hochplateau',
-    start: { x: 100, y: 440 },
-    startP2: { x: 140, y: 440 },
-    allowedAbility: 'double_jump',
+    name: 'Build Battle 2: Die Sprungbrett-Schlucht',
+    width: 1500,
+    height: 540,
+    start: { x: 50, y: 450 },
+    startP2: { x: 90, y: 450 },
+    allowedAbility: 'none',
     entities: [
-      { x: 50, y: 470, w: 150, h: 70, type: 'wall' },
-      { x: 1300, y: 230, w: 150, h: 310, type: 'wall' },
-      { x: 1360, y: 170, w: 30, h: 60, type: 'goal' },
-      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+      { x: 30, y: 480, w: 120, h: 60, type: 'wall' },
+      { x: 350, y: 510, w: 60, h: 30, type: 'trampoline' },
+      { x: 800, y: 510, w: 60, h: 30, type: 'trampoline' },
+      { x: 1350, y: 250, w: 120, h: 60, type: 'wall' },
+      { x: 1390, y: 190, w: 30, h: 60, type: 'goal' },
+      { x: 150, y: 510, w: 200, h: 30, type: 'hazard' },
+      { x: 410, y: 510, w: 390, h: 30, type: 'hazard' },
+      { x: 860, y: 510, w: 490, h: 30, type: 'hazard' }
     ]
   },
   {
     id: 'build3',
-    name: 'Build Battle 3: Zwillingssäulen',
-    start: { x: 100, y: 290 },
-    startP2: { x: 140, y: 290 },
+    name: 'Build Battle 3: Das Eis-Labyrinth',
+    width: 1500,
+    height: 540,
+    start: { x: 80, y: 430 },
+    startP2: { x: 120, y: 430 },
+    allowedAbility: 'none',
+    entities: [
+      { x: 50, y: 460, w: 150, h: 30, type: 'ice' },
+      { x: 400, y: 350, w: 200, h: 30, type: 'ice' },
+      { x: 800, y: 250, w: 200, h: 30, type: 'ice' },
+      { x: 1300, y: 150, w: 150, h: 30, type: 'ice' },
+      { x: 1360, y: 90, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' },
+      { x: 600, y: 150, w: 30, h: 360, type: 'wall' }
+    ]
+  },
+  {
+    id: 'build4',
+    name: 'Build Battle 4: Bröckel-Türme',
+    width: 1500,
+    height: 540,
+    start: { x: 100, y: 150 },
+    startP2: { x: 140, y: 150 },
+    allowedAbility: 'hook',
+    entities: [
+      { x: 80, y: 180, w: 120, h: 30, type: 'wall' },
+      { x: 400, y: 280, w: 90, h: 30, type: 'fragile' },
+      { x: 750, y: 380, w: 90, h: 30, type: 'fragile' },
+      { x: 1100, y: 280, w: 90, h: 30, type: 'fragile' },
+      { x: 1350, y: 150, w: 120, h: 30, type: 'wall' },
+      { x: 1390, y: 90, w: 30, h: 60, type: 'goal' },
+      { x: 0, y: 510, w: 1500, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build5',
+    name: 'Build Battle 5: Portal-Wahnsinn',
+    width: 1500,
+    height: 540,
+    start: { x: 100, y: 440 },
+    startP2: { x: 140, y: 440 },
+    allowedAbility: 'none',
+    entities: [
+      { x: 80, y: 470, w: 120, h: 30, type: 'wall' },
+      { x: 100, y: 380, w: 40, h: 60, type: 'teleport' },
+      { x: 750, y: 100, w: 40, h: 60, type: 'teleport' },
+      { x: 700, y: 160, w: 140, h: 30, type: 'wall' },
+      { x: 750, y: 380, w: 40, h: 60, type: 'teleport' },
+      { x: 1350, y: 100, w: 40, h: 60, type: 'teleport' },
+      { x: 1300, y: 160, w: 140, h: 30, type: 'wall' },
+      { x: 1350, y: 100, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1300, h: 30, type: 'hazard' },
+      { x: 450, y: 0, w: 30, h: 540, type: 'wall' },
+      { x: 1050, y: 0, w: 30, h: 540, type: 'wall' }
+    ]
+  },
+  {
+    id: 'build6',
+    name: 'Build Battle 6: Die Gravitations-Kammer',
+    width: 1500,
+    height: 540,
+    start: { x: 80, y: 350 },
+    startP2: { x: 120, y: 350 },
     allowedAbility: 'double_jump',
     entities: [
-      { x: 50, y: 320, w: 120, h: 220, type: 'wall' },
-      { x: 1310, y: 320, w: 120, h: 220, type: 'wall' },
-      { x: 1350, y: 260, w: 30, h: 60, type: 'goal' },
-      { x: 500, y: 200, w: 60, h: 340, type: 'wall' },
-      { x: 900, y: 100, w: 60, h: 440, type: 'wall' },
+      { x: 50, y: 400, w: 180, h: 30, type: 'wall' },
+      { x: 350, y: 150, w: 100, h: 250, type: 'gravity_reverse' },
+      { x: 600, y: 100, w: 200, h: 30, type: 'wall' },
+      { x: 950, y: 200, w: 100, h: 250, type: 'gravity_reverse' },
+      { x: 1300, y: 300, w: 150, h: 30, type: 'wall' },
+      { x: 1360, y: 240, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' },
+      { x: 300, y: 0, w: 800, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build7',
+    name: 'Build Battle 7: Der Windige Canyon',
+    width: 1500,
+    height: 540,
+    start: { x: 80, y: 440 },
+    startP2: { x: 120, y: 440 },
+    allowedAbility: 'none',
+    entities: [
+      { x: 50, y: 470, w: 150, h: 30, type: 'wall' },
+      { x: 400, y: 450, w: 120, h: 40, type: 'fan' as any },
+      { x: 800, y: 450, w: 120, h: 40, type: 'fan' as any },
+      { x: 1300, y: 300, w: 150, h: 30, type: 'wall' },
+      { x: 1360, y: 240, w: 30, h: 60, type: 'goal' },
       { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build8',
+    name: 'Build Battle 8: Orbitale Rhythmen',
+    width: 1500,
+    height: 540,
+    start: { x: 100, y: 250 },
+    startP2: { x: 140, y: 250 },
+    allowedAbility: 'hook',
+    entities: [
+      { x: 70, y: 280, w: 120, h: 30, type: 'wall' },
+      { x: 400, y: 200, w: 60, h: 30, type: 'orbit' as any, baseX: 400, baseY: 200, moveSpeed: 0.003, moveRange: 100 } as any,
+      { x: 800, y: 300, w: 60, h: 30, type: 'orbit' as any, baseX: 800, baseY: 300, moveSpeed: 0.002, moveRange: 120 } as any,
+      { x: 1150, y: 150, w: 60, h: 30, type: 'orbit' as any, baseX: 1150, baseY: 150, moveSpeed: 0.004, moveRange: 80 } as any,
+      { x: 1350, y: 250, w: 120, h: 30, type: 'wall' },
+      { x: 1395, y: 190, w: 30, h: 60, type: 'goal' },
+      { x: 0, y: 510, w: 1500, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build9',
+    name: 'Build Battle 9: Schleim & Trampolin Hüpfer',
+    width: 1500,
+    height: 540,
+    start: { x: 80, y: 440 },
+    startP2: { x: 120, y: 440 },
+    allowedAbility: 'none',
+    entities: [
+      { x: 50, y: 470, w: 150, h: 30, type: 'wall' },
+      { x: 300, y: 400, w: 100, h: 30, type: 'slime' },
+      { x: 550, y: 300, w: 100, h: 30, type: 'trampoline' },
+      { x: 800, y: 200, w: 100, h: 30, type: 'slime' },
+      { x: 1050, y: 350, w: 100, h: 30, type: 'trampoline' },
+      { x: 1300, y: 250, w: 150, h: 30, type: 'ice' },
+      { x: 1360, y: 190, w: 30, h: 60, type: 'goal' },
+      { x: 200, y: 510, w: 1100, h: 30, type: 'hazard' }
+    ]
+  },
+  {
+    id: 'build10',
+    name: 'Build Battle 10: Die Abgrund-Herausforderung',
+    width: 1500,
+    height: 540,
+    start: { x: 100, y: 350 },
+    startP2: { x: 140, y: 350 },
+    allowedAbility: 'hook',
+    entities: [
+      { x: 70, y: 380, w: 120, h: 30, type: 'wall' },
+      { x: 350, y: 0, w: 40, h: 420, type: 'wall' },
+      { x: 500, y: 250, w: 80, h: 30, type: 'fragile' },
+      { x: 750, y: 150, w: 80, h: 30, type: 'fragile' },
+      { x: 1000, y: 350, w: 80, h: 30, type: 'fragile' },
+      { x: 1150, y: 0, w: 40, h: 420, type: 'wall' },
+      { x: 1320, y: 380, w: 120, h: 30, type: 'wall' },
+      { x: 1360, y: 320, w: 30, h: 60, type: 'goal' },
+      { x: 0, y: 510, w: 1500, h: 30, type: 'hazard' }
     ]
   }
 ];

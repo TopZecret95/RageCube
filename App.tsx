@@ -63,6 +63,54 @@ import {
   LeaderboardEntry,
 } from "./services/leaderboardService";
 import { assetLoader } from "./services/assetLoader";
+
+const BUILD_BATTLE_POSSIBLE_ITEMS = [
+  { type: 'wall', label: 'WAND', icon: '🧱', args: { w: 60, h: 30 } },
+  { type: 'wall', label: 'WAND (KLEIN)', icon: '🧱', args: { w: 30, h: 30 } },
+  { type: 'wall', label: 'WAND (LANG)', icon: '🧱', args: { w: 120, h: 30 } },
+  { type: 'wall', label: 'WAND (GROSS)', icon: '🧱', args: { w: 90, h: 90 } },
+  { type: 'hazard', label: 'STACHELN', icon: '⚠️', args: { w: 60, h: 30 } },
+  { type: 'hazard', label: 'STACHELN (KLEIN)', icon: '⚠️', args: { w: 30, h: 30 } },
+  { type: 'hazard', label: 'STACHELN (LANG)', icon: '⚠️', args: { w: 120, h: 30 } },
+  { type: 'ice', label: 'EISBLOCK', icon: '🧊', args: { w: 60, h: 30 } },
+  { type: 'ice', label: 'EISBLOCK (KLEIN)', icon: '🧊', args: { w: 30, h: 30 } },
+  { type: 'slime', label: 'SCHLEIM', icon: '🟩', args: { w: 60, h: 30 } },
+  { type: 'slime', label: 'SCHLEIM (KLEIN)', icon: '🟩', args: { w: 30, h: 30 } },
+  { type: 'trampoline', label: 'TRAMPOLIN', icon: '⬆️', args: { w: 60, h: 30 } },
+  { type: 'fragile', label: 'BRÖCKEL', icon: '🪨', args: { w: 60, h: 30 } },
+  { type: 'moving_platform_h', label: 'LIFT (H)', icon: '↔️', args: { w: 60, h: 30, moveRange: 150, moveSpeed: 0.003 } },
+  { type: 'moving_platform_v', label: 'LIFT (V)', icon: '↕️', args: { w: 60, h: 30, moveRange: 150, moveSpeed: 0.003 } },
+  { type: 'gravity_reverse', label: 'GRAV (UMKEHR)', icon: '🔃', args: { w: 90, h: 90 } },
+  { type: 'gravity_zero', label: 'GRAV (SCHWERELOS)', icon: '🌌', args: { w: 90, h: 90 } },
+  { type: 'teleport', label: 'TELEPORTER', icon: '🌀', args: { w: 40, h: 40 } },
+  { type: 'powerup_double_jump', label: 'DOPPELSPRUNG', icon: '⚡', args: { w: 30, h: 30 } },
+  { type: 'powerup_dash', label: 'DASH', icon: '💨', args: { w: 30, h: 30 } },
+  // Neue Blöcke / Erweiterung:
+  { type: 'fan', label: 'VENTILATOR', icon: '🌬️', args: { w: 60, h: 30 } },
+  { type: 'orbit', label: 'ROTOR ROTIEREND', icon: '🎡', args: { w: 60, h: 30, moveRange: 80, moveSpeed: 0.0025 } },
+  // Eigenschaften-Blocker (modifiers):
+  { type: 'modifier_moving_platform_h', label: 'MOD: H-BEWEGUNG', icon: '⚡↔️', isModifier: true, args: { w: 30, h: 30 } },
+  { type: 'modifier_moving_platform_v', label: 'MOD: V-BEWEGUNG', icon: '⚡↕️', isModifier: true, args: { w: 30, h: 30 } },
+  { type: 'modifier_ice', label: 'MOD: EIS', icon: '⚡🧊', isModifier: true, args: { w: 30, h: 30 } },
+  { type: 'modifier_slime', label: 'MOD: SCHLEIM', icon: '⚡🟩', isModifier: true, args: { w: 30, h: 30 } },
+  { type: 'modifier_fragile', label: 'MOD: BRÖCKELN', icon: '⚡🪨', isModifier: true, args: { w: 30, h: 30 } }
+];
+
+const get8UniqueBuildBattleItems = (allowedItems?: Record<string, boolean>) => {
+  const filtered = BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => {
+    if (allowedItems) {
+      return allowedItems[item.label] !== false;
+    }
+    return true;
+  });
+
+  const pool = filtered.length >= 8 ? filtered : BUILD_BATTLE_POSSIBLE_ITEMS;
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 8).map((item, i) => ({
+    id: `item_${Date.now()}_${i}_${Math.floor(Math.random() * 10000)}`,
+    ...item
+  }));
+};
 import { ComicIntro } from "./components/ComicIntro";
 
 import SettingsMenu from "./components/ui/panels/SettingsMenu";
@@ -1629,14 +1677,49 @@ const App: React.FC = () => {
   const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
 
   // --- BUILD-BATTLE STATES ---
-  const [buildBattlePhase, setBuildBattlePhase] = useState<'build' | 'run'>('build');
-  const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2
+  const [buildBattlePhase, setBuildBattlePhase] = useState<'select' | 'build' | 'countdown' | 'run'>('select');
+  const [buildBattlePhaseTimer, setBuildBattlePhaseTimer] = useState<number>(0);
+  const [buildBattleIntroCountdown, setBuildBattleIntroCountdown] = useState<number>(0);
+  const [buildBattleSelectTimerConfig, setBuildBattleSelectTimerConfig] = useState<number>(15);
+  const [buildBattleBuildTimerConfig, setBuildBattleBuildTimerConfig] = useState<number>(30);
+  const [buildBattleTargetPointsConfig, setBuildBattleTargetPointsConfig] = useState<number>(5);
+  const [buildBattleAllowedItems, setBuildBattleAllowedItems] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    BUILD_BATTLE_POSSIBLE_ITEMS.forEach(item => {
+      initial[item.label] = true;
+    });
+    return initial;
+  });
+  const [buildBattleSettingsOpen, setBuildBattleSettingsOpen] = useState<boolean>(false);
+  const [buildBattleCustomPresets, setBuildBattleCustomPresets] = useState<Array<{
+    id: string;
+    name: string;
+    selectTimer: number;
+    buildTimer: number;
+    targetPoints: number;
+    allowedItems: Record<string, boolean>;
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem("build_battle_presets");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [newPresetName, setNewPresetName] = useState<string>("");
+  const [buildBattleItems, setBuildBattleItems] = useState<{id: string, type: string, args?: any, label: string, icon: string}[]>([]);
+  const [buildBattleSelection, setBuildBattleSelection] = useState<{ P1: number, P2: number }>({ P1: 0, P2: 1 });
+  const [buildBattleConfirmed, setBuildBattleConfirmed] = useState<{ P1: boolean, P2: boolean }>({ P1: false, P2: false });
+  const [buildBattleRotation, setBuildBattleRotation] = useState<{ P1: boolean, P2: boolean }>({ P1: false, P2: false });
+  const [buildBattleCursors, setBuildBattleCursors] = useState<{ P1: { x: number, y: number }, P2: { x: number, y: number } }>({ P1: { x: 480, y: 270 }, P2: { x: 480, y: 270 } });
+
+  const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2 (may be unused now)
   const [selectedBuildItem, setSelectedBuildItem] = useState<string>('wall');
   const [buildBattleScores, setBuildBattleScores] = useState<Record<string, number>>({ P1: 0, P2: 0 });
   const [buildBattleScoresOnline, setBuildBattleScoresOnline] = useState<Record<string, number>>({});
   const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
   const [buildBattlePlacedEntities, setBuildBattlePlacedEntities] = useState<any[]>([]);
-  const [buildBattlePlacedThisRound, setBuildBattlePlacedThisRound] = useState<Record<string, boolean>>({});
+  const [buildBattlePlacedThisRound, setBuildBattlePlacedThisRound] = useState<Record<string, any>>({});
   const [buildBattleSelectedMapId, setBuildBattleSelectedMapId] = useState<string>('build1');
   const [buildBattleHoverPos, setBuildBattleHoverPos] = useState<{x: number, y: number} | null>(null);
   const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">(
@@ -1700,6 +1783,322 @@ const App: React.FC = () => {
     };
     loadAssets();
   }, []);
+
+  // --- BUILD-BATTLE EFFECTS ---
+  useEffect(() => {
+    if (gameState.status !== 'build_battle_playing') {
+      setBuildBattleIntroCountdown(0);
+      return;
+    }
+    if (buildBattlePhase === 'select' || buildBattlePhase === 'build') {
+      setBuildBattleIntroCountdown(3);
+    } else {
+      setBuildBattleIntroCountdown(0);
+    }
+  }, [buildBattlePhase, gameState.status]);
+
+  useEffect(() => {
+    if (gameState.status !== 'build_battle_playing') return;
+
+    if (buildBattlePhase === 'select' || buildBattlePhase === 'build' || buildBattlePhase === 'countdown') {
+      const interval = setInterval(() => {
+        setBuildBattleIntroCountdown((c) => {
+          if (c > 0) {
+            return c - 1;
+          } else {
+            setBuildBattlePhaseTimer((p) => {
+              if (p <= 0) return 0;
+              return p - 1;
+            });
+            return 0;
+          }
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [gameState.status, buildBattlePhase]);
+
+  useEffect(() => {
+    if (gameState.status !== 'build_battle_playing') return;
+
+    if (buildBattlePhaseTimer <= 0) {
+      if (buildBattlePhase === 'select') {
+        setBuildBattlePhase('build');
+        setBuildBattlePhaseTimer(buildBattleBuildTimerConfig);
+        setBuildBattleConfirmed({ P1: false, P2: false });
+        setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+      } else if (buildBattlePhase === 'build') {
+        setBuildBattlePhase('countdown');
+        setBuildBattlePhaseTimer(3);
+        setBuildBattleConfirmed({ P1: false, P2: false });
+        // Place the entities
+        const newEntities: any[] = [];
+        if (buildBattlePlacedThisRound.P1) newEntities.push(buildBattlePlacedThisRound.P1);
+        if (buildBattlePlacedThisRound.P2) newEntities.push(buildBattlePlacedThisRound.P2);
+        setBuildBattlePlacedEntities(prev => [...prev, ...newEntities]);
+        // Rebuild level dynamically? GameCanvas takes `level`, we can override there
+      } else if (buildBattlePhase === 'countdown') {
+        setBuildBattlePhase('run');
+        setRespawnTrigger((p) => p + 1);
+      }
+    }
+  }, [buildBattlePhaseTimer, buildBattlePhase, gameState.status, buildBattleBuildTimerConfig]);
+
+  useEffect(() => {
+    if (gameState.status === 'build_battle_playing') {
+      if ((buildBattlePhase === 'select' || buildBattlePhase === 'build') && buildBattleConfirmed.P1 && buildBattleConfirmed.P2) {
+        setBuildBattlePhaseTimer(0);
+      }
+    }
+  }, [buildBattleConfirmed, buildBattlePhase, gameState.status]);
+
+  // Build Battle Keyboard Handling
+  useEffect(() => {
+    if (gameState.status !== 'build_battle_playing') return;
+
+    const moveCursor = (player: 'P1' | 'P2', dx: number, dy: number) => {
+      setBuildBattleCursors(prev => {
+        const cur = prev[player];
+        let nx = cur.x + dx * 30;
+        let ny = cur.y + dy * 30;
+        const maxW = level.width ? level.width - 30 : 1470;
+        const maxH = level.height ? level.height - 30 : 510;
+        nx = Math.max(0, Math.min(nx, maxW));
+        ny = Math.max(0, Math.min(ny, maxH));
+        return { ...prev, [player]: { x: nx, y: ny } };
+      });
+    };
+
+    const getNextAvailableIndex = (
+      current: number,
+      dir: number,
+      otherConfirmed: boolean,
+      otherSelectionIndex: number,
+      total: number
+    ) => {
+      let check = current;
+      for (let i = 0; i < total; i++) {
+        check = (check + dir + total) % total;
+        if (!(otherConfirmed && otherSelectionIndex === check)) {
+          return check;
+        }
+      }
+      return current;
+    };
+
+    const applyModifier = (player: 'P1' | 'P2', itm: any, px: number, py: number, w: number, h: number) => {
+      // 1. Find in buildBattlePlacedEntities
+      let pIdx = buildBattlePlacedEntities.findIndex(ent => 
+        px < ent.x + ent.w && px + w > ent.x &&
+        py < ent.y + ent.h && py + h > ent.y
+      );
+      if (pIdx !== -1) {
+        setBuildBattlePlacedEntities(prev => {
+          const cloned = [...prev];
+          const target = { ...cloned[pIdx] };
+          if (itm.type === 'modifier_moving_platform_h') {
+            target.type = 'moving_platform_h';
+            target.movingH = true;
+            target.moveRange = 150;
+            target.moveSpeed = 0.003;
+          } else if (itm.type === 'modifier_moving_platform_v') {
+            target.type = 'moving_platform_v';
+            target.movingV = true;
+            target.moveRange = 150;
+            target.moveSpeed = 0.003;
+          } else if (itm.type === 'modifier_ice') {
+            target.type = 'ice';
+          } else if (itm.type === 'modifier_slime') {
+            target.type = 'slime';
+          } else if (itm.type === 'modifier_fragile') {
+            target.type = 'fragile';
+            target.fragile = true;
+          }
+          cloned[pIdx] = target;
+          return cloned;
+        });
+        showToast(`${player}: Block geupgraded!`);
+        setBuildBattleConfirmed(p => ({ ...p, [player]: true }));
+        return true;
+      }
+
+      // 2. Find in level.entities (static blocks)
+      const lEnt = level.entities?.find(ent => 
+        (ent.type === 'wall' || ent.type === 'ice' || ent.type === 'slime' || ent.type === 'hazard') &&
+        px < ent.x + ent.w && px + w > ent.x &&
+        py < ent.y + ent.h && py + h > ent.y
+      );
+      if (lEnt) {
+        const target = { ...lEnt };
+        if (itm.type === 'modifier_moving_platform_h') {
+          target.type = 'moving_platform_h';
+          target.movingH = true;
+          target.moveRange = 150;
+          target.moveSpeed = 0.003;
+        } else if (itm.type === 'modifier_moving_platform_v') {
+          target.type = 'moving_platform_v';
+          target.movingV = true;
+          target.moveRange = 150;
+          target.moveSpeed = 0.003;
+        } else if (itm.type === 'modifier_ice') {
+          target.type = 'ice';
+        } else if (itm.type === 'modifier_slime') {
+          target.type = 'slime';
+        } else if (itm.type === 'modifier_fragile') {
+          target.type = 'fragile';
+          target.fragile = true;
+        }
+        setBuildBattlePlacedEntities(prev => [...prev, target]);
+        showToast(`${player}: Level-Block geupgraded!`);
+        setBuildBattleConfirmed(p => ({ ...p, [player]: true }));
+        return true;
+      }
+
+      showToast(`${player}: Setze auf einen vorhandenen Block auf!`);
+      return false;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (buildBattleIntroCountdown > 0) return;
+
+      if (buildBattlePhase === 'select') {
+        const totalItems = buildBattleItems.length;
+        if (!buildBattleConfirmed.P1) {
+          if (e.code === 'KeyW' || e.code === 'KeyA') {
+            setBuildBattleSelection(p => {
+              const next = getNextAvailableIndex(p.P1, -1, buildBattleConfirmed.P2, p.P2, totalItems);
+              return { ...p, P1: next };
+            });
+          }
+          if (e.code === 'KeyS' || e.code === 'KeyD') {
+            setBuildBattleSelection(p => {
+              const next = getNextAvailableIndex(p.P1, 1, buildBattleConfirmed.P2, p.P2, totalItems);
+              return { ...p, P1: next };
+            });
+          }
+          if (e.code === 'Space' || e.code === 'KeyQ') {
+            if (buildBattleConfirmed.P2 && buildBattleSelection.P2 === buildBattleSelection.P1) {
+              showToast("Bereits gewaehlt!");
+            } else {
+              setBuildBattleConfirmed(p => ({ ...p, P1: true }));
+              setBuildBattleSelection(prev => {
+                if (prev.P2 === prev.P1) {
+                  return { ...prev, P2: getNextAvailableIndex(prev.P2, 1, true, prev.P1, totalItems) };
+                }
+                return prev;
+              });
+            }
+          }
+        }
+        if (!buildBattleConfirmed.P2) {
+          if (e.code === 'ArrowUp' || e.code === 'ArrowLeft') {
+            setBuildBattleSelection(p => {
+              const next = getNextAvailableIndex(p.P2, -1, buildBattleConfirmed.P1, p.P1, totalItems);
+              return { ...p, P2: next };
+            });
+          }
+          if (e.code === 'ArrowDown' || e.code === 'ArrowRight') {
+            setBuildBattleSelection(p => {
+              const next = getNextAvailableIndex(p.P2, 1, buildBattleConfirmed.P1, p.P1, totalItems);
+              return { ...p, P2: next };
+            });
+          }
+          if (e.code === 'Enter' || e.code === 'ShiftRight') {
+            if (buildBattleConfirmed.P1 && buildBattleSelection.P1 === buildBattleSelection.P2) {
+              showToast("Bereits gewaehlt!");
+            } else {
+              setBuildBattleConfirmed(p => ({ ...p, P2: true }));
+              setBuildBattleSelection(prev => {
+                if (prev.P1 === prev.P2) {
+                  return { ...prev, P1: getNextAvailableIndex(prev.P1, 1, true, prev.P2, totalItems) };
+                }
+                return prev;
+              });
+            }
+          }
+        }
+      } else if (buildBattlePhase === 'build') {
+        const isTooClose = (x: number, y: number, w: number, h: number) => {
+           const lvl = BUILD_BATTLE_LEVELS.find(l => l.id === gameState.levelId);
+           if (!lvl) return false;
+           const cx = x + w/2;
+           const cy = y + h/2;
+           if (lvl.start) {
+             const dx = cx - lvl.start.x, dy = cy - lvl.start.y;
+             if (Math.hypot(dx, dy) < 100) return true;
+           }
+           const goal = lvl.entities.find(e => e.type === 'goal');
+           if (goal) {
+             const dx = cx - (goal.x + goal.w/2);
+             const dy = cy - (goal.y + goal.h/2);
+             if (Math.hypot(dx, dy) < 100) return true;
+           }
+           return false;
+        };
+
+        if (!buildBattleConfirmed.P1) {
+          if (e.code === 'KeyW') moveCursor('P1', 0, -1);
+          if (e.code === 'KeyS') moveCursor('P1', 0, 1);
+          if (e.code === 'KeyA') moveCursor('P1', -1, 0);
+          if (e.code === 'KeyD') moveCursor('P1', 1, 0);
+          if (e.code === 'KeyE') setBuildBattleRotation(p => ({ ...p, P1: !p.P1 }));
+          if (e.code === 'Space' || e.code === 'KeyQ') {
+             const itm = buildBattleItems[buildBattleSelection.P1];
+             if (itm) {
+               const px = buildBattleCursors.P1.x;
+               const py = buildBattleCursors.P1.y;
+               let w = itm.args?.w || 30;
+               let h = itm.args?.h || 30;
+               if (buildBattleRotation.P1) {
+                 const tmp = w; w = h; h = tmp;
+               }
+               if (isTooClose(px, py, w, h)) {
+                 showToast("P1: Zu nah an Start/Ziel!");
+               } else {
+                 if (itm.isModifier) {
+                   applyModifier('P1', itm, px, py, w, h);
+                 } else {
+                   setBuildBattlePlacedThisRound(p => ({ ...p, P1: { ...itm.args, x: px, y: py, w, h, type: itm.type } }));
+                   setBuildBattleConfirmed(p => ({ ...p, P1: true }));
+                 }
+               }
+             }
+          }
+        }
+        if (!buildBattleConfirmed.P2) {
+          if (e.code === 'ArrowUp') moveCursor('P2', 0, -1);
+          if (e.code === 'ArrowDown') moveCursor('P2', 0, 1);
+          if (e.code === 'ArrowLeft') moveCursor('P2', -1, 0);
+          if (e.code === 'ArrowRight') moveCursor('P2', 1, 0);
+          if (e.code === 'ControlRight' || e.code === 'Numpad0') setBuildBattleRotation(p => ({ ...p, P2: !p.P2 }));
+          if (e.code === 'Enter' || e.code === 'ShiftRight') {
+             const itm = buildBattleItems[buildBattleSelection.P2];
+             if (itm) {
+               const px = buildBattleCursors.P2.x;
+               const py = buildBattleCursors.P2.y;
+               let w = itm.args?.w || 30;
+               let h = itm.args?.h || 30;
+               if (buildBattleRotation.P2) {
+                 const tmp = w; w = h; h = tmp;
+               }
+               if (isTooClose(px, py, w, h)) {
+                 showToast("P2: Zu nah an Start/Ziel!");
+               } else {
+                 if (itm.isModifier) {
+                   applyModifier('P2', itm, px, py, w, h);
+                 } else {
+                   setBuildBattlePlacedThisRound(p => ({ ...p, P2: { ...itm.args, x: px, y: py, w, h, type: itm.type } }));
+                   setBuildBattleConfirmed(p => ({ ...p, P2: true }));
+                 }
+               }
+             }
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState.status, buildBattlePhase, buildBattleConfirmed, buildBattleCursors, buildBattleSelection, buildBattleItems, buildBattleIntroCountdown, buildBattlePlacedEntities, level]);
 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const prevStatusRef = useRef(gameState.status);
@@ -3088,7 +3487,9 @@ const App: React.FC = () => {
             setGameState((p) => ({ ...p, status: "brawler_setup" }));
             break;
           case 2: // Build Battle Local
-            setLevelSource("build_battle");
+            setLevelSource("builtin");
+            setSelectedLevels([BUILD_BATTLE_LEVELS[0]]);
+            setLevel(BUILD_BATTLE_LEVELS[0]);
             setHighscoreLevelIndex(0);
             setMenuSelection(0);
             setGameState((p) => ({
@@ -5169,20 +5570,27 @@ const App: React.FC = () => {
       audio.playWin();
 
       if (gameState.status === "build_battle_playing") {
-        const customName = customization.name || "P1";
-        const isPlayer1 = winnerName === customName || winnerName === "Player 1" || winnerName === "P1" || (winnerName && winnerName.toLowerCase().includes("1"));
-        const winnerKey = isPlayer1 ? "P1" : "P2";
-        setBuildBattleScores(prev => ({
-          ...prev,
-          [winnerKey]: (prev[winnerKey] || 0) + 1
-        }));
-        showToast(winnerName ? `Ziel erreicht! Punkt für ${winnerName}!` : "Ziel erreicht!");
-        
-        setGameState(p => ({
-          ...p,
-          status: "build_battle_won",
-          winner: winnerName || "Spieler",
-        }));
+        if (!winnerName) {
+           showToast("Alle sind gestorben! Keine Punkte.");
+           setGameState(p => ({ ...p, status: "build_battle_won", winner: "NIEMAND" }));
+        } else if (winnerName === "EVERYONE_FINISHED") {
+           showToast("Zu einfach! Alle im Ziel! Keine Punkte.");
+           setGameState(p => ({ ...p, status: "build_battle_won", winner: "NIEMAND (ZU EINFACH)" }));
+        } else {
+           const customName = customization.name || "P1";
+           const isPlayer1 = winnerName === customName || winnerName === "Player 1" || winnerName === "P1" || (winnerName && winnerName.toLowerCase().includes("1"));
+           const winnerKey = isPlayer1 ? "P1" : "P2";
+           setBuildBattleScores(prev => ({
+             ...prev,
+             [winnerKey]: (prev[winnerKey] || 0) + 1
+           }));
+           showToast(`Ziel erreicht! Punkt für ${winnerName}!`);
+           setGameState(p => ({
+             ...p,
+             status: "build_battle_won",
+             winner: winnerName,
+           }));
+        }
         return;
       }
 
@@ -5699,9 +6107,117 @@ const App: React.FC = () => {
   const gamescreenLevel = useMemo(() => {
     let activeLevel = level;
     if (gameState.status.includes("build_battle")) {
+      const extraEntities = [...buildBattlePlacedEntities];
+      const itm1 = !buildBattleConfirmed.P1 ? buildBattleItems[buildBattleSelection.P1] : null;
+      const itm2 = !buildBattleConfirmed.P2 ? buildBattleItems[buildBattleSelection.P2] : null;
+
+      let hoveredP1Id: string | null = null;
+      let hoveredP1Coords: string | null = null;
+      if (itm1 && itm1.isModifier) {
+        let w = itm1.args?.w || 30;
+        let h = itm1.args?.h || 30;
+        if (buildBattleRotation.P1) { const tmp = w; w = h; h = tmp; }
+        const px = buildBattleCursors.P1.x;
+        const py = buildBattleCursors.P1.y;
+
+        const match = buildBattlePlacedEntities.find(ent =>
+          px < ent.x + ent.w && px + w > ent.x &&
+          py < ent.y + ent.h && py + h > ent.y
+        );
+        if (match) {
+          hoveredP1Id = match.id || `${match.x}_${match.y}`;
+        } else {
+          const matchL = level.entities?.find(ent =>
+            (ent.type === 'wall' || ent.type === 'ice' || ent.type === 'slime' || ent.type === 'hazard') &&
+            px < ent.x + ent.w && px + w > ent.x &&
+            py < ent.y + ent.h && py + h > ent.y
+          );
+          if (matchL) {
+            hoveredP1Coords = `${matchL.x}_${matchL.y}`;
+          }
+        }
+      }
+
+      let hoveredP2Id: string | null = null;
+      let hoveredP2Coords: string | null = null;
+      if (itm2 && itm2.isModifier) {
+        let w = itm2.args?.w || 30;
+        let h = itm2.args?.h || 30;
+        if (buildBattleRotation.P2) { const tmp = w; w = h; h = tmp; }
+        const px = buildBattleCursors.P2.x;
+        const py = buildBattleCursors.P2.y;
+
+        const match = buildBattlePlacedEntities.find(ent =>
+          px < ent.x + ent.w && px + w > ent.x &&
+          py < ent.y + ent.h && py + h > ent.y
+        );
+        if (match) {
+          hoveredP2Id = match.id || `${match.x}_${match.y}`;
+        } else {
+          const matchL = level.entities?.find(ent =>
+            (ent.type === 'wall' || ent.type === 'ice' || ent.type === 'slime' || ent.type === 'hazard') &&
+            px < ent.x + ent.w && px + w > ent.x &&
+            py < ent.y + ent.h && py + h > ent.y
+          );
+          if (matchL) {
+            hoveredP2Coords = `${matchL.x}_${matchL.y}`;
+          }
+        }
+      }
+
+      if (gameState.status === 'build_battle_playing' && buildBattlePhase === 'build') {
+         if (buildBattlePlacedThisRound.P1) extraEntities.push({ ...buildBattlePlacedThisRound.P1, isBuildPreview: true });
+         if (buildBattlePlacedThisRound.P2) extraEntities.push({ ...buildBattlePlacedThisRound.P2, isBuildPreview: true });
+         if (!buildBattleConfirmed.P1) {
+             if (itm1) {
+                 let w = itm1.args?.w || 30;
+                 let h = itm1.args?.h || 30;
+                 if (buildBattleRotation.P1) {
+                     const tmp = w; w = h; h = tmp;
+                 }
+                 extraEntities.push({ ...itm1.args, x: buildBattleCursors.P1.x, y: buildBattleCursors.P1.y, w, h, type: itm1.type, isFake: true, isP1Cursor: true, isBuildPreview: true });
+             }
+         }
+         if (!buildBattleConfirmed.P2) {
+             if (itm2) {
+                 let w = itm2.args?.w || 30;
+                 let h = itm2.args?.h || 30;
+                 if (buildBattleRotation.P2) {
+                     const tmp = w; w = h; h = tmp;
+                 }
+                 extraEntities.push({ ...itm2.args, x: buildBattleCursors.P2.x, y: buildBattleCursors.P2.y, w, h, type: itm2.type, isFake: true, isP2Cursor: true, isBuildPreview: true });
+             }
+         }
+      }
+
+      const processedPlaced = extraEntities.map(ent => {
+        const key = ent.id || `${ent.x}_${ent.y}`;
+        return {
+          ...ent,
+          isHoveredByModifierP1: key === hoveredP1Id,
+          isHoveredByModifierP2: key === hoveredP2Id,
+        };
+      });
+
+      const filteredLevelEntities = (level.entities || []).filter(ent => {
+        return !processedPlaced.some(override => 
+          !override.isBuildPreview && (
+            (override.id && override.id === ent.id) ||
+            (override.x === ent.x && override.y === ent.y && override.w === ent.w && override.h === ent.h)
+          )
+        );
+      }).map(ent => {
+        const key = `${ent.x}_${ent.y}`;
+        return {
+          ...ent,
+          isHoveredByModifierP1: key === hoveredP1Coords,
+          isHoveredByModifierP2: key === hoveredP2Coords,
+        };
+      });
+
       activeLevel = {
         ...level,
-        entities: [...level.entities, ...buildBattlePlacedEntities]
+        entities: [...filteredLevelEntities, ...processedPlaced]
       };
     }
 
@@ -5728,7 +6244,7 @@ const App: React.FC = () => {
       };
     }
     return activeLevel;
-  }, [level, gameState.status, buildBattlePlacedEntities]);
+  }, [level, gameState.status, buildBattlePlacedEntities, buildBattlePhase, buildBattlePlacedThisRound, buildBattleConfirmed, buildBattleCursors, buildBattleItems, buildBattleSelection]);
 
   return (
     <>
@@ -6511,11 +7027,12 @@ const App: React.FC = () => {
                     gameState.status === "brawler_won" ||
                     gameState.status === "online_summary" ||
                     gameState.status === "build_battle_won" ||
-                    (gameState.status === "build_battle_playing" && buildBattlePhase === "build") ||
+                    (gameState.status === "build_battle_playing" && (buildBattlePhase === "select" || buildBattlePhase === "build" || buildBattlePhase === "countdown")) ||
                     onlineService.isPaused
                   }
                   respawnTrigger={respawnTrigger}
                   resetTrigger={resetTrigger}
+                  suppressCountdown={gameState.status === "build_battle_playing" || (gameState.status === "paused" && gameState.previousStatus === "build_battle_playing")}
                   gameMode={
                     (gameState.status === "paused"
                       ? gameState.previousStatus || "playing"
@@ -6587,109 +7104,100 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Middle interactive placement grid helper (only handles events in build mode) */}
+                  {/* Phase Timer Overlay */}
                   {buildBattlePhase === 'build' && (
-                    <div 
-                      className="absolute inset-[15%] flex items-center justify-center pointer-events-auto z-20 cursor-crosshair relative"
-                      onMouseMove={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const rawX = ((e.clientX - rect.left) / rect.width) * 960;
-                        const rawY = ((e.clientY - rect.top) / rect.height) * 540;
-                        const snappedX = Math.max(0, Math.min(930, Math.floor(rawX / 30) * 30));
-                        const snappedY = Math.max(0, Math.min(510, Math.floor(rawY / 30) * 30));
-                        setBuildBattleHoverPos({ x: snappedX, y: snappedY });
-                      }}
-                      onMouseLeave={() => {
-                        setBuildBattleHoverPos(null);
-                      }}
-                      onClick={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const rawX = ((e.clientX - rect.left) / rect.width) * 960;
-                        const rawY = ((e.clientY - rect.top) / rect.height) * 540;
-                        
-                        const snappedX = Math.floor(rawX / 30) * 30;
-                        const snappedY = Math.floor(rawY / 30) * 30;
-                        
-                        // Validate placement boundaries
-                        if (snappedX < 30 || snappedX >= 930 || snappedY < 30 || snappedY >= 510) {
-                          showToast("Ungültige Position! Zu nah am Rand.");
-                          return;
-                        }
+                    <div className="absolute top-20 right-4 bg-black/60 backdrop-blur border border-neutral-800 p-4 rounded-xl flex flex-col items-center justify-center">
+                       <span className="text-yellow-400 font-arcade text-lg tracking-wider">ZEIT</span>
+                       <span className="text-white font-arcade text-3xl">{buildBattlePhaseTimer}</span>
+                    </div>
+                  )}
 
-                        // Prevent placing on player spawns
-                        const dStartP1 = Math.hypot(snappedX - level.start.x, snappedY - level.start.y);
-                        const startP2X = level.startP2?.x || level.start.x + 40;
-                        const startP2Y = level.startP2?.y || level.start.y;
-                        const dStartP2 = Math.hypot(snappedX - startP2X, snappedY - startP2Y);
-                        
-                        if (dStartP1 < 45 || dStartP2 < 45) {
-                          showToast("Zu nah am Startpunkt!");
-                          return;
-                        }
+                  {/* Intro Countdown Overlay (highest priority z-50) */}
+                  {buildBattleIntroCountdown > 0 && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50">
+                       <span className="text-[10rem] text-yellow-400 font-arcade font-black animate-pulse drop-shadow-[0_0_50px_rgba(234,179,8,1)]">
+                         {buildBattleIntroCountdown}
+                       </span>
+                       <span className="text-white font-arcade text-xl tracking-[0.2em] uppercase mt-4">
+                         {buildBattlePhase === 'select' ? "Bereitmachen zur Auswahl!" : "Bereitmachen zum Bauen!"}
+                       </span>
+                    </div>
+                  )}
 
-                        // Prevent placing on objective goal area
-                        const goalEntity = level.entities.find(ent => ent.type === "goal");
-                        if (goalEntity) {
-                          const dGoal = Math.hypot(snappedX - goalEntity.x, snappedY - goalEntity.y);
-                          if (dGoal < 45) {
-                            showToast("Zu nah am Ziel!");
-                            return;
-                          }
-                        }
+                  {buildBattlePhase === 'select' && (
+                    <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center pointer-events-auto z-30">
+                       {/* High-visibility Selection Timer in the foreground */}
+                       <div className="flex flex-col items-center mb-6">
+                          <span className="text-yellow-400 font-arcade text-xs tracking-widest uppercase mb-1">Auswahlzeit verbleibend</span>
+                          <span className="text-white font-arcade text-4xl font-black bg-neutral-900 border border-neutral-800 px-6 py-2 rounded-2xl shadow-xl min-w-[100px] text-center">
+                             {buildBattlePhaseTimer}
+                          </span>
+                       </div>
 
-                        // Play audio place sound
-                        audio.playBuild();
+                       <h2 className="text-3xl text-white font-arcade mb-8 tracking-wider">ITEM AUSWÄHLEN</h2>
+                       <div className="flex gap-4 mb-12 flex-wrap max-w-4xl justify-center">
+                          {buildBattleItems.map((item, idx) => {
+                             const isP1 = buildBattleSelection.P1 === idx;
+                              const showSecret = buildBattleIntroCountdown > 0;
+                              const isTakenByP1 = buildBattleConfirmed.P1 && buildBattleSelection.P1 === idx;
+                              const isTakenByP2 = buildBattleConfirmed.P2 && buildBattleSelection.P2 === idx;
+                              const isTaken = isTakenByP1 || isTakenByP2;
+                             const isP2 = buildBattleSelection.P2 === idx;
+                             return (
+                               <div key={item.id} className={`w-20 h-20 bg-neutral-900 border-2 flex flex-col items-center justify-center relative rounded-lg
+                                 ${isP1 && isP2 ? 'border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' :
+                                   isP1 ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 
+                                   isP2 ? 'border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'border-neutral-700'}
+                                 transition-all`}
+                               >
+                                 <span className="text-3xl mb-1">{showSecret ? "❓" : item.icon}</span>
+                                 <span className="text-[8px] font-arcade uppercase text-neutral-400 text-center px-1">{showSecret ? "GEHEIM" : item.label}</span>
+                                 {isP1 && <div className="absolute -top-3 -left-3 bg-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">P1 {buildBattleConfirmed.P1 ? '✓' : ''}</div>}
+                                 {isP2 && <div className="absolute -bottom-3 -right-3 bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">P2 {buildBattleConfirmed.P2 ? '✓' : ''}</div>}
+                                 {isTaken && !showSecret && (
+                                   <div className="absolute inset-0 bg-red-950/85 flex flex-col items-center justify-center rounded-lg border border-red-500 z-10 animate-fade-in shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                                     <span className="text-[10px] font-arcade text-red-400 font-bold tracking-wider">WEG!</span>
+                                     <span className="text-[8px] font-arcade text-white mt-1">VON {isTakenByP1 ? "P1" : "P2"}</span>
+                                   </div>
+                                 )}
+                               </div>
+                             );
+                          })}
+                       </div>
+                       <div className="flex gap-16 font-arcade text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
+                          <div className="flex flex-col items-center">
+                             <div className="text-cyan-400 mb-2 font-bold text-sm">SPIELER 1</div>
+                             <div>[A] / [D] WÄHLEN</div>
+                             <div className="mt-1">SPACE BESTÄTIGEN</div>
+                          </div>
+                          <div className="flex flex-col items-center">
+                             <div className="text-amber-400 mb-2 font-bold text-sm">SPIELER 2</div>
+                             <div>[←] / [→] WÄHLEN</div>
+                             <div className="mt-1">ENTER BESTÄTIGEN</div>
+                          </div>
+                       </div>
+                    </div>
+                  )}
 
-                        const newEnt = {
-                          id: `placed_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                          type: selectedBuildItem,
-                          x: snappedX,
-                          y: snappedY,
-                          w: 30,
-                          h: 30,
-                        };
+                  {buildBattlePhase === 'build' && (
+                    <div className="absolute inset-0 pointer-events-none z-30">
+                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-12 font-arcade text-[10px] bg-neutral-900/90 p-4 border border-neutral-800 rounded-2xl backdrop-blur">
+                          <div className="flex flex-col items-center">
+                             <div className="text-cyan-400 mb-2 font-bold text-sm">P1: {buildBattleItems[buildBattleSelection.P1]?.label}</div>
+                             {buildBattleConfirmed.P1 ? <div className="text-green-400 font-bold">PLATZIERT</div> : <div className="text-neutral-400 text-center">WASD BEWEGEN<br/>E DREHEN<br/>SPACE PLATZIEREN</div>}
+                          </div>
+                          <div className="w-px bg-neutral-800 h-12" />
+                          <div className="flex flex-col items-center">
+                             <div className="text-amber-400 mb-2 font-bold text-sm">P2: {buildBattleItems[buildBattleSelection.P2]?.label}</div>
+                             {buildBattleConfirmed.P2 ? <div className="text-green-400 font-bold">PLATZIERT</div> : <div className="text-neutral-400 text-center">PFEILE BEWEGEN<br/>STRG DREHEN<br/>ENTER PLATZIEREN</div>}
+                          </div>
+                       </div>
+                    </div>
+                  )}
 
-                        setBuildBattlePlacedEntities(prev => [...prev, newEnt]);
-
-                        if (buildTurn === 0) {
-                          setBuildTurn(1);
-                          showToast("Spieler 2 ist am Zug!");
-                        } else {
-                          // Both players completed placement
-                          setBuildBattlePhase('run');
-                          setResetTrigger(p => p + 1);
-                          setRespawnTrigger(p => p + 1);
-                          showToast("Bauphase abgeschlossen! Erreicht das Ziel!");
-                        }
-                      }}
-                    >
-                      {/* Responsive Hover Snapping Preview */}
-                      {buildBattleHoverPos && (
-                        <div 
-                          className="absolute border-2 border-dashed border-yellow-400 bg-yellow-500/10 pointer-events-none flex items-center justify-center text-xs"
-                          style={{
-                            left: `${(buildBattleHoverPos.x / 960) * 100}%`,
-                            top: `${(buildBattleHoverPos.y / 540) * 100}%`,
-                            width: `${(30 / 960) * 100}%`,
-                            height: `${(30 / 540) * 100}%`,
-                          }}
-                        >
-                          {selectedBuildItem === 'wall' && '🧱'}
-                          {selectedBuildItem === 'slime' && '🟩'}
-                          {selectedBuildItem === 'ice' && '❄️'}
-                          {selectedBuildItem === 'trampoline' && '🟨'}
-                          {selectedBuildItem === 'hazard' && '🔺'}
-                          {selectedBuildItem === 'coin' && '🪙'}
-                        </div>
-                      )}
-
-                      {/* Display building instructions */}
-                      <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-neutral-950/95 px-6 py-2.5 border border-yellow-500/20 rounded-2xl flex flex-col items-center shadow-xl">
-                        <span className="text-yellow-400 font-bold font-arcade uppercase text-[10px] tracking-wider animate-pulse">
-                          {buildTurn === 0 ? "👉 SPIELER 1 BAUT (Rot)" : "👉 SPIELER 2 BAUT (Gelb)"}
-                        </span>
-                        <span className="text-[8px] text-neutral-400 mt-0.5 uppercase tracking-wide">Klicke auf das Spielfeld zum Platzieren</span>
-                      </div>
+                  {buildBattlePhase === 'countdown' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 bg-black/50 backdrop-blur-sm">
+                       <span className="text-9xl text-white font-arcade animate-ping drop-shadow-[0_0_50px_rgba(255,255,255,1)]">{buildBattlePhaseTimer}</span>
                     </div>
                   )}
 
@@ -6698,49 +7206,12 @@ const App: React.FC = () => {
                     <div className="absolute top-20 left-4 pointer-events-auto animate-fade-in">
                       <button
                         onClick={() => {
-                          setBuildBattlePhase('build');
-                          setBuildTurn(0);
-                          setBuildBattleRound(p => p + 1);
-                          setResetTrigger(p => p + 1);
-                          setRespawnTrigger(p => p + 1);
-                          showToast(`Runde ${buildBattleRound + 1} Bauphase!`);
+                          setGameState(p => ({ ...p, status: "build_battle_setup" }));
                         }}
-                        className="bg-neutral-950 border border-neutral-800 hover:border-yellow-500 hover:text-yellow-400 text-yellow-500/90 py-1.5 px-3 rounded-xl text-[9px] font-arcade uppercase shadow-2xl transition-all font-bold tracking-wider"
+                        className="bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-white px-4 py-2 rounded-xl font-arcade text-[10px] uppercase transition-all shadow-md active:translate-y-1"
                       >
-                        🔄 NÄCHSTE BAUPHASE
+                        ABBRECHEN
                       </button>
-                    </div>
-                  )}
-
-                  {/* Grid Item Selector Footer (visible on build phase only) */}
-                  {buildBattlePhase === 'build' && (
-                    <div className="w-full max-w-xl bg-neutral-950/95 border border-neutral-800 p-2.5 rounded-2xl flex items-center justify-between gap-1.5 backdrop-blur-md pointer-events-auto shadow-2xl mb-2 animate-slide-up">
-                      <div className="flex items-center gap-1.5 w-full">
-                        {[
-                          { id: 'wall', label: 'WAND', icon: '🧱' },
-                          { id: 'slime', label: 'SCHLEIM', icon: '🟩' },
-                          { id: 'ice', label: 'EIS', icon: '❄️' },
-                          { id: 'trampoline', label: 'FEDER', icon: '🟨' },
-                          { id: 'hazard', label: 'STACHEL', icon: '🔺' },
-                          { id: 'coin', label: 'MÜNZE', icon: '🪙' },
-                        ].map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => {
-                              setSelectedBuildItem(item.id);
-                              audio.playJump();
-                            }}
-                            className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl border transition-all ${
-                              selectedBuildItem === item.id
-                                ? 'bg-yellow-500/10 border-yellow-500 text-yellow-500 scale-105 shadow-[0_0_12px_rgba(234,179,8,0.15)] font-black'
-                                : 'bg-neutral-900/40 border-neutral-800/80 text-neutral-400 hover:border-neutral-700 hover:text-white'
-                            }`}
-                          >
-                            <span className="text-xl mb-0.5">{item.icon}</span>
-                            <span className="text-[7.5px] font-arcade uppercase tracking-tighter text-center">{item.label}</span>
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -6876,7 +7347,7 @@ const App: React.FC = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 text-white z-30 overflow-y-auto py-10"
+                  className="absolute inset-0 flex flex-col items-center justify-start bg-black/95 text-white z-30 overflow-y-auto py-10"
                 >
                   <h2 className="text-3xl mb-4 text-rage-red">
                     {gameState.status === "brawler_setup"
@@ -7326,6 +7797,391 @@ const App: React.FC = () => {
                       </div>
                     )}
 
+                    {gameState.status === "build_battle_setup" && (
+                      <div className="flex flex-col items-center mb-6 w-full max-w-lg">
+                        <button
+                          onClick={() => setBuildBattleSettingsOpen(true)}
+                          className="py-2.5 px-5 rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade border flex items-center justify-center gap-2 mb-3 shadow-[0_0_15px_rgba(0,0,0,0.4)] bg-neutral-900 hover:bg-neutral-850 hover:text-yellow-500 border-neutral-800 text-neutral-300 font-bold cursor-pointer"
+                        >
+                          ⚙️ REGELN & VOREINSTELLUNGEN ANPASSEN...
+                        </button>
+
+                        {buildBattleSettingsOpen && (
+                          <div className="fixed inset-0 bg-black/90 backdrop-blur-lg z-[200] flex items-center justify-center p-4">
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="w-full max-w-4xl bg-neutral-950 border-2 border-yellow-500 rounded-3xl flex flex-col gap-4 p-6 shadow-[0_0_50px_rgba(234,179,8,0.25)] max-h-[90vh]"
+                            >
+                              {/* Modal Header */}
+                              <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                                <div className="text-[12px] sm:text-xs font-arcade text-yellow-500 tracking-wider">
+                                  ⚙️ BUILD-BATTLE REGELN & BLÖCKE
+                                </div>
+                                <button
+                                  onClick={() => setBuildBattleSettingsOpen(false)}
+                                  className="py-1 px-3 bg-red-600 hover:bg-red-500 border border-red-700 text-white rounded-lg font-arcade text-[8px] tracking-wider transition-all cursor-pointer shadow-lg"
+                                >
+                                  SCHLIESSEN ✖
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-left overflow-y-auto pr-1 custom-scrollbar pb-3">
+                                {/* LEFT HALF: REGEL-TUNING */}
+                                <div className="flex flex-col gap-4 bg-neutral-900 border border-neutral-800/80 p-4 rounded-2xl">
+                                  <div className="text-[10px] text-yellow-500/90 font-arcade tracking-wide border-b border-neutral-800 pb-1 uppercase">
+                                    ⏱️ SPIELZEIT & PUNKTELIMIT
+                                  </div>
+
+                                  {/* Selection phase Timer */}
+                                  <div>
+                                    <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
+                                      Phase: Block-Auswahl
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {[5, 10, 15, 20, 30].map((tVal) => (
+                                        <button
+                                          key={tVal}
+                                          onClick={() => setBuildBattleSelectTimerConfig(tVal)}
+                                          className={`flex-1 py-1.5 text-[9px] font-arcade rounded border transition-all cursor-pointer ${
+                                            buildBattleSelectTimerConfig === tVal
+                                              ? "bg-yellow-500 border-yellow-600 text-neutral-950 font-black shadow-lg"
+                                              : "bg-black/40 border-neutral-800 text-neutral-400 hover:bg-neutral-800"
+                                          }`}
+                                        >
+                                          {tVal}s
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Build phase Timer */}
+                                  <div>
+                                    <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
+                                      Phase: Bauen & Platzieren
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {[10, 20, 30, 45, 60].map((tVal) => (
+                                        <button
+                                          key={tVal}
+                                          onClick={() => setBuildBattleBuildTimerConfig(tVal)}
+                                          className={`flex-1 py-1.5 text-[9px] font-arcade rounded border transition-all cursor-pointer ${
+                                            buildBattleBuildTimerConfig === tVal
+                                              ? "bg-yellow-500 border-yellow-600 text-neutral-950 font-black shadow-lg"
+                                              : "bg-black/40 border-neutral-800 text-neutral-400 hover:bg-neutral-800"
+                                          }`}
+                                        >
+                                          {tVal}s
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Max of score points */}
+                                  <div>
+                                    <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
+                                      Siegbedingungen (Punkte)
+                                    </div>
+                                    <div className="flex gap-1">
+                                      {[3, 5, 10, 999].map((pVal) => (
+                                        <button
+                                          key={pVal}
+                                          onClick={() => setBuildBattleTargetPointsConfig(pVal)}
+                                          className={`flex-1 py-1.5 text-[9px] font-arcade rounded border transition-all cursor-pointer ${
+                                            buildBattleTargetPointsConfig === pVal
+                                              ? "bg-yellow-500 border-yellow-600 text-neutral-950 font-black shadow-lg"
+                                              : "bg-black/40 border-neutral-800 text-neutral-400 hover:bg-neutral-800"
+                                          }`}
+                                        >
+                                          {pVal === 999 ? "∞" : `${pVal} Pkt`}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Custom Presets Section */}
+                                  <div className="border-t border-neutral-800/80 pt-3 mt-1">
+                                    <div className="text-[9px] text-yellow-500/95 font-arcade tracking-wide uppercase mb-1.5 flex items-center justify-between">
+                                      <span>💾 EIGENE VOREINSTELLUNGEN ({buildBattleCustomPresets.length}/5)</span>
+                                      {buildBattleCustomPresets.length >= 5 && (
+                                        <span className="text-[7px] text-red-500 font-bold lowercase">★ Limit erreicht</span>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Save form */}
+                                    <div className="flex gap-1.5 mb-3">
+                                      <input
+                                        type="text"
+                                        placeholder={buildBattleCustomPresets.length >= 5 ? "Limit von 5 erreicht!" : "Name der Speicherung..."}
+                                        value={newPresetName}
+                                        onChange={(e) => setNewPresetName(e.target.value)}
+                                        maxLength={25}
+                                        disabled={buildBattleCustomPresets.length >= 5}
+                                        className="flex-1 bg-black/40 border border-neutral-800 text-[9px] font-bold py-1 px-2.5 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          if (buildBattleCustomPresets.length >= 5) {
+                                            showToast("Maximal 5 Voreinstellungen erlaubt! Bitte lösche zuerst eine.");
+                                            return;
+                                          }
+                                          if (!newPresetName.trim()) {
+                                            showToast("Bitte gib einen Namen ein!");
+                                            return;
+                                          }
+                                          const isDuplicate = buildBattleCustomPresets.some(p => p.name.toLowerCase() === newPresetName.trim().toLowerCase());
+                                          if (isDuplicate) {
+                                            showToast("Name existiert bereits!");
+                                            return;
+                                          }
+                                          const newPreset = {
+                                            id: Date.now().toString(),
+                                            name: newPresetName.trim(),
+                                            selectTimer: buildBattleSelectTimerConfig,
+                                            buildTimer: buildBattleBuildTimerConfig,
+                                            targetPoints: buildBattleTargetPointsConfig,
+                                            allowedItems: { ...buildBattleAllowedItems }
+                                          };
+                                          const updated = [...buildBattleCustomPresets, newPreset];
+                                          setBuildBattleCustomPresets(updated);
+                                          localStorage.setItem("build_battle_presets", JSON.stringify(updated));
+                                          setNewPresetName("");
+                                          showToast(`"${newPreset.name}" gespeichert!`);
+                                        }}
+                                        className={`py-1 px-3 border text-neutral-950 font-arcade text-[8px] font-black rounded-lg transition-all cursor-pointer shadow ${
+                                          buildBattleCustomPresets.length >= 5
+                                            ? "bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed opacity-50"
+                                            : "bg-yellow-500 hover:bg-yellow-400 border-yellow-600"
+                                        }`}
+                                      >
+                                        SPEICHERN
+                                      </button>
+                                    </div>
+
+                                    {/* Presets List */}
+                                    <div className="max-h-[140px] overflow-y-auto pr-1 custom-scrollbar flex flex-col gap-1.5">
+                                      {buildBattleCustomPresets.length === 0 ? (
+                                        <div className="text-[8px] text-neutral-500 italic text-center py-2 bg-black/10 border border-dashed border-neutral-900 rounded-lg">
+                                          Keine eigenen Voreinstellungen gespeichert.
+                                        </div>
+                                      ) : (
+                                        buildBattleCustomPresets.map((preset) => {
+                                          const activeBlockCount = Object.values(preset.allowedItems).filter(Boolean).length;
+                                          return (
+                                            <div
+                                              key={preset.id}
+                                              className="flex items-center justify-between p-2 bg-black/30 border border-neutral-800 rounded-lg hover:border-neutral-750 transition-all gap-2"
+                                            >
+                                              <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="text-[9px] font-bold text-yellow-500/90 font-arcade truncate uppercase tracking-wide">
+                                                  {preset.name}
+                                                </div>
+                                                <div className="text-[7px] text-neutral-400 font-mono flex gap-1.5 mt-0.5 whitespace-nowrap overflow-x-auto min-w-0">
+                                                  <span>⌛ Auswahl: {preset.selectTimer}s</span>
+                                                  <span className="text-neutral-700">|</span>
+                                                  <span>🏗️ Bau: {preset.buildTimer}s</span>
+                                                  <span className="text-neutral-700">|</span>
+                                                  <span>🎯 Siege: {preset.targetPoints === 999 ? "∞" : `${preset.targetPoints} Pkt`}</span>
+                                                  <span className="text-neutral-700">|</span>
+                                                  <span>🧱 Blöcke: {activeBlockCount}</span>
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="flex gap-1.5 shrink-0">
+                                                <button
+                                                  onClick={() => {
+                                                    setBuildBattleSelectTimerConfig(preset.selectTimer);
+                                                    setBuildBattleBuildTimerConfig(preset.buildTimer);
+                                                    setBuildBattleTargetPointsConfig(preset.targetPoints);
+                                                    
+                                                    // Load allowed items block pool safely
+                                                    const cleanAllowed: Record<string, boolean> = {};
+                                                    BUILD_BATTLE_POSSIBLE_ITEMS.forEach(it => {
+                                                      const savedVal = preset.allowedItems[it.label];
+                                                      cleanAllowed[it.label] = savedVal !== undefined ? savedVal : true;
+                                                    });
+                                                    setBuildBattleAllowedItems(cleanAllowed);
+                                                    showToast(`"${preset.name}" geladen!`);
+                                                  }}
+                                                  className="py-1 px-2 bg-green-600 hover:bg-green-500 border border-green-700 text-white rounded font-arcade text-[7px] font-bold transition-all cursor-pointer shadow"
+                                                >
+                                                  LADEN
+                                                </button>
+                                                <button
+                                                  onClick={() => {
+                                                    const updated = buildBattleCustomPresets.filter(p => p.id !== preset.id);
+                                                    setBuildBattleCustomPresets(updated);
+                                                    localStorage.setItem("build_battle_presets", JSON.stringify(updated));
+                                                    showToast(`Preset gelöscht!`);
+                                                  }}
+                                                  className="py-1 px-1.5 bg-red-950/40 hover:bg-red-900 border border-red-900/50 text-red-400 font-bold rounded text-[8px] transition-all cursor-pointer"
+                                                  title="Löschen"
+                                                >
+                                                  ✖
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* RIGHT HALF: ALL BLOCK CHOICE POOL */}
+                                <div className="flex flex-col gap-4 bg-neutral-900 border border-neutral-800/80 p-4 rounded-2xl">
+                                  <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
+                                    <div className="text-[10px] text-yellow-500/90 font-arcade tracking-wide uppercase">
+                                      🧱 BLOCK SELECTION POOL
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          const next: Record<string, boolean> = {};
+                                          BUILD_BATTLE_POSSIBLE_ITEMS.forEach(item => {
+                                            next[item.label] = true;
+                                          });
+                                          setBuildBattleAllowedItems(next);
+                                          showToast("Alle Blöcke aktiviert!");
+                                        }}
+                                        className="text-[8px] font-arcade px-2 py-0.5 bg-neutral-850 hover:bg-neutral-800 text-yellow-500 rounded border border-neutral-750 transition-all cursor-pointer"
+                                      >
+                                        ALLE AN
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const next: Record<string, boolean> = {};
+                                          BUILD_BATTLE_POSSIBLE_ITEMS.forEach((item, idx) => {
+                                            next[item.label] = idx < 8;
+                                          });
+                                          setBuildBattleAllowedItems(next);
+                                          showToast("Standard-Pool (8 Blöcke) aktiviert!");
+                                        }}
+                                        className="text-[8px] font-arcade px-2 py-0.5 bg-neutral-850 hover:bg-neutral-800 text-neutral-450 rounded border border-neutral-750 transition-all cursor-pointer"
+                                      >
+                                        STANDARD
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                                    {[
+                                      {
+                                        title: "🧱 Wände & Plattformen",
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['wall', 'ice', 'slime', 'fragile'].includes(item.type))
+                                      },
+                                      {
+                                        title: "⚠️ Fallen & Gefahren",
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['hazard', 'fan'].includes(item.type))
+                                      },
+                                      {
+                                        title: "🌌 Physik & Mechanik",
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['trampoline', 'moving_platform_h', 'moving_platform_v', 'gravity_reverse', 'gravity_zero', 'teleport', 'orbit'].includes(item.type))
+                                      },
+                                      {
+                                        title: "⚡ Power-ups",
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['powerup_double_jump', 'powerup_dash'].includes(item.type))
+                                      },
+                                      {
+                                        title: "🪄 Modifikatoren",
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => item.isModifier)
+                                      }
+                                    ].map((cat) => (
+                                      <div key={cat.title} className="bg-black/20 p-2 rounded-xl border border-neutral-800/60 flex flex-col gap-1.5">
+                                        <div className="text-[8px] text-neutral-500 font-bold uppercase tracking-wider flex items-center justify-between px-1">
+                                          <span>{cat.title}</span>
+                                          <div className="flex gap-1.5">
+                                            <button
+                                              onClick={() => {
+                                                const next = { ...buildBattleAllowedItems };
+                                                cat.items.forEach(item => {
+                                                  next[item.label] = true;
+                                                });
+                                                setBuildBattleAllowedItems(next);
+                                              }}
+                                              className="text-[7px] text-green-500 hover:underline px-0.5 cursor-pointer font-arcade"
+                                            >
+                                              ALLE
+                                            </button>
+                                            <span className="text-neutral-700">|</span>
+                                            <button
+                                              onClick={() => {
+                                                const next = { ...buildBattleAllowedItems };
+                                                let activeCount = Object.values(next).filter(Boolean).length;
+                                                cat.items.forEach(item => {
+                                                  if (next[item.label]) {
+                                                    if (activeCount > 8) {
+                                                      next[item.label] = false;
+                                                      activeCount--;
+                                                    }
+                                                  }
+                                                });
+                                                setBuildBattleAllowedItems(next);
+                                                if (activeCount <= 8) {
+                                                  showToast("Mindestens 8 Blöcke müssen aktiv bleiben!");
+                                                }
+                                              }}
+                                              className="text-[7px] text-red-500 hover:underline px-0.5 cursor-pointer font-arcade"
+                                            >
+                                              AUS
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-1">
+                                          {cat.items.map((item) => {
+                                            const isActive = buildBattleAllowedItems[item.label] !== false;
+                                            return (
+                                              <button
+                                                key={item.label}
+                                                onClick={() => {
+                                                  setBuildBattleAllowedItems((prev) => {
+                                                    const next = { ...prev, [item.label]: !isActive };
+                                                    const activeCount = Object.values(next).filter(Boolean).length;
+                                                    if (!isActive) {
+                                                      return next;
+                                                    } else {
+                                                      if (activeCount < 8) {
+                                                        showToast("Mindestens 8 Blöcke müssen aktiv sein!");
+                                                        return prev;
+                                                      }
+                                                      return next;
+                                                    }
+                                                  });
+                                                }}
+                                                className={`flex items-center gap-1.5 p-1 text-[8px] sm:text-[9px] font-bold rounded border transition-all text-left cursor-pointer ${
+                                                  isActive
+                                                    ? "bg-green-950/40 border-green-500/30 text-green-400 font-black shadow-[0_0_10px_rgba(34,197,94,0.1)]"
+                                                    : "bg-black/30 border-neutral-800/60 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
+                                                }`}
+                                              >
+                                                <span className="text-[10px] w-4 text-center">{item.icon}</span>
+                                                <span className="truncate flex-1 min-w-0 pr-1 text-[8px] sm:text-[9px] uppercase font-arcade tracking-tight">{item.label}</span>
+                                                <span className="text-[8px] text-right">{isActive ? "🟢" : "⚫"}</span>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-center pt-3 border-t border-neutral-800">
+                                <button
+                                  onClick={() => setBuildBattleSettingsOpen(false)}
+                                  className="py-2.5 px-10 bg-yellow-500 hover:bg-yellow-400 border border-yellow-600 text-neutral-950 rounded-xl font-arcade text-[10px] font-black tracking-wider transition-all cursor-pointer shadow-lg hover:shadow-yellow-500/20"
+                                >
+                                  ✔ EINSTELLUNGEN SPEICHERN & SCHLIESSEN
+                                </button>
+                              </div>
+                            </motion.div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="w-72 flex flex-col gap-2">
                       {gameState.status === "vs_setup" && (
                         <MenuButton
@@ -7384,7 +8240,15 @@ const App: React.FC = () => {
                             setLevel(selectedLevel);
                             
                             if (gameState.status === "build_battle_setup") {
-                              setBuildBattlePhase('build');
+                              const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+                              setBuildBattleItems(newItems);
+                              setBuildBattleSelection({ P1: 0, P2: 1 });
+                              setBuildBattleConfirmed({ P1: false, P2: false });
+                              setBuildBattleRotation({ P1: false, P2: false });
+                              // Start cursors in the middle of the screen (960x540)
+                              setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+                              setBuildBattlePhase('select');
+                              setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
                               setBuildTurn(0);
                               setBuildBattleRound(1);
                               setBuildBattleScores({ P1: 0, P2: 0 });
@@ -8406,7 +9270,9 @@ const App: React.FC = () => {
                       index={2}
                       label={t.buildBattleMode || "BUILD-BATTLE (2P)"}
                       onClick={() => {
-                        setLevelSource("build_battle");
+                        setLevelSource("builtin");
+                        setSelectedLevels([BUILD_BATTLE_LEVELS[0]]);
+                        setLevel(BUILD_BATTLE_LEVELS[0]);
                         setHighscoreLevelIndex(0);
                         setMenuSelection(0);
                         setGameState((p) => ({
@@ -9989,43 +10855,103 @@ const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 w-full">
-                      <button
-                        onClick={() => {
-                          setBuildBattlePhase('build');
-                          setBuildTurn(0);
-                          setBuildBattleRound(p => p + 1);
-                          setResetTrigger(p => p + 1);
-                          setRespawnTrigger(p => p + 1);
-                          setGameState(p => ({
-                            ...p,
-                            status: "build_battle_playing",
-                          }));
-                          showToast(`Start Runde ${buildBattleRound + 1}!`);
-                        }}
-                        className="py-3 px-6 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-yellow-700 active:translate-y-px active:border-b-0 text-center"
-                      >
-                        NÄCHSTE RUNDE (BAUEN)
-                      </button>
+                    {(() => {
+                      const matchWinner = buildBattleScores.P1 >= buildBattleTargetPointsConfig
+                        ? (customization.name || "Spieler 1")
+                        : buildBattleScores.P2 >= buildBattleTargetPointsConfig
+                          ? (customizationP2.name || "Spieler 2")
+                          : null;
+                      return (
+                        <>
+                          {matchWinner && (
+                            <div className="w-full text-center p-3 bg-green-950/60 border border-green-500/30 rounded-2xl mb-3 animate-pulse">
+                              <span className="text-[10px] font-arcade text-green-400 font-bold block uppercase tracking-wider mb-1">
+                                🏆 MATCH ENTSCHIEDEN! 🏆
+                              </span>
+                              <span className="text-[11px] font-bold text-white block">
+                                {matchWinner} gewinnt das Match ({buildBattleTargetPointsConfig} Punkte)!
+                              </span>
+                            </div>
+                          )}
 
-                      <button
-                        onClick={() => {
-                          setGameState(p => ({ ...p, status: "build_battle_setup" }));
-                        }}
-                        className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
-                      >
-                        LEVEL-MENÜ
-                      </button>
+                          <div className="flex flex-col gap-2 w-full">
+                            {matchWinner ? (
+                              <button
+                                onClick={() => {
+                                  setBuildBattleScores({ P1: 0, P2: 0 });
+                                  setBuildBattleRound(1);
+                                  const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+                                  setBuildBattleItems(newItems);
+                                  setBuildBattlePhase('select');
+                                  setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+                                  setBuildTurn(0);
+                                  setBuildBattlePlacedThisRound({});
+                                  setBuildBattlePlacedEntities([]);
+                                  setBuildBattleSelection({ P1: 0, P2: 1 });
+                                  setBuildBattleConfirmed({ P1: false, P2: false });
+                                  setBuildBattleRotation({ P1: false, P2: false });
+                                  setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+                                  setResetTrigger(p => p + 1);
+                                  setRespawnTrigger(p => p + 1);
+                                  setGameState(p => ({
+                                    ...p,
+                                    status: "build_battle_playing",
+                                  }));
+                                  showToast("Neues Match gestartet!");
+                                }}
+                                className="py-3 px-6 bg-green-500 hover:bg-green-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-green-700 active:translate-y-px active:border-b-0 text-center animate-bounce animate-pulse"
+                              >
+                                MATCH NEUSTARTEN
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+                                  setBuildBattleItems(newItems);
+                                  setBuildBattlePhase('select');
+                                  setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+                                  setBuildTurn(0);
+                                  setBuildBattleRound(p => p + 1);
+                                  setBuildBattlePlacedThisRound({});
+                                  setBuildBattleSelection({ P1: 0, P2: 1 });
+                                  setBuildBattleConfirmed({ P1: false, P2: false });
+                                  setBuildBattleRotation({ P1: false, P2: false });
+                                  setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+                                  setResetTrigger(p => p + 1);
+                                  setRespawnTrigger(p => p + 1);
+                                  setGameState(p => ({
+                                    ...p,
+                                    status: "build_battle_playing",
+                                  }));
+                                  showToast(`Start Runde ${buildBattleRound + 1}!`);
+                                }}
+                                className="py-3 px-6 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-yellow-700 active:translate-y-px active:border-b-0 text-center"
+                              >
+                                NÄCHSTE RUNDE (BAUEN)
+                              </button>
+                            )}
 
-                      <button
-                        onClick={() => {
-                          setGameState(p => ({ ...p, status: "menu" }));
-                        }}
-                        className="py-2.5 px-6 bg-red-950/25 hover:bg-red-900/40 border border-red-900/30 text-red-400 font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
-                      >
-                        HAUPTMENÜ
-                      </button>
-                    </div>
+                            <button
+                              onClick={() => {
+                                setGameState(p => ({ ...p, status: "build_battle_setup" }));
+                              }}
+                              className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                            >
+                              LEVEL-MENÜ
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setGameState(p => ({ ...p, status: "menu" }));
+                              }}
+                              className="py-2.5 px-6 bg-red-950/25 hover:bg-red-900/40 border border-red-900/30 text-red-400 font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                            >
+                              HAUPTMENÜ
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -11248,11 +12174,21 @@ const App: React.FC = () => {
                     const isBrawler =
                       gameState.status === "brawler_setup" ||
                       gameState.onlineMode === "brawler";
+                    const isBuildBattle =
+                      gameState.status === "build_battle_setup" ||
+                      gameState.onlineMode === "build_battle";
+
                     const process = (list: LevelData[]) => {
                       if (isVS) return filterVSLevels(list);
                       if (isBrawler) return filterBrawlerLevels(list);
                       return list;
                     };
+
+                    if (isBuildBattle) {
+                      return [
+                        { name: "Build Battle", levels: process(BUILD_BATTLE_LEVELS) }
+                      ];
+                    }
 
                     if (gameState.onlineMode === "editor") {
                       return [
@@ -11333,6 +12269,31 @@ const App: React.FC = () => {
                             blocksPlaced: 0,
                           }));
                           setMenuSelection(0);
+                        } else if (gameState.status === "build_battle_setup") {
+                          const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+                          setBuildBattleItems(newItems);
+                          setBuildBattleSelection({ P1: 0, P2: 1 });
+                          setBuildBattleConfirmed({ P1: false, P2: false });
+                          setBuildBattleRotation({ P1: false, P2: false });
+                          setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+                          setBuildBattlePhase('select');
+                          setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+                          setBuildTurn(0);
+                          setBuildBattleRound(1);
+                          setBuildBattleScores({ P1: 0, P2: 0 });
+                          setBuildBattlePlacedEntities([]);
+                          setBuildBattlePlacedThisRound({});
+                          setResetTrigger(p => p + 1);
+                          setRespawnTrigger(0);
+                          setGameState((p) => ({
+                            ...p,
+                            status: "build_battle_playing",
+                            levelDeaths: 0,
+                            levelTime: 0,
+                            collectedCoins: [],
+                            deaths: 0,
+                            blocksPlaced: 0,
+                          }));
                         }
                       }
                     }

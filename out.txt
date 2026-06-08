@@ -1,15 +1,18 @@
-53:  ChatMessage,
-889:const Chat: React.FC<{
-890:  messages: ChatMessage[];
-925:            Lobby Chat
-1691:  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-2800:      onlineService.sendChatMessage(
-2842:      onlineService.sendChatMessage(
-4575:    onlineService.onChatUpdate = (msgs) => {
-4576:      setChatMessages([...msgs]);
-4601:        setChatMessages((prev) => [
-4722:      onlineService.onChatUpdate = undefined;
-8485:                        <Chat
-8488:                            onlineService.sendChatMessage(text);
-8502:                        {/* Quick Chat Pings */}
-8508:                                onlineService.sendChatMessage(ping)
+335:        e.type === "wall" ||
+336:        e.type === "ice" ||
+337:        e.type === "slime" ||
+338:        e.type === "fragile"
+1938:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
+1943:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
+2597:      .filter((e) => e.type === "coin")
+2599:    const teleporters = levelRef.current.entities.filter((e) => e.type === "teleport");
+2608:      const isDynamic = e.type === "moving_platform_h" || 
+2610:                        e.type === "moving_platform_v" || 
+2612:                        e.type === "fragile" || 
+2622:      if (e.type === "moving_platform_h" || e.movingH) {
+2626:      } else if (e.type === "moving_platform_v" || e.movingV) {
+2632:      if (e.type === "fragile" || e.fragile) {
+2765:              (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
+2866:            (e) => e.type === "powerup_spawner",
+4665:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
+6510:            ? levelRef.current.entities.filter((e) => e.type === "coin").length

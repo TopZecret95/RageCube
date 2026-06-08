@@ -15,6 +15,27 @@ export function drawPlayerEyes(
     ctx.translate(-(px + w / 2), -(py + h / 2));
   }
 
+  if ((p as any).dead) {
+    ctx.strokeStyle = "#ef4444"; // red X X eyes
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    // Left eye X
+    ctx.moveTo(px + 3, py + 4);
+    ctx.lineTo(px + 7, py + 8);
+    ctx.moveTo(px + 7, py + 4);
+    ctx.lineTo(px + 3, py + 8);
+    
+    // Right eye X
+    ctx.moveTo(px + w - 7, py + 4);
+    ctx.lineTo(px + w - 3, py + 8);
+    ctx.moveTo(px + w - 3, py + 4);
+    ctx.lineTo(px + w - 7, py + 8);
+    
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
   ctx.fillStyle = "white";
   if (p.eyes === "cyclops") {
     ctx.fillRect(px + w / 2 - 4, py + 4, 8, 8);

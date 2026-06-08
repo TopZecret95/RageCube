@@ -47,6 +47,7 @@ export interface GameCanvasProps {
   geometryDashMode?: boolean;
   gdSpeedMode?: number;
   levelDeaths?: number;
+  suppressCountdown?: boolean;
 }
 
 export interface TempBlock extends Entity {
