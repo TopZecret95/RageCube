@@ -88,6 +88,9 @@ const BUILD_BATTLE_POSSIBLE_ITEMS = [
   // Neue Blöcke / Erweiterung:
   { type: 'fan', label: 'VENTILATOR', icon: '🌬️', args: { w: 60, h: 30 } },
   { type: 'orbit', label: 'ROTOR ROTIEREND', icon: '🎡', args: { w: 60, h: 30, moveRange: 80, moveSpeed: 0.0025 } },
+  { type: 'bomb', label: 'BOMBE', icon: '💣', args: { w: 30, h: 30 } },
+  { type: 'glue', label: 'KLEBER', icon: '🍯', args: { w: 30, h: 30 } },
+  { type: 'coin', label: 'MÜNZE', icon: '🪙', args: { w: 30, h: 30 } },
   // Eigenschaften-Blocker (modifiers):
   { type: 'modifier_moving_platform_h', label: 'MOD: H-BEWEGUNG', icon: '⚡↔️', isModifier: true, args: { w: 30, h: 30 } },
   { type: 'modifier_moving_platform_v', label: 'MOD: V-BEWEGUNG', icon: '⚡↕️', isModifier: true, args: { w: 30, h: 30 } },
@@ -121,6 +124,9 @@ const getBbItemTranslation = (label: string, lang: Language): string => {
       case 'DASH': return 'DASH';
       case 'VENTILATOR': return 'FAN';
       case 'ROTOR ROTIEREND': return 'ROTATING ROTOR';
+      case 'BOMBE': return 'BOMB';
+      case 'KLEBER': return 'GLUE';
+      case 'MÜNZE': return 'COIN';
       case 'MOD: H-BEWEGUNG': return 'MOD: H-MOTION';
       case 'MOD: V-BEWEGUNG': return 'MOD: V-MOTION';
       case 'MOD: EIS': return 'MOD: ICE';
@@ -152,6 +158,9 @@ const getBbItemTranslation = (label: string, lang: Language): string => {
       case 'DASH': return 'DASH';
       case 'VENTILATOR': return 'VENTILADOR';
       case 'ROTOR ROTIEREND': return 'ROTOR ROTATORIO';
+      case 'BOMBE': return 'BOMBA';
+      case 'KLEBER': return 'PEGAMENTO';
+      case 'MÜNZE': return 'MONEDA';
       case 'MOD: H-BEWEGUNG': return 'MOD: MOVER H';
       case 'MOD: V-BEWEGUNG': return 'MOD: MOVER V';
       case 'MOD: EIS': return 'MOD: HIELO';
@@ -1783,6 +1792,13 @@ const App: React.FC = () => {
   const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2 (may be unused now)
   const [selectedBuildItem, setSelectedBuildItem] = useState<string>('wall');
   const [buildBattleScores, setBuildBattleScores] = useState<Record<string, number>>({ P1: 0, P2: 0 });
+  const [lastBuildBattleRoundStats, setLastBuildBattleRoundStats] = useState<{
+    winner: string | null;
+    p1Coins: number;
+    p2Coins: number;
+    p1ScoreAdded: number;
+    p2ScoreAdded: number;
+  } | null>(null);
   const [buildBattleScoresOnline, setBuildBattleScoresOnline] = useState<Record<string, number>>({});
   const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
   const [buildBattlePlacedEntities, setBuildBattlePlacedEntities] = useState<any[]>([]);
@@ -1900,8 +1916,20 @@ const App: React.FC = () => {
         setBuildBattleConfirmed({ P1: false, P2: false });
         // Place the entities
         const newEntities: any[] = [];
-        if (buildBattlePlacedThisRound.P1) newEntities.push(buildBattlePlacedThisRound.P1);
-        if (buildBattlePlacedThisRound.P2) newEntities.push(buildBattlePlacedThisRound.P2);
+        if (buildBattlePlacedThisRound.P1) {
+          const ent = buildBattlePlacedThisRound.P1;
+          newEntities.push({
+            ...ent,
+            id: ent.id || `bb_P1_${buildBattleRound}_${Date.now()}_${ent.type}_${ent.x}_${ent.y}_${Math.floor(Math.random()*1000)}`
+          });
+        }
+        if (buildBattlePlacedThisRound.P2) {
+          const ent = buildBattlePlacedThisRound.P2;
+          newEntities.push({
+            ...ent,
+            id: ent.id || `bb_P2_${buildBattleRound}_${Date.now()}_${ent.type}_${ent.x}_${ent.y}_${Math.floor(Math.random()*1000)}`
+          });
+        }
         setBuildBattlePlacedEntities(prev => [...prev, ...newEntities]);
         // Rebuild level dynamically? GameCanvas takes `level`, we can override there
       } else if (buildBattlePhase === 'countdown') {
@@ -2025,6 +2053,85 @@ const App: React.FC = () => {
       return false;
     };
 
+    const applyBomb = (player: 'P1' | 'P2', px: number, py: number) => {
+      const overlapW = 30;
+      const overlapH = 30;
+
+      // 1. Try to find in buildBattlePlacedEntities
+      let pIdx = buildBattlePlacedEntities.findIndex(ent => 
+        px < ent.x + ent.w && px + overlapW > ent.x &&
+        py < ent.y + ent.h && py + overlapH > ent.y
+      );
+
+      if (pIdx !== -1) {
+        const ent = buildBattlePlacedEntities[pIdx];
+        setBuildBattlePlacedEntities(prev => {
+          const cloned = [...prev];
+          if ((ent.w === 60 && ent.h === 30) || (ent.w === 30 && ent.h === 60)) {
+            const target = { ...ent };
+            if (ent.w === 60 && ent.h === 30) {
+              target.w = 30;
+              if (px <= ent.x + 15) {
+                target.x = ent.x + 30;
+              }
+            } else {
+              target.h = 30;
+              if (py <= ent.y + 15) {
+                target.y = ent.y + 30;
+              }
+            }
+            cloned[pIdx] = target;
+            showToast(`${player}: Block verkleinert auf 30x30!`);
+          } else {
+            cloned.splice(pIdx, 1);
+            showToast(`${player}: Block zerstoert!`);
+          }
+          return cloned;
+        });
+        setBuildBattleConfirmed(p => ({ ...p, [player]: true }));
+        return true;
+      }
+
+      // 2. Try to find in level.entities
+      let lIdx = level.entities?.findIndex(ent => 
+        (ent.type === 'wall' || ent.type === 'ice' || ent.type === 'slime' || ent.type === 'hazard' || ent.type === 'trampoline' || ent.type === 'moving_platform_h' || ent.type === 'moving_platform_v' || ent.type === 'fan' || ent.type === 'orbit' || ent.type === 'glue') &&
+        px < ent.x + ent.w && px + overlapW > ent.x &&
+        py < ent.y + ent.h && py + overlapH > ent.y
+      );
+
+      if (lIdx !== undefined && lIdx !== -1) {
+        const ent = level.entities[lIdx];
+        setLevel(prev => {
+          const updated = [...(prev.entities || [])];
+          if ((ent.w === 60 && ent.h === 30) || (ent.w === 30 && ent.h === 60)) {
+            const target = { ...ent };
+            if (ent.w === 60 && ent.h === 30) {
+              target.w = 30;
+              if (px <= ent.x + 15) {
+                target.x = ent.x + 30;
+              }
+            } else {
+              target.h = 30;
+              if (py <= ent.y + 15) {
+                target.y = ent.y + 30;
+              }
+            }
+            updated[lIdx] = target;
+            showToast(`${player}: Level-Block verkleinert auf 30x30!`);
+          } else {
+            updated.splice(lIdx, 1);
+            showToast(`${player}: Level-Block zerstoert!`);
+          }
+          return { ...prev, entities: updated };
+        });
+        setBuildBattleConfirmed(p => ({ ...p, [player]: true }));
+        return true;
+      }
+
+      showToast(`${player}: Platziere die Bombe auf einen Block!`);
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (buildBattleIntroCountdown > 0) return;
 
@@ -2119,7 +2226,9 @@ const App: React.FC = () => {
                if (buildBattleRotation.P1) {
                  const tmp = w; w = h; h = tmp;
                }
-               if (isTooClose(px, py, w, h)) {
+               if (itm.type === 'bomb') {
+                 applyBomb('P1', px, py);
+               } else if (isTooClose(px, py, w, h)) {
                  showToast("P1: Zu nah an Start/Ziel!");
                } else {
                  if (itm.isModifier) {
@@ -2148,7 +2257,9 @@ const App: React.FC = () => {
                if (buildBattleRotation.P2) {
                  const tmp = w; w = h; h = tmp;
                }
-               if (isTooClose(px, py, w, h)) {
+               if (itm.type === 'bomb') {
+                 applyBomb('P2', px, py);
+               } else if (isTooClose(px, py, w, h)) {
                  showToast("P2: Zu nah an Start/Ziel!");
                } else {
                  if (itm.isModifier) {
@@ -5633,10 +5744,55 @@ const App: React.FC = () => {
       livesStats?: Record<string, number>,
       exactTime?: number,
       isLocal?: boolean,
+      broughtCoins?: Record<string, string[]>,
     ) => {
       audio.playWin();
 
       if (gameState.status === "build_battle_playing") {
+        let p1Coins = 0;
+        let p2Coins = 0;
+        let p1ScoreAdded = 0;
+        let p2ScoreAdded = 0;
+
+        let winnerKey: "P1" | "P2" | null = null;
+        if (winnerName && winnerName !== "EVERYONE_FINISHED" && winnerName !== "NIEMAND") {
+          const customName = customization.name || "P1";
+          const isPlayer1 = winnerName === customName || winnerName === "Player 1" || winnerName === "P1" || (winnerName && winnerName.toLowerCase().includes("1"));
+          winnerKey = isPlayer1 ? "P1" : "P2";
+        }
+
+        if (winnerKey) {
+          if (winnerKey === "P1") p1ScoreAdded += 1;
+          if (winnerKey === "P2") p2ScoreAdded += 1;
+        }
+
+        const p1CoinsBrought = broughtCoins?.["P1"] || [];
+        const p2CoinsBrought = broughtCoins?.["P2"] || [];
+        p1Coins = p1CoinsBrought.length;
+        p2Coins = p2CoinsBrought.length;
+        p1ScoreAdded += p1Coins;
+        p2ScoreAdded += p2Coins;
+
+        setLastBuildBattleRoundStats({
+          winner: winnerName || null,
+          p1Coins,
+          p2Coins,
+          p1ScoreAdded,
+          p2ScoreAdded,
+        });
+
+        setBuildBattleScores(prev => ({
+          P1: (prev.P1 || 0) + p1ScoreAdded,
+          P2: (prev.P2 || 0) + p2ScoreAdded,
+        }));
+
+        const allBroughtCoinIds = [...p1CoinsBrought, ...p2CoinsBrought];
+        if (allBroughtCoinIds.length > 0) {
+          setBuildBattlePlacedEntities(prev => 
+            prev.filter(ent => !allBroughtCoinIds.includes(ent.id))
+          );
+        }
+
         if (!winnerName) {
            showToast("Alle sind gestorben! Keine Punkte.");
            setGameState(p => ({ ...p, status: "build_battle_won", winner: "NIEMAND" }));
@@ -5644,14 +5800,11 @@ const App: React.FC = () => {
            showToast("Zu einfach! Alle im Ziel! Keine Punkte.");
            setGameState(p => ({ ...p, status: "build_battle_won", winner: "NIEMAND (ZU EINFACH)" }));
         } else {
-           const customName = customization.name || "P1";
-           const isPlayer1 = winnerName === customName || winnerName === "Player 1" || winnerName === "P1" || (winnerName && winnerName.toLowerCase().includes("1"));
-           const winnerKey = isPlayer1 ? "P1" : "P2";
-           setBuildBattleScores(prev => ({
-             ...prev,
-             [winnerKey]: (prev[winnerKey] || 0) + 1
-           }));
-           showToast(`Ziel erreicht! Punkt für ${winnerName}!`);
+           if (p1Coins > 0 || p2Coins > 0) {
+             showToast(`Rundensieg: ${winnerName}! Münzen ins Ziel gebracht: P1 (+${p1Coins}), P2 (+${p2Coins})`);
+           } else {
+             showToast(`Ziel erreicht! Punkt für ${winnerName}!`);
+           }
            setGameState(p => ({
              ...p,
              status: "build_battle_won",
@@ -7880,7 +8033,7 @@ const App: React.FC = () => {
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              className="w-full max-w-4xl bg-neutral-950 border-2 border-yellow-500 rounded-3xl flex flex-col gap-4 p-6 shadow-[0_0_50px_rgba(234,179,8,0.25)] max-h-[90vh]"
+                              className="w-full max-w-5xl bg-neutral-950 border-2 border-yellow-500 rounded-3xl flex flex-col gap-4 p-6 shadow-[0_0_50px_rgba(234,179,8,0.25)] max-h-[90vh]"
                             >
                               {/* Modal Header */}
                               <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
@@ -7968,6 +8121,18 @@ const App: React.FC = () => {
                                     </div>
                                   </div>
 
+                                  {/* Punkteverteilung Info Box */}
+                                  <div className="bg-amber-950/20 border border-amber-500/30 p-3 rounded-xl flex flex-col gap-1.5">
+                                    <div className="text-[9px] text-amber-400 font-arcade uppercase tracking-wider flex items-center gap-1.5 font-bold">
+                                      🪙 PUNKTEVERTEILUNG & REGELN
+                                    </div>
+                                    <div className="text-[8px] text-neutral-300 font-medium leading-relaxed flex flex-col gap-1">
+                                      <p>• <strong className="text-amber-300">Rundensieg:</strong> Wer das Ziel zuerst lebend erreicht, bekommt <strong className="text-green-400 font-arcade font-bold font-mono text-[9px]">+1 Pkt</strong>.</p>
+                                      <p>• <strong className="text-amber-300">Münzen Bonus:</strong> Jede eingesammelte Münze, die <strong className="text-neutral-100">lebend ins Ziel gebracht</strong> wird, gibt sofort <strong className="text-yellow-400 shadow-sm font-arcade font-bold font-mono text-[9px]">+1 Extra-Pkt</strong>!</p>
+                                      <p>• <strong className="text-amber-300">Verlust auf Tod:</strong> Stirbst du bei der Jagd nach einer Münze oder sammelst sie nicht ein, bleibt sie an ihrer Stelle platziert. Münzen verschwinden nur, wenn sie ins Ziel getragen werden.</p>
+                                    </div>
+                                  </div>
+
                                   {/* Custom Presets Section */}
                                   <div className="border-t border-neutral-800/80 pt-3 mt-1">
                                     <div className="text-[9px] text-yellow-500/95 font-arcade tracking-wide uppercase mb-1.5 flex items-center justify-between">
@@ -7978,7 +8143,7 @@ const App: React.FC = () => {
                                     </div>
                                     
                                     {/* Save form */}
-                                    <div className="flex gap-1.5 mb-3">
+                                    <div className="flex gap-1.5 mb-3 w-full">
                                       <input
                                         type="text"
                                         placeholder={buildBattleCustomPresets.length >= 5 ? (t.bbPresetLimitPlaceholder || "Limit von 5 erreicht!") : (t.bbPresetPlaceholder || "Name der Speicherung...")}
@@ -7986,7 +8151,7 @@ const App: React.FC = () => {
                                         onChange={(e) => setNewPresetName(e.target.value)}
                                         maxLength={25}
                                         disabled={buildBattleCustomPresets.length >= 5}
-                                        className="flex-1 bg-black/40 border border-neutral-800 text-[9px] font-bold py-1 px-2.5 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex-1 min-w-0 bg-black/40 border border-neutral-800 text-[9px] font-bold py-1.5 px-2.5 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                                       />
                                       <button
                                         onClick={() => {
@@ -8017,7 +8182,7 @@ const App: React.FC = () => {
                                           setNewPresetName("");
                                           showToast(`"${newPreset.name}" ${t.toastSaved || "gespeichert!"}`);
                                         }}
-                                        className={`py-1 px-3 border text-neutral-950 font-arcade text-[8px] font-black rounded-lg transition-all cursor-pointer shadow ${
+                                        className={`shrink-0 py-1.5 px-2.5 border text-neutral-950 font-arcade text-[8px] font-black rounded-lg transition-all cursor-pointer shadow ${
                                           buildBattleCustomPresets.length >= 5
                                             ? "bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed opacity-50"
                                             : "bg-yellow-500 hover:bg-yellow-400 border-yellow-600"
@@ -8145,7 +8310,7 @@ const App: React.FC = () => {
                                       },
                                       {
                                         title: t.bbCatPhysics || "🌌 Physik & Mechanik",
-                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['trampoline', 'moving_platform_h', 'moving_platform_v', 'gravity_reverse', 'gravity_zero', 'teleport', 'orbit'].includes(item.type))
+                                        items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['trampoline', 'moving_platform_h', 'moving_platform_v', 'gravity_reverse', 'gravity_zero', 'teleport', 'orbit', 'bomb', 'glue'].includes(item.type))
                                       },
                                       {
                                         title: t.bbCatPowerups || "⚡ Power-ups",
@@ -8197,7 +8362,7 @@ const App: React.FC = () => {
                                           </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-1">
+                                        <div className="grid grid-cols-2 gap-1.5">
                                           {cat.items.map((item) => {
                                             const isActive = buildBattleAllowedItems[item.label] !== false;
                                             return (
@@ -8218,15 +8383,17 @@ const App: React.FC = () => {
                                                     }
                                                   });
                                                 }}
-                                                className={`flex items-center gap-1.5 p-1 text-[8px] sm:text-[9px] font-bold rounded border transition-all text-left cursor-pointer ${
+                                                className={`flex items-center justify-between gap-1 p-1.5 rounded border transition-all text-left cursor-pointer min-h-[34px] ${
                                                   isActive
                                                     ? "bg-green-950/40 border-green-500/30 text-green-400 font-black shadow-[0_0_10px_rgba(34,197,94,0.1)]"
                                                     : "bg-black/30 border-neutral-800/60 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300"
                                                 }`}
                                               >
-                                                <span className="text-[10px] w-4 text-center">{item.icon}</span>
-                                                <span className="truncate flex-1 min-w-0 pr-1 text-[8px] sm:text-[9px] uppercase font-arcade tracking-tight">{getBbItemTranslation(item.label, lang)}</span>
-                                                <span className="text-[8px] text-right">{isActive ? "🟢" : "⚫"}</span>
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                  <span className="text-[11px] w-4 shrink-0 text-center">{item.icon}</span>
+                                                  <span className={`text-[8px] sm:text-[9px] font-sans font-extrabold uppercase tracking-wide leading-tight break-words flex-1 min-w-0 ${isActive ? "text-green-400" : "text-neutral-400"}`}>{getBbItemTranslation(item.label, lang)}</span>
+                                                </div>
+                                                <span className="text-[8px] shrink-0 text-right select-none ml-1">{isActive ? "🟢" : "⚫"}</span>
                                               </button>
                                             );
                                           })}
@@ -10850,7 +11017,7 @@ const App: React.FC = () => {
                       RUNDE {buildBattleRound} BEENDET
                     </div>
 
-                    <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 mb-6 flex flex-col gap-3">
+                    <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 mb-4 flex flex-col gap-3">
                       <div className="text-[9px] text-yellow-500/80 font-arcade uppercase tracking-wider text-center border-b border-neutral-800/80 pb-2">
                         PUNKTESTAND
                       </div>
@@ -10869,6 +11036,54 @@ const App: React.FC = () => {
                         <span className="text-amber-400 text-lg font-bold font-arcade">{buildBattleScores.P2}</span>
                       </div>
                     </div>
+
+                    {lastBuildBattleRoundStats && (
+                      <div className="w-full bg-neutral-950/80 border border-neutral-900/60 rounded-2xl p-3.5 mb-6 flex flex-col gap-2 shadow-[inset_0_0_15px_rgba(0,0,0,0.6)]">
+                        <div className="text-[8px] text-yellow-500 font-arcade uppercase tracking-wider text-center border-b border-neutral-900 pb-1.5 mb-1">
+                          Runden-Statistik & Ränge
+                        </div>
+                        <div className="text-[9px] text-neutral-300 leading-relaxed font-arcade flex flex-col gap-2">
+                          {/* Round Winner */}
+                          <div className="flex justify-between items-center text-neutral-400">
+                            <span>🏆 Rundensieg (+1 Pkt):</span>
+                            <span className="font-bold">
+                              {lastBuildBattleRoundStats.winner && lastBuildBattleRoundStats.winner !== "NIEMAND" && lastBuildBattleRoundStats.winner !== "EVERYONE_FINISHED" ? (
+                                <span className={lastBuildBattleRoundStats.winner.includes("1") || lastBuildBattleRoundStats.winner === "P1" ? "text-cyan-400" : "text-amber-400"}>
+                                  {lastBuildBattleRoundStats.winner}
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">Keiner</span>
+                              )}
+                            </span>
+                          </div>
+
+                          {/* Coins P1 */}
+                          <div className="flex justify-between items-center text-neutral-400">
+                            <span className="flex items-center gap-1">🪙 P1 Münzen gerettet:</span>
+                            <span className="text-cyan-400 font-bold font-mono">
+                              {lastBuildBattleRoundStats.p1Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p1Coins} Pkt)</span>
+                            </span>
+                          </div>
+
+                          {/* Coins P2 */}
+                          <div className="flex justify-between items-center text-neutral-400">
+                            <span className="flex items-center gap-1">🪙 P2 Münzen gerettet:</span>
+                            <span className="text-amber-400 font-bold font-mono">
+                              {lastBuildBattleRoundStats.p2Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p2Coins} Pkt)</span>
+                            </span>
+                          </div>
+
+                          {/* Total Added */}
+                          <div className="flex justify-between items-center border-t border-neutral-900 pt-2 text-neutral-200 mt-1 uppercase text-[7px] tracking-wider font-extrabold">
+                            <span>Rundengewinn:</span>
+                            <div className="flex gap-2.5">
+                              <span className="text-cyan-400 font-mono font-bold">P1: +{lastBuildBattleRoundStats.p1ScoreAdded}</span>
+                              <span className="text-amber-400 font-mono font-bold">P2: +{lastBuildBattleRoundStats.p2ScoreAdded}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {(() => {
                       const matchWinner = buildBattleScores.P1 >= buildBattleTargetPointsConfig

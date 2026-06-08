@@ -170,6 +170,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const cameraRef = useRef({ x: 0, y: 0 });
   const cameraZoom = useRef(1.0);
   const levelRef = useRef(level);
+  const gluedBFSMapRef = useRef<{
+    time: number;
+    dt: number;
+    connections: Map<string, any>;
+  }>({
+    time: -1,
+    dt: -1,
+    connections: new Map(),
+  });
   useEffect(() => {
     levelRef.current = level;
   }, [level]);
@@ -574,15 +583,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const triggerWin = useCallback(
     (winnerName?: string, isLocalFinish: boolean = true) => {
       const livesStats: Record<string, number> = {};
+      const broughtCoins: Record<string, string[]> = {};
       players.current.forEach((p) => {
         if (gameMode === "brawler") {
           if (p.lives !== undefined) livesStats[p.name] = p.lives;
         } else {
           livesStats[p.name] = p.deaths || 0;
         }
+        if (p.finished && !p.dead && p.collectedCoinIds && p.collectedCoinIds.length > 0) {
+          broughtCoins[p.name] = [...p.collectedCoinIds];
+        }
       });
       const exactTime = (Date.now() - levelStartTime.current) / 1000;
-      onWin(winnerName, livesStats, exactTime, isLocalFinish);
+      onWin(winnerName, livesStats, exactTime, isLocalFinish, broughtCoins);
     },
     [onWin, gameMode],
   );
@@ -2607,7 +2620,71 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     let accumulator = 0;
     const PHYSICS_STEP = 1000 / 60;
 
+    const getGluedRoot = (entityCheck: Entity, time: number, dt: number): Entity | null => {
+      const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+      if (currentEntities.length === 0) return null;
+
+      if (gluedBFSMapRef.current.time !== time || gluedBFSMapRef.current.dt !== dt) {
+        gluedBFSMapRef.current.time = time;
+        gluedBFSMapRef.current.dt = dt;
+        gluedBFSMapRef.current.connections.clear();
+
+        const connections = gluedBFSMapRef.current.connections;
+        const queue: { ent: Entity; root: Entity }[] = [];
+
+        const isAdjacent = (e1: Entity, e2: Entity) => {
+          const pad = 2; // tolerating adjacent positions within 2px
+          const w1 = e1.w || 30;
+          const h1 = e1.h || 30;
+          const w2 = e2.w || 30;
+          const h2 = e2.h || 30;
+          return (
+            e1.x < e2.x + w2 + pad &&
+            e1.x + w1 > e2.x - pad &&
+            e1.y < e2.y + h2 + pad &&
+            e1.y + h1 > e2.y - pad
+          );
+        };
+
+        // Identify moving platforms as root engines
+        for (const ent of currentEntities) {
+          const isRoot =
+            ent.type === "moving_platform_h" ||
+            ent.movingH ||
+            ent.type === "moving_platform_v" ||
+            ent.movingV ||
+            (ent.type as any) === "orbit";
+
+          if (isRoot) {
+            const id = ent.id || `${ent.x}_${ent.y}`;
+            queue.push({ ent, root: ent });
+            connections.set(id, ent);
+          }
+        }
+
+        let head = 0;
+        while (head < queue.length) {
+          const { ent, root } = queue[head++];
+
+          for (const neighbor of currentEntities) {
+            const neighId = neighbor.id || `${neighbor.x}_${neighbor.y}`;
+            if (connections.has(neighId)) continue;
+
+            const hasGlue = ent.type === "glue" || neighbor.type === "glue";
+            if (hasGlue && isAdjacent(ent, neighbor)) {
+              connections.set(neighId, root);
+              queue.push({ ent: neighbor, root });
+            }
+          }
+        }
+      }
+
+      const id = entityCheck.id || `${entityCheck.x}_${entityCheck.y}`;
+      return gluedBFSMapRef.current.connections.get(id) || null;
+    };
+
     const getDynamicEntity = (e: Entity, time: number, dt: number) => {
+      const gluedRoot = getGluedRoot(e, time, dt);
       // Only copy if it's dynamic
       const isDynamic = e.type === "moving_platform_h" || 
                         e.movingH || 
@@ -2616,9 +2693,57 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                         (e.type as any) === "orbit" ||
                         e.type === "fragile" || 
                         e.fragile ||
-                        collapsingStates.current[e.id || `${e.x}_${e.y}`];
+                        collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
+                        !!gluedRoot;
 
       if (!isDynamic) return e;
+
+      if (gluedRoot) {
+        const speed = gluedRoot.moveSpeed ?? 0.002;
+        const range = gluedRoot.moveRange ?? 100;
+        let rootX = gluedRoot.x;
+        let rootY = gluedRoot.y;
+        let rdx = 0;
+        let rdy = 0;
+
+        if (gluedRoot.type === "moving_platform_h" || gluedRoot.movingH) {
+          const offset = Math.sin(time * speed) * range;
+          const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+          rootX = gluedRoot.x + offset;
+          rdx = offset - prevOffset;
+        } else if (gluedRoot.type === "moving_platform_v" || gluedRoot.movingV) {
+          const offset = Math.sin(time * speed) * range;
+          const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+          rootY = gluedRoot.y + offset;
+          rdy = offset - prevOffset;
+        } else if ((gluedRoot.type as any) === "orbit") {
+          const oSpeed = gluedRoot.moveSpeed ?? 0.0025;
+          const oRange = gluedRoot.moveRange ?? 80;
+          const angle = time * oSpeed;
+          const prevAngle = (time - 16.66 * dt) * oSpeed;
+          const offsetX = Math.cos(angle) * oRange;
+          const offsetY = Math.sin(angle) * oRange;
+          const prevOffsetX = Math.cos(prevAngle) * oRange;
+          const prevOffsetY = Math.sin(prevAngle) * oRange;
+          rootX = gluedRoot.x + offsetX;
+          rootY = gluedRoot.y + offsetY;
+          rdx = offsetX - prevOffsetX;
+          rdy = offsetY - prevOffsetY;
+        }
+
+        const offsetX = rootX - gluedRoot.x;
+        const offsetY = rootY - gluedRoot.y;
+
+        return {
+          ...e,
+          x: e.x + offsetX,
+          y: e.y + offsetY,
+          dx: rdx,
+          dy: rdy,
+          baseX: e.x,
+          baseY: e.y,
+        };
+      }
 
       const speed = e.moveSpeed ?? 0.002;
       const range = e.moveRange ?? 100;
@@ -5213,7 +5338,82 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         let skipDefaultFill = false;
 
-        if ((ent.type as any) === "fan") {
+        if (ent.type === "bomb") {
+          skipDefaultFill = true;
+          // Dark background base
+          ctx.fillStyle = "#1f2937";
+          ctx.fillRect(drawX, drawY, ent.w, ent.h);
+          ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+
+          // DRAW A BOMB
+          const cx = drawX + ent.w / 2;
+          const cy = drawY + ent.h / 2;
+          const r = Math.min(ent.w, ent.h) * 0.35;
+
+          // Fuse
+          ctx.strokeStyle = "#d97706";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - r);
+          ctx.quadraticCurveTo(cx + 4, cy - r - 6, cx + 8, cy - r - 8);
+          ctx.stroke();
+
+          // Spark
+          ctx.fillStyle = "#f97316";
+          ctx.beginPath();
+          ctx.arc(cx + 8, cy - r - 8, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#facc15";
+          ctx.beginPath();
+          ctx.arc(cx + 8, cy - r - 8, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Bomb body
+          ctx.fillStyle = "#111827";
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#374151";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Red outline warning
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (ent.type === "glue") {
+          skipDefaultFill = true;
+          // semi-transparent sticky lime base
+          ctx.fillStyle = "rgba(132, 204, 22, 0.25)";
+          ctx.fillRect(drawX, drawY, ent.w, ent.h);
+
+          // Slimy borders
+          ctx.strokeStyle = "rgba(163, 230, 53, 0.8)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(drawX + 1, drawY + 1, ent.w - 2, ent.h - 2);
+
+          // Internal sticky lines / gooey pattern
+          ctx.strokeStyle = "rgba(132, 204, 22, 0.5)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(drawX + 3, drawY + 3);
+          ctx.lineTo(drawX + ent.w - 3, drawY + ent.h - 3);
+          ctx.moveTo(drawX + ent.w - 3, drawY + 3);
+          ctx.lineTo(drawX + 3, drawY + ent.h - 3);
+          ctx.stroke();
+
+          // Sticky gel bubbles
+          ctx.fillStyle = "rgba(190, 242, 100, 0.9)";
+          ctx.beginPath();
+          ctx.arc(drawX + ent.w * 0.35, drawY + ent.h * 0.45, 3, 0, Math.PI * 2);
+          ctx.arc(drawX + ent.w * 0.65, drawY + ent.h * 0.65, 2, 0, Math.PI * 2);
+          ctx.arc(drawX + ent.w * 0.5, drawY + ent.h * 0.25, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if ((ent.type as any) === "fan") {
           skipDefaultFill = true;
           // Draw metal box
           ctx.fillStyle = "#4b5563"; 
