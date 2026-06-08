@@ -96,6 +96,73 @@ const BUILD_BATTLE_POSSIBLE_ITEMS = [
   { type: 'modifier_fragile', label: 'MOD: BRÖCKELN', icon: '⚡🪨', isModifier: true, args: { w: 30, h: 30 } }
 ];
 
+const getBbItemTranslation = (label: string, lang: Language): string => {
+  if (lang === Language.EN) {
+    switch (label) {
+      case 'WAND': return 'WALL';
+      case 'WAND (KLEIN)': return 'WALL (SMALL)';
+      case 'WAND (LANG)': return 'WALL (LONG)';
+      case 'WAND (GROSS)': return 'WALL (LARGE)';
+      case 'STACHELN': return 'SPIKES';
+      case 'STACHELN (KLEIN)': return 'SPIKES (SMALL)';
+      case 'STACHELN (LANG)': return 'SPIKES (LONG)';
+      case 'EISBLOCK': return 'ICE BLOCK';
+      case 'EISBLOCK (KLEIN)': return 'ICE BLOCK (SMALL)';
+      case 'SCHLEIM': return 'SLIME';
+      case 'SCHLEIM (KLEIN)': return 'SLIME (SMALL)';
+      case 'TRAMPOLIN': return 'TRAMPOLINE';
+      case 'BRÖCKEL': return 'FRAGILE';
+      case 'LIFT (H)': return 'ELEVATOR (H)';
+      case 'LIFT (V)': return 'ELEVATOR (V)';
+      case 'GRAV (UMKEHR)': return 'GRAVITY (REVERSE)';
+      case 'GRAV (SCHWERELOS)': return 'GRAVITY (LOW)';
+      case 'TELEPORTER': return 'TELEPORTER';
+      case 'DOPPELSPRUNG': return 'DOUBLE JUMP';
+      case 'DASH': return 'DASH';
+      case 'VENTILATOR': return 'FAN';
+      case 'ROTOR ROTIEREND': return 'ROTATING ROTOR';
+      case 'MOD: H-BEWEGUNG': return 'MOD: H-MOTION';
+      case 'MOD: V-BEWEGUNG': return 'MOD: V-MOTION';
+      case 'MOD: EIS': return 'MOD: ICE';
+      case 'MOD: SCHLEIM': return 'MOD: SLIME';
+      case 'MOD: BRÖCKELN': return 'MOD: FRAGILE';
+      default: return label;
+    }
+  } else if (lang === Language.ES) {
+    switch (label) {
+      case 'WAND': return 'PARED';
+      case 'WAND (KLEIN)': return 'PARED (PEQ)';
+      case 'WAND (LANG)': return 'PARED (LARGA)';
+      case 'WAND (GROSS)': return 'PARED (GRANDE)';
+      case 'STACHELN': return 'PINCHOS';
+      case 'STACHELN (KLEIN)': return 'PINCHOS (PEQ)';
+      case 'STACHELN (LANG)': return 'PINCHOS (LARGOS)';
+      case 'EISBLOCK': return 'BLOQUE DE HIELO';
+      case 'EISBLOCK (KLEIN)': return 'HIELO (PEQUEÑO)';
+      case 'SCHLEIM': return 'BABA';
+      case 'SCHLEIM (KLEIN)': return 'BABA (PEQUEÑA)';
+      case 'TRAMPOLIN': return 'TRAMPOLÍN';
+      case 'BRÖCKEL': return 'FRÁGIL';
+      case 'LIFT (H)': return 'ASCENSOR (H)';
+      case 'LIFT (V)': return 'ASCENSOR (V)';
+      case 'GRAV (UMKEHR)': return 'GRAVEDAD (INV)';
+      case 'GRAV (SCHWERELOS)': return 'SIN GRAVEDAD';
+      case 'TELEPORTER': return 'TELEPORTADOR';
+      case 'DOPPELSPRUNG': return 'DOBLE SALTO';
+      case 'DASH': return 'DASH';
+      case 'VENTILATOR': return 'VENTILADOR';
+      case 'ROTOR ROTIEREND': return 'ROTOR ROTATORIO';
+      case 'MOD: H-BEWEGUNG': return 'MOD: MOVER H';
+      case 'MOD: V-BEWEGUNG': return 'MOD: MOVER V';
+      case 'MOD: EIS': return 'MOD: HIELO';
+      case 'MOD: SCHLEIM': return 'MOD: BABA';
+      case 'MOD: BRÖCKELN': return 'MOD: FRÁGIL';
+      default: return label;
+    }
+  }
+  return label;
+};
+
 const get8UniqueBuildBattleItems = (allowedItems?: Record<string, boolean>) => {
   const filtered = BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => {
     if (allowedItems) {
@@ -7128,13 +7195,13 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center pointer-events-auto z-30">
                        {/* High-visibility Selection Timer in the foreground */}
                        <div className="flex flex-col items-center mb-6">
-                          <span className="text-yellow-400 font-arcade text-xs tracking-widest uppercase mb-1">Auswahlzeit verbleibend</span>
+                          <span className="text-yellow-400 font-arcade text-xs tracking-widest uppercase mb-1">{t.bbSelectTimeRemaining || "Selection Time Remaining"}</span>
                           <span className="text-white font-arcade text-4xl font-black bg-neutral-900 border border-neutral-800 px-6 py-2 rounded-2xl shadow-xl min-w-[100px] text-center">
                              {buildBattlePhaseTimer}
                           </span>
                        </div>
 
-                       <h2 className="text-3xl text-white font-arcade mb-8 tracking-wider">ITEM AUSWÄHLEN</h2>
+                       <h2 className="text-3xl text-white font-arcade mb-8 tracking-wider">{t.bbItemSelectTitle || "SELECT ITEM"}</h2>
                        <div className="flex gap-4 mb-12 flex-wrap max-w-4xl justify-center">
                           {buildBattleItems.map((item, idx) => {
                              const isP1 = buildBattleSelection.P1 === idx;
@@ -7151,13 +7218,17 @@ const App: React.FC = () => {
                                  transition-all`}
                                >
                                  <span className="text-3xl mb-1">{showSecret ? "❓" : item.icon}</span>
-                                 <span className="text-[8px] font-arcade uppercase text-neutral-400 text-center px-1">{showSecret ? "GEHEIM" : item.label}</span>
+                                 <span className="text-[8px] font-arcade uppercase text-neutral-400 text-center px-1">
+                                   {showSecret ? (t.bbSecret || "GEHEIM") : getBbItemTranslation(item.label, lang)}
+                                 </span>
                                  {isP1 && <div className="absolute -top-3 -left-3 bg-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">P1 {buildBattleConfirmed.P1 ? '✓' : ''}</div>}
                                  {isP2 && <div className="absolute -bottom-3 -right-3 bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">P2 {buildBattleConfirmed.P2 ? '✓' : ''}</div>}
                                  {isTaken && !showSecret && (
                                    <div className="absolute inset-0 bg-red-950/85 flex flex-col items-center justify-center rounded-lg border border-red-500 z-10 animate-fade-in shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                                     <span className="text-[10px] font-arcade text-red-400 font-bold tracking-wider">WEG!</span>
-                                     <span className="text-[8px] font-arcade text-white mt-1">VON {isTakenByP1 ? "P1" : "P2"}</span>
+                                     <span className="text-[10px] font-arcade text-red-400 font-bold tracking-wider">{t.bbTaken || "WEG!"}</span>
+                                     <span className="text-[8px] font-arcade text-white mt-1">
+                                       {(t.bbByPrefix || "BY ") + (isTakenByP1 ? "P1" : "P2")}
+                                     </span>
                                    </div>
                                  )}
                                </div>
@@ -7166,14 +7237,12 @@ const App: React.FC = () => {
                        </div>
                        <div className="flex gap-16 font-arcade text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
                           <div className="flex flex-col items-center">
-                             <div className="text-cyan-400 mb-2 font-bold text-sm">SPIELER 1</div>
-                             <div>[A] / [D] WÄHLEN</div>
-                             <div className="mt-1">SPACE BESTÄTIGEN</div>
+                             <div className="text-cyan-400 mb-2 font-bold text-sm">{t.bbPlayer1 || "SPIELER 1"}</div>
+                             <div className="text-center whitespace-pre-line leading-relaxed">{t.bbSelectControlsP1}</div>
                           </div>
                           <div className="flex flex-col items-center">
-                             <div className="text-amber-400 mb-2 font-bold text-sm">SPIELER 2</div>
-                             <div>[←] / [→] WÄHLEN</div>
-                             <div className="mt-1">ENTER BESTÄTIGEN</div>
+                             <div className="text-amber-400 mb-2 font-bold text-sm">{t.bbPlayer2 || "SPIELER 2"}</div>
+                             <div className="text-center whitespace-pre-line leading-relaxed">{t.bbSelectControlsP2}</div>
                           </div>
                        </div>
                     </div>
@@ -7183,13 +7252,13 @@ const App: React.FC = () => {
                     <div className="absolute inset-0 pointer-events-none z-30">
                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-12 font-arcade text-[10px] bg-neutral-900/90 p-4 border border-neutral-800 rounded-2xl backdrop-blur">
                           <div className="flex flex-col items-center">
-                             <div className="text-cyan-400 mb-2 font-bold text-sm">P1: {buildBattleItems[buildBattleSelection.P1]?.label}</div>
-                             {buildBattleConfirmed.P1 ? <div className="text-green-400 font-bold">PLATZIERT</div> : <div className="text-neutral-400 text-center">WASD BEWEGEN<br/>E DREHEN<br/>SPACE PLATZIEREN</div>}
+                             <div className="text-cyan-400 mb-2 font-bold text-sm">P1: {getBbItemTranslation(buildBattleItems[buildBattleSelection.P1]?.label || "", lang)}</div>
+                             {buildBattleConfirmed.P1 ? <div className="text-green-400 font-bold">{t.bbPlaced || "PLATZIERT"}</div> : <div className="text-neutral-400 text-center whitespace-pre-line leading-relaxed">{t.bbControlsP1}</div>}
                           </div>
                           <div className="w-px bg-neutral-800 h-12" />
                           <div className="flex flex-col items-center">
-                             <div className="text-amber-400 mb-2 font-bold text-sm">P2: {buildBattleItems[buildBattleSelection.P2]?.label}</div>
-                             {buildBattleConfirmed.P2 ? <div className="text-green-400 font-bold">PLATZIERT</div> : <div className="text-neutral-400 text-center">PFEILE BEWEGEN<br/>STRG DREHEN<br/>ENTER PLATZIEREN</div>}
+                             <div className="text-amber-400 mb-2 font-bold text-sm">P2: {getBbItemTranslation(buildBattleItems[buildBattleSelection.P2]?.label || "", lang)}</div>
+                             {buildBattleConfirmed.P2 ? <div className="text-green-400 font-bold">{t.bbPlaced || "PLATZIERT"}</div> : <div className="text-neutral-400 text-center whitespace-pre-line leading-relaxed">{t.bbControlsP2}</div>}
                           </div>
                        </div>
                     </div>
@@ -7210,7 +7279,7 @@ const App: React.FC = () => {
                         }}
                         className="bg-neutral-900 border border-neutral-700 text-neutral-300 hover:text-white hover:border-white px-4 py-2 rounded-xl font-arcade text-[10px] uppercase transition-all shadow-md active:translate-y-1"
                       >
-                        ABBRECHEN
+                        {t.bbCancel || "ABBRECHEN"}
                       </button>
                     </div>
                   )}
@@ -7803,7 +7872,7 @@ const App: React.FC = () => {
                           onClick={() => setBuildBattleSettingsOpen(true)}
                           className="py-2.5 px-5 rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade border flex items-center justify-center gap-2 mb-3 shadow-[0_0_15px_rgba(0,0,0,0.4)] bg-neutral-900 hover:bg-neutral-850 hover:text-yellow-500 border-neutral-800 text-neutral-300 font-bold cursor-pointer"
                         >
-                          ⚙️ REGELN & VOREINSTELLUNGEN ANPASSEN...
+                          {t.bbSettingsBtn || "⚙️ REGELN & VOREINSTELLUNGEN ANPASSEN..."}
                         </button>
 
                         {buildBattleSettingsOpen && (
@@ -7816,13 +7885,13 @@ const App: React.FC = () => {
                               {/* Modal Header */}
                               <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
                                 <div className="text-[12px] sm:text-xs font-arcade text-yellow-500 tracking-wider">
-                                  ⚙️ BUILD-BATTLE REGELN & BLÖCKE
+                                  {t.bbModalTitle || "⚙️ BUILD-BATTLE REGELN & BLÖCKE"}
                                 </div>
                                 <button
                                   onClick={() => setBuildBattleSettingsOpen(false)}
                                   className="py-1 px-3 bg-red-600 hover:bg-red-500 border border-red-700 text-white rounded-lg font-arcade text-[8px] tracking-wider transition-all cursor-pointer shadow-lg"
                                 >
-                                  SCHLIESSEN ✖
+                                  {t.bbClose || "SCHLIESSEN ✖"}
                                 </button>
                               </div>
 
@@ -7830,13 +7899,13 @@ const App: React.FC = () => {
                                 {/* LEFT HALF: REGEL-TUNING */}
                                 <div className="flex flex-col gap-4 bg-neutral-900 border border-neutral-800/80 p-4 rounded-2xl">
                                   <div className="text-[10px] text-yellow-500/90 font-arcade tracking-wide border-b border-neutral-800 pb-1 uppercase">
-                                    ⏱️ SPIELZEIT & PUNKTELIMIT
+                                    {t.bbRegelTuning || "⏱️ SPIELZEIT & PUNKTELIMIT"}
                                   </div>
 
                                   {/* Selection phase Timer */}
                                   <div>
                                     <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
-                                      Phase: Block-Auswahl
+                                      {t.bbSelectPhase || "Phase: Block-Auswahl"}
                                     </div>
                                     <div className="flex gap-1">
                                       {[5, 10, 15, 20, 30].map((tVal) => (
@@ -7858,7 +7927,7 @@ const App: React.FC = () => {
                                   {/* Build phase Timer */}
                                   <div>
                                     <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
-                                      Phase: Bauen & Platzieren
+                                      {t.bbBuildPhase || "Phase: Bauen & Platzieren"}
                                     </div>
                                     <div className="flex gap-1">
                                       {[10, 20, 30, 45, 60].map((tVal) => (
@@ -7880,7 +7949,7 @@ const App: React.FC = () => {
                                   {/* Max of score points */}
                                   <div>
                                     <div className="text-[9px] text-neutral-300 font-bold uppercase mb-1.5 tracking-wider font-arcade">
-                                      Siegbedingungen (Punkte)
+                                      {t.bbWinConditions || "Siegbedingungen (Punkte)"}
                                     </div>
                                     <div className="flex gap-1">
                                       {[3, 5, 10, 999].map((pVal) => (
@@ -7893,7 +7962,7 @@ const App: React.FC = () => {
                                               : "bg-black/40 border-neutral-800 text-neutral-400 hover:bg-neutral-800"
                                           }`}
                                         >
-                                          {pVal === 999 ? "∞" : `${pVal} Pkt`}
+                                          {pVal === 999 ? "∞" : `${pVal} ${t.bbPoints || "Pkt"}`}
                                         </button>
                                       ))}
                                     </div>
@@ -7902,9 +7971,9 @@ const App: React.FC = () => {
                                   {/* Custom Presets Section */}
                                   <div className="border-t border-neutral-800/80 pt-3 mt-1">
                                     <div className="text-[9px] text-yellow-500/95 font-arcade tracking-wide uppercase mb-1.5 flex items-center justify-between">
-                                      <span>💾 EIGENE VOREINSTELLUNGEN ({buildBattleCustomPresets.length}/5)</span>
+                                      <span>{t.bbOwnPresets || "💾 EIGENE VOREINSTELLUNGEN"} ({buildBattleCustomPresets.length}/5)</span>
                                       {buildBattleCustomPresets.length >= 5 && (
-                                        <span className="text-[7px] text-red-500 font-bold lowercase">★ Limit erreicht</span>
+                                        <span className="text-[7px] text-red-500 font-bold lowercase">★ {t.bbLimitReached || "Limit erreicht"}</span>
                                       )}
                                     </div>
                                     
@@ -7912,7 +7981,7 @@ const App: React.FC = () => {
                                     <div className="flex gap-1.5 mb-3">
                                       <input
                                         type="text"
-                                        placeholder={buildBattleCustomPresets.length >= 5 ? "Limit von 5 erreicht!" : "Name der Speicherung..."}
+                                        placeholder={buildBattleCustomPresets.length >= 5 ? (t.bbPresetLimitPlaceholder || "Limit von 5 erreicht!") : (t.bbPresetPlaceholder || "Name der Speicherung...")}
                                         value={newPresetName}
                                         onChange={(e) => setNewPresetName(e.target.value)}
                                         maxLength={25}
@@ -7922,16 +7991,16 @@ const App: React.FC = () => {
                                       <button
                                         onClick={() => {
                                           if (buildBattleCustomPresets.length >= 5) {
-                                            showToast("Maximal 5 Voreinstellungen erlaubt! Bitte lösche zuerst eine.");
+                                            showToast(t.toastMax5Reached || "Maximal 5 Voreinstellungen erlaubt! Bitte lösche zuerst eine.");
                                             return;
                                           }
                                           if (!newPresetName.trim()) {
-                                            showToast("Bitte gib einen Namen ein!");
+                                            showToast(t.toastEnterName || "Bitte gib einen Namen ein!");
                                             return;
                                           }
                                           const isDuplicate = buildBattleCustomPresets.some(p => p.name.toLowerCase() === newPresetName.trim().toLowerCase());
                                           if (isDuplicate) {
-                                            showToast("Name existiert bereits!");
+                                            showToast(t.toastNameExists || "Name existiert bereits!");
                                             return;
                                           }
                                           const newPreset = {
@@ -7946,7 +8015,7 @@ const App: React.FC = () => {
                                           setBuildBattleCustomPresets(updated);
                                           localStorage.setItem("build_battle_presets", JSON.stringify(updated));
                                           setNewPresetName("");
-                                          showToast(`"${newPreset.name}" gespeichert!`);
+                                          showToast(`"${newPreset.name}" ${t.toastSaved || "gespeichert!"}`);
                                         }}
                                         className={`py-1 px-3 border text-neutral-950 font-arcade text-[8px] font-black rounded-lg transition-all cursor-pointer shadow ${
                                           buildBattleCustomPresets.length >= 5
@@ -7954,7 +8023,7 @@ const App: React.FC = () => {
                                             : "bg-yellow-500 hover:bg-yellow-400 border-yellow-600"
                                         }`}
                                       >
-                                        SPEICHERN
+                                        {t.bbSave || "SPEICHERN"}
                                       </button>
                                     </div>
 
@@ -7962,7 +8031,7 @@ const App: React.FC = () => {
                                     <div className="max-h-[140px] overflow-y-auto pr-1 custom-scrollbar flex flex-col gap-1.5">
                                       {buildBattleCustomPresets.length === 0 ? (
                                         <div className="text-[8px] text-neutral-500 italic text-center py-2 bg-black/10 border border-dashed border-neutral-900 rounded-lg">
-                                          Keine eigenen Voreinstellungen gespeichert.
+                                          {t.bbNoPresets || "Keine eigenen Voreinstellungen gespeichert."}
                                         </div>
                                       ) : (
                                         buildBattleCustomPresets.map((preset) => {
@@ -7977,13 +8046,13 @@ const App: React.FC = () => {
                                                   {preset.name}
                                                 </div>
                                                 <div className="text-[7px] text-neutral-400 font-mono flex gap-1.5 mt-0.5 whitespace-nowrap overflow-x-auto min-w-0">
-                                                  <span>⌛ Auswahl: {preset.selectTimer}s</span>
+                                                  <span>⌛ {t.bbAuswahlLabel || "Auswahl"}: {preset.selectTimer}s</span>
                                                   <span className="text-neutral-700">|</span>
-                                                  <span>🏗️ Bau: {preset.buildTimer}s</span>
+                                                  <span>🏗️ {t.bbBauLabel || "Bau"}: {preset.buildTimer}s</span>
                                                   <span className="text-neutral-700">|</span>
-                                                  <span>🎯 Siege: {preset.targetPoints === 999 ? "∞" : `${preset.targetPoints} Pkt`}</span>
+                                                  <span>🎯 {t.bbSiegeLabel || "Siege"}: {preset.targetPoints === 999 ? "∞" : `${preset.targetPoints} ${t.bbPoints || "Pkt"}`}</span>
                                                   <span className="text-neutral-700">|</span>
-                                                  <span>🧱 Blöcke: {activeBlockCount}</span>
+                                                  <span>🧱 {t.bbBlocksLabel || "Blöcke"}: {activeBlockCount}</span>
                                                 </div>
                                               </div>
                                               
@@ -8001,21 +8070,21 @@ const App: React.FC = () => {
                                                       cleanAllowed[it.label] = savedVal !== undefined ? savedVal : true;
                                                     });
                                                     setBuildBattleAllowedItems(cleanAllowed);
-                                                    showToast(`"${preset.name}" geladen!`);
+                                                    showToast(`"${preset.name}" ${t.toastLoaded || "geladen!"}`);
                                                   }}
                                                   className="py-1 px-2 bg-green-600 hover:bg-green-500 border border-green-700 text-white rounded font-arcade text-[7px] font-bold transition-all cursor-pointer shadow"
                                                 >
-                                                  LADEN
+                                                  {t.bbLaden || "LADEN"}
                                                 </button>
                                                 <button
                                                   onClick={() => {
                                                     const updated = buildBattleCustomPresets.filter(p => p.id !== preset.id);
                                                     setBuildBattleCustomPresets(updated);
                                                     localStorage.setItem("build_battle_presets", JSON.stringify(updated));
-                                                    showToast(`Preset gelöscht!`);
+                                                    showToast(t.toastDeleted || "Preset gelöscht!");
                                                   }}
                                                   className="py-1 px-1.5 bg-red-950/40 hover:bg-red-900 border border-red-900/50 text-red-400 font-bold rounded text-[8px] transition-all cursor-pointer"
-                                                  title="Löschen"
+                                                  title={t.bbBtnAus || "✖"}
                                                 >
                                                   ✖
                                                 </button>
@@ -8032,7 +8101,7 @@ const App: React.FC = () => {
                                 <div className="flex flex-col gap-4 bg-neutral-900 border border-neutral-800/80 p-4 rounded-2xl">
                                   <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
                                     <div className="text-[10px] text-yellow-500/90 font-arcade tracking-wide uppercase">
-                                      🧱 BLOCK SELECTION POOL
+                                      {t.bbBlockSelectionPool || "🧱 BLOCK SELECTION POOL"}
                                     </div>
                                     <div className="flex gap-2">
                                       <button
@@ -8042,11 +8111,11 @@ const App: React.FC = () => {
                                             next[item.label] = true;
                                           });
                                           setBuildBattleAllowedItems(next);
-                                          showToast("Alle Blöcke aktiviert!");
+                                          showToast(t.toastAllOn || "Alle Blöcke aktiviert!");
                                         }}
                                         className="text-[8px] font-arcade px-2 py-0.5 bg-neutral-850 hover:bg-neutral-800 text-yellow-500 rounded border border-neutral-750 transition-all cursor-pointer"
                                       >
-                                        ALLE AN
+                                        {t.bbAlleAn || "ALLE AN"}
                                       </button>
                                       <button
                                         onClick={() => {
@@ -8055,11 +8124,11 @@ const App: React.FC = () => {
                                             next[item.label] = idx < 8;
                                           });
                                           setBuildBattleAllowedItems(next);
-                                          showToast("Standard-Pool (8 Blöcke) aktiviert!");
+                                          showToast(t.toastDefault || "Standard-Pool (8 Blöcke) aktiviert!");
                                         }}
-                                        className="text-[8px] font-arcade px-2 py-0.5 bg-neutral-850 hover:bg-neutral-800 text-neutral-450 rounded border border-neutral-750 transition-all cursor-pointer"
+                                        className="text-[8px] font-arcade px-2 py-0.5 bg-neutral-850 hover:bg-neutral-800 text-neutral-455 rounded border border-neutral-750 transition-all cursor-pointer"
                                       >
-                                        STANDARD
+                                        {t.bbStandard || "STANDARD"}
                                       </button>
                                     </div>
                                   </div>
@@ -8067,23 +8136,23 @@ const App: React.FC = () => {
                                   <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                                     {[
                                       {
-                                        title: "🧱 Wände & Plattformen",
+                                        title: t.bbCatWalls || "🧱 Wände & Plattformen",
                                         items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['wall', 'ice', 'slime', 'fragile'].includes(item.type))
                                       },
                                       {
-                                        title: "⚠️ Fallen & Gefahren",
+                                        title: t.bbCatHazards || "⚠️ Fallen & Gefahren",
                                         items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['hazard', 'fan'].includes(item.type))
                                       },
                                       {
-                                        title: "🌌 Physik & Mechanik",
+                                        title: t.bbCatPhysics || "🌌 Physik & Mechanik",
                                         items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['trampoline', 'moving_platform_h', 'moving_platform_v', 'gravity_reverse', 'gravity_zero', 'teleport', 'orbit'].includes(item.type))
                                       },
                                       {
-                                        title: "⚡ Power-ups",
+                                        title: t.bbCatPowerups || "⚡ Power-ups",
                                         items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => !item.isModifier && ['powerup_double_jump', 'powerup_dash'].includes(item.type))
                                       },
                                       {
-                                        title: "🪄 Modifikatoren",
+                                        title: t.bbCatModifiers || "🪄 Modifikatoren",
                                         items: BUILD_BATTLE_POSSIBLE_ITEMS.filter(item => item.isModifier)
                                       }
                                     ].map((cat) => (
@@ -8101,7 +8170,7 @@ const App: React.FC = () => {
                                               }}
                                               className="text-[7px] text-green-500 hover:underline px-0.5 cursor-pointer font-arcade"
                                             >
-                                              ALLE
+                                              {t.bbBtnAlle || "ALLE"}
                                             </button>
                                             <span className="text-neutral-700">|</span>
                                             <button
@@ -8118,12 +8187,12 @@ const App: React.FC = () => {
                                                 });
                                                 setBuildBattleAllowedItems(next);
                                                 if (activeCount <= 8) {
-                                                  showToast("Mindestens 8 Blöcke müssen aktiv bleiben!");
+                                                  showToast(t.toastMin8Keep || "Mindestens 8 Blöcke müssen aktiv bleiben!");
                                                 }
                                               }}
                                               className="text-[7px] text-red-500 hover:underline px-0.5 cursor-pointer font-arcade"
                                             >
-                                              AUS
+                                              {t.bbBtnAus || "AUS"}
                                             </button>
                                           </div>
                                         </div>
@@ -8142,7 +8211,7 @@ const App: React.FC = () => {
                                                       return next;
                                                     } else {
                                                       if (activeCount < 8) {
-                                                        showToast("Mindestens 8 Blöcke müssen aktiv sein!");
+                                                        showToast(t.toastMin8 || "Mindestens 8 Blöcke müssen aktiv sein!");
                                                         return prev;
                                                       }
                                                       return next;
@@ -8156,7 +8225,7 @@ const App: React.FC = () => {
                                                 }`}
                                               >
                                                 <span className="text-[10px] w-4 text-center">{item.icon}</span>
-                                                <span className="truncate flex-1 min-w-0 pr-1 text-[8px] sm:text-[9px] uppercase font-arcade tracking-tight">{item.label}</span>
+                                                <span className="truncate flex-1 min-w-0 pr-1 text-[8px] sm:text-[9px] uppercase font-arcade tracking-tight">{getBbItemTranslation(item.label, lang)}</span>
                                                 <span className="text-[8px] text-right">{isActive ? "🟢" : "⚫"}</span>
                                               </button>
                                             );
@@ -8173,7 +8242,7 @@ const App: React.FC = () => {
                                   onClick={() => setBuildBattleSettingsOpen(false)}
                                   className="py-2.5 px-10 bg-yellow-500 hover:bg-yellow-400 border border-yellow-600 text-neutral-950 rounded-xl font-arcade text-[10px] font-black tracking-wider transition-all cursor-pointer shadow-lg hover:shadow-yellow-500/20"
                                 >
-                                  ✔ EINSTELLUNGEN SPEICHERN & SCHLIESSEN
+                                  {t.bbSaveAndClose || "✔ EINSTELLUNGEN SPEICHERN & SCHLIESSEN"}
                                 </button>
                               </div>
                             </motion.div>
@@ -9127,28 +9196,7 @@ const App: React.FC = () => {
                     {t.multiplayer || "MULTIPLAYER"}
                   </h1>
 
-                  {/* Character Preview Showcase representing group play */}
-                  <div className="mb-8 flex items-center justify-center gap-6 md:gap-12">
-                    <div className="w-24 h-24 md:w-32 md:h-32 bg-neutral-900 border-2 border-cyan-500/20 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-                      <CharacterPreview
-                        customization={customization}
-                        scale={3.5}
-                      />
-                    </div>
-                    <div className="text-lg md:text-2xl text-neutral-600 font-arcade tracking-widest font-extrabold">
-                      {"&"}
-                    </div>
-                    <div className="w-24 h-24 md:w-32 md:h-32 bg-neutral-900 border-2 border-yellow-500/20 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(234,179,8,0.1)] animate-pulse">
-                      <CharacterPreview
-                        customization={{
-                          ...customization,
-                          color: "#eab308",
-                          trailColor: "#eab308",
-                        }}
-                        scale={3.5}
-                      />
-                    </div>
-                  </div>
+
 
                   {/* Menu Buttons selection */}
                   <div className="flex flex-col gap-3 w-full max-w-[325px]">
@@ -9206,39 +9254,6 @@ const App: React.FC = () => {
                   <h1 className="text-4xl md:text-5xl text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-amber-600 font-bold font-arcade mb-8 text-center uppercase tracking-wider">
                     {t.localMultiplayer || "LOKALER MULTIPLAYER"}
                   </h1>
-
-                  {/* Dual Character Preview HUD Showcase */}
-                  <div className="mb-8 flex items-center justify-center gap-8 md:gap-16">
-                    {/* Player 1 */}
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-28 h-28 md:w-36 md:h-36 bg-neutral-900 border-2 border-cyan-500/30 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                        <CharacterPreview
-                          customization={customization}
-                          scale={4}
-                        />
-                      </div>
-                      <span className="text-[10px] text-cyan-400 font-arcade uppercase tracking-widest font-black">P1</span>
-                    </div>
-
-                    <div className="text-xl md:text-3xl text-neutral-500 font-arcade tracking-wider font-extrabold pb-4">
-                      VS
-                    </div>
-
-                    {/* Player 2 */}
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-28 h-28 md:w-36 md:h-36 bg-neutral-900 border-2 border-yellow-500/30 relative flex items-center justify-center rounded-2xl shadow-[0_0_15px_rgba(234,179,8,0.15)]">
-                        <CharacterPreview
-                          customization={{
-                            ...customization,
-                            color: "#eab308", // Golden Yellow for Player 2
-                            trailColor: "#eab308",
-                          }}
-                          scale={4}
-                        />
-                      </div>
-                      <span className="text-[10px] text-yellow-400 font-arcade uppercase tracking-widest font-black">P2</span>
-                    </div>
-                  </div>
 
                   {/* Options Menu Grid */}
                   <div className="flex flex-col gap-3 w-full max-w-[325px]">
