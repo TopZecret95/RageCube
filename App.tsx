@@ -1798,9 +1798,14 @@ const App: React.FC = () => {
     p2Coins: number;
     p1ScoreAdded: number;
     p2ScoreAdded: number;
+    p1Kills?: number;
+    p2Kills?: number;
   } | null>(null);
   const [buildBattleScoresOnline, setBuildBattleScoresOnline] = useState<Record<string, number>>({});
   const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
+  const [buildBattleVotes, setBuildBattleVotes] = useState<{ P1: string | null; P2: string | null }>({ P1: null, P2: null });
+  const [buildBattleVoteSelection, setBuildBattleVoteSelection] = useState<{ P1: number; P2: number }>({ P1: 0, P2: 1 });
+  const [buildBattleVoteTimer, setBuildBattleVoteTimer] = useState<number | null>(null);
   const [buildBattlePlacedEntities, setBuildBattlePlacedEntities] = useState<any[]>([]);
   const [buildBattlePlacedThisRound, setBuildBattlePlacedThisRound] = useState<Record<string, any>>({});
   const [buildBattleSelectedMapId, setBuildBattleSelectedMapId] = useState<string>('build1');
@@ -2276,7 +2281,136 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState.status, buildBattlePhase, buildBattleConfirmed, buildBattleCursors, buildBattleSelection, buildBattleItems, buildBattleIntroCountdown, buildBattlePlacedEntities, level]);
+  }, [gameState.status, buildBattlePhase, buildBattleConfirmed, buildBattleCursors, buildBattleSelection, buildBattleItems, buildBattleIntroCountdown, buildBattlePlacedEntities, level, buildBattleVotes, buildBattleVoteSelection]);
+
+  // Auto-transition out of build_battle_won after 5 seconds if match is not over
+  useEffect(() => {
+    if (gameState.status === 'build_battle_won') {
+      const isMatchOver = buildBattleScores.P1 >= buildBattleTargetPointsConfig || buildBattleScores.P2 >= buildBattleTargetPointsConfig;
+      if (!isMatchOver) {
+        const timer = setTimeout(() => {
+          const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+          setBuildBattleItems(newItems);
+          setBuildBattlePhase('select');
+          setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+          setBuildTurn(0);
+          setBuildBattleRound(p => p + 1);
+          setBuildBattlePlacedThisRound({});
+          setBuildBattleSelection({ P1: 0, P2: 1 });
+          setBuildBattleConfirmed({ P1: false, P2: false });
+          setBuildBattleRotation({ P1: false, P2: false });
+          setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+          setResetTrigger(p => p + 1);
+          setRespawnTrigger(p => p + 1);
+          setGameState(p => ({
+            ...p,
+            status: "build_battle_playing",
+          }));
+          showToast(`Start Runde ${buildBattleRound + 1}!`);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [gameState.status, buildBattleScores, buildBattleTargetPointsConfig, buildBattleRound, buildBattleAllowedItems]);
+
+  // Monitor votes to toggle 5-sec countdown timer
+  useEffect(() => {
+    if (gameState.status !== "build_battle_vote") {
+      if (buildBattleVoteTimer !== null) setBuildBattleVoteTimer(null);
+      return;
+    }
+
+    const allVoted = buildBattleVotes.P1 !== null && buildBattleVotes.P2 !== null;
+    if (allVoted) {
+      if (buildBattleVoteTimer === null) {
+        setBuildBattleVoteTimer(5);
+        showToast(lang === "de" ? "Alle Spieler abgestimmt! Timer läuft... ⏳" : "All players voted! Timer counting down... ⏳");
+      }
+    } else {
+      if (buildBattleVoteTimer !== null) {
+        setBuildBattleVoteTimer(null);
+        showToast(lang === "de" ? "Abstimmung unvollständig. Timer gestoppt." : "Voting incomplete. Timer stopped.");
+      }
+    }
+  }, [gameState.status, buildBattleVotes, buildBattleVoteTimer]);
+
+  // Countdown decrement and map choice logic
+  useEffect(() => {
+    if (gameState.status !== "build_battle_vote" || buildBattleVoteTimer === null) return;
+
+    if (buildBattleVoteTimer <= 0) {
+      // Determine winner map
+      const votes: string[] = [];
+      if (buildBattleVotes.P1) votes.push(buildBattleVotes.P1);
+      if (buildBattleVotes.P2) votes.push(buildBattleVotes.P2);
+
+      let finalLevelId = "build1";
+      if (votes.length > 0) {
+        const counts: Record<string, number> = {};
+        votes.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+
+        let maxVotes = 0;
+        let candidates: string[] = [];
+        for (const [lvlId, qty] of Object.entries(counts)) {
+          if (qty > maxVotes) {
+            maxVotes = qty;
+            candidates = [lvlId];
+          } else if (qty === maxVotes) {
+            candidates.push(lvlId);
+          }
+        }
+
+        if (candidates.length > 0) {
+          const randIdx = Math.floor(Math.random() * candidates.length);
+          finalLevelId = candidates[randIdx];
+        }
+      }
+
+      const selectedLevel = BUILD_BATTLE_LEVELS.find(l => l.id === finalLevelId) || BUILD_BATTLE_LEVELS[0];
+      setLevel(selectedLevel);
+
+      const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+      setBuildBattleItems(newItems);
+      setBuildBattleSelection({ P1: 0, P2: 1 });
+      setBuildBattleConfirmed({ P1: false, P2: false });
+      setBuildBattleRotation({ P1: false, P2: false });
+      setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+      setBuildBattlePhase('select');
+      setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+      setBuildTurn(0);
+      setBuildBattleRound(1);
+      setBuildBattlePlacedEntities([]);
+      setBuildBattlePlacedThisRound({});
+      setResetTrigger(p => p + 1);
+      setRespawnTrigger(0);
+
+      setGameState(p => ({
+        ...p,
+        status: "build_battle_playing",
+        levelDeaths: 0,
+        levelTime: 0,
+        collectedCoins: [],
+        deaths: 0,
+        blocksPlaced: 0,
+      }));
+
+      showToast(lang === "de" ? `Level gewählt: ${selectedLevel.name}` : `Level selected: ${selectedLevel.name}`);
+      setBuildBattleVoteTimer(null);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setBuildBattleVoteTimer(prev => (prev === null ? null : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [
+    gameState.status,
+    buildBattleVoteTimer,
+    buildBattleVotes,
+    buildBattleAllowedItems,
+    buildBattleSelectTimerConfig
+  ]);
 
   const [isTransitioning, setIsTransitioning] = useState(false);
   const prevStatusRef = useRef(gameState.status);
@@ -2534,6 +2668,7 @@ const App: React.FC = () => {
     unlockEverything,
     onlinePlayersCount: 0,
     onlineResults: [] as any[],
+    buildBattleVotes,
   });
 
   const t = TRANSLATIONS[lang];
@@ -2758,6 +2893,7 @@ const App: React.FC = () => {
       brawlerPowerups,
       unlockEverything,
       onlineResults,
+      buildBattleVotes,
     });
   });
 
@@ -4062,6 +4198,65 @@ const App: React.FC = () => {
               ? "online_lobby"
               : "brawler_setup",
         }));
+    } else if (status === "build_battle_vote") {
+      const totalLevels = BUILD_BATTLE_LEVELS.length;
+      const key = e.key.toLowerCase();
+      const code = e.code;
+      
+      if (
+        ['keyw', 'keya', 'keys', 'keyd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'space', 'enter', 'shiftright', 'keyq'].includes(code.toLowerCase()) ||
+        ['w', 'a', 's', 'd', 'q', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter'].includes(key)
+      ) {
+        e.preventDefault();
+      }
+
+      if (!st.buildBattleVotes.P1) {
+        if (code === 'KeyW' || code === 'KeyA' || key === 'w' || key === 'a') {
+          setBuildBattleVoteSelection(p => ({ ...p, P1: (p.P1 - 1 + totalLevels) % totalLevels }));
+        }
+        if (code === 'KeyS' || code === 'KeyD' || key === 's' || key === 'd') {
+          setBuildBattleVoteSelection(p => ({ ...p, P1: (p.P1 + 1) % totalLevels }));
+        }
+        if (code === 'Space' || key === ' ' || code === 'KeyQ' || key === 'q') {
+          setBuildBattleVoteSelection(p => {
+             const lvl = BUILD_BATTLE_LEVELS[p.P1];
+             if (lvl) {
+               setBuildBattleVotes(prev => ({ ...prev, P1: lvl.id }));
+               audio.playCoin && audio.playCoin();
+             }
+             return p;
+          });
+        }
+      } else {
+        if (code === 'Space' || key === ' ' || code === 'KeyQ' || key === 'q') {
+          setBuildBattleVotes(prev => ({ ...prev, P1: null }));
+          audio.playDie && audio.playDie();
+        }
+      }
+
+      if (!st.buildBattleVotes.P2) {
+        if (code === 'ArrowUp' || code === 'ArrowLeft' || key === 'arrowup' || key === 'arrowleft') {
+          setBuildBattleVoteSelection(p => ({ ...p, P2: (p.P2 - 1 + totalLevels) % totalLevels }));
+        }
+        if (code === 'ArrowDown' || code === 'ArrowRight' || key === 'arrowdown' || key === 'arrowright') {
+          setBuildBattleVoteSelection(p => ({ ...p, P2: (p.P2 + 1) % totalLevels }));
+        }
+        if (code === 'Enter' || key === 'enter' || code === 'ShiftRight' || key === 'shift') {
+          setBuildBattleVoteSelection(p => {
+             const lvl = BUILD_BATTLE_LEVELS[p.P2];
+             if (lvl) {
+               setBuildBattleVotes(prev => ({ ...prev, P2: lvl.id }));
+               audio.playCoin && audio.playCoin();
+             }
+             return p;
+          });
+        }
+      } else {
+        if (code === 'Enter' || key === 'enter' || code === 'ShiftRight' || key === 'shift') {
+          setBuildBattleVotes(prev => ({ ...prev, P2: null }));
+          audio.playDie && audio.playDie();
+        }
+      }
     } else if (status === "highscores") {
       const ls = st.levelSource;
       const currentList = ls === "builtin" ? INITIAL_LEVELS : st.customLevels;
@@ -5745,6 +5940,7 @@ const App: React.FC = () => {
       exactTime?: number,
       isLocal?: boolean,
       broughtCoins?: Record<string, string[]>,
+      killedByBlocks?: Record<string, string>,
     ) => {
       audio.playWin();
 
@@ -5753,6 +5949,8 @@ const App: React.FC = () => {
         let p2Coins = 0;
         let p1ScoreAdded = 0;
         let p2ScoreAdded = 0;
+        let p1Kills = 0;
+        let p2Kills = 0;
 
         let winnerKey: "P1" | "P2" | null = null;
         if (winnerName && winnerName !== "EVERYONE_FINISHED" && winnerName !== "NIEMAND") {
@@ -5761,17 +5959,35 @@ const App: React.FC = () => {
           winnerKey = isPlayer1 ? "P1" : "P2";
         }
 
-        if (winnerKey) {
-          if (winnerKey === "P1") p1ScoreAdded += 1;
-          if (winnerKey === "P2") p2ScoreAdded += 1;
-        }
+        if (winnerName === "EVERYONE_FINISHED") {
+          p1Coins = 0;
+          p2Coins = 0;
+          p1ScoreAdded = 0;
+          p2ScoreAdded = 0;
+        } else {
+          if (winnerKey) {
+            if (winnerKey === "P1") p1ScoreAdded += 1;
+            if (winnerKey === "P2") p2ScoreAdded += 1;
+          }
 
-        const p1CoinsBrought = broughtCoins?.["P1"] || [];
-        const p2CoinsBrought = broughtCoins?.["P2"] || [];
-        p1Coins = p1CoinsBrought.length;
-        p2Coins = p2CoinsBrought.length;
-        p1ScoreAdded += p1Coins;
-        p2ScoreAdded += p2Coins;
+          const p1CoinsBrought = broughtCoins?.["P1"] || [];
+          const p2CoinsBrought = broughtCoins?.["P2"] || [];
+          p1Coins = p1CoinsBrought.length;
+          p2Coins = p2CoinsBrought.length;
+          p1ScoreAdded += p1Coins;
+          p2ScoreAdded += p2Coins;
+
+          if (killedByBlocks) {
+            if (winnerKey === "P1" && killedByBlocks["P2"] === "P1") {
+              p1Kills = 1;
+              p1ScoreAdded += 1;
+            }
+            if (winnerKey === "P2" && killedByBlocks["P1"] === "P2") {
+              p2Kills = 1;
+              p2ScoreAdded += 1;
+            }
+          }
+        }
 
         setLastBuildBattleRoundStats({
           winner: winnerName || null,
@@ -5779,6 +5995,8 @@ const App: React.FC = () => {
           p2Coins,
           p1ScoreAdded,
           p2ScoreAdded,
+          p1Kills,
+          p2Kills,
         });
 
         setBuildBattleScores(prev => ({
@@ -5786,6 +6004,8 @@ const App: React.FC = () => {
           P2: (prev.P2 || 0) + p2ScoreAdded,
         }));
 
+        const p1CoinsBrought = broughtCoins?.["P1"] || [];
+        const p2CoinsBrought = broughtCoins?.["P2"] || [];
         const allBroughtCoinIds = [...p1CoinsBrought, ...p2CoinsBrought];
         if (allBroughtCoinIds.length > 0) {
           setBuildBattlePlacedEntities(prev => 
@@ -5800,11 +6020,16 @@ const App: React.FC = () => {
            showToast("Zu einfach! Alle im Ziel! Keine Punkte.");
            setGameState(p => ({ ...p, status: "build_battle_won", winner: "NIEMAND (ZU EINFACH)" }));
         } else {
+           let msg = `Ziel erreicht! Punkt für ${winnerName}!`;
            if (p1Coins > 0 || p2Coins > 0) {
-             showToast(`Rundensieg: ${winnerName}! Münzen ins Ziel gebracht: P1 (+${p1Coins}), P2 (+${p2Coins})`);
-           } else {
-             showToast(`Ziel erreicht! Punkt für ${winnerName}!`);
+             msg = `Rundensieg: ${winnerName}! Münzen ins Ziel gebracht: P1 (+${p1Coins}), P2 (+${p2Coins})`;
            }
+           if (winnerKey === "P1" && p1Kills > 0) {
+             msg += ` 💥 Bonuspunkt für Block-Kill!`;
+           } else if (winnerKey === "P2" && p2Kills > 0) {
+             msg += ` 💥 Bonuspunkt für Block-Kill!`;
+           }
+           showToast(msg);
            setGameState(p => ({
              ...p,
              status: "build_battle_won",
@@ -7968,17 +8193,19 @@ const App: React.FC = () => {
 
                   {/* Level Select */}
                   <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center">
-                    <div className="flex gap-2 w-72 mb-4">
-                      <MenuButton
-                        index={12}
-                        label={t.levelMenu || "LEVEL MENU"}
-                        onClick={() => setShowLevelMenu(true)}
-                        isSelected={menuSelection === 12}
-                        onHover={setMenuSelection}
-                      />
-                    </div>
+                    {gameState.status !== "build_battle_setup" && (
+                      <div className="flex gap-2 w-72 mb-4">
+                        <MenuButton
+                          index={12}
+                          label={t.levelMenu || "LEVEL MENU"}
+                          onClick={() => setShowLevelMenu(true)}
+                          isSelected={menuSelection === 12}
+                          onHover={setMenuSelection}
+                        />
+                      </div>
+                    )}
 
-                    {selectedLevels.length > 0 && (
+                    {gameState.status !== "build_battle_setup" && selectedLevels.length > 0 && (
                       <div className="mb-6 flex flex-col items-center">
                         <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
                           Ausgewählte Level
@@ -8476,28 +8703,12 @@ const App: React.FC = () => {
                             setLevel(selectedLevel);
                             
                             if (gameState.status === "build_battle_setup") {
-                              const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
-                              setBuildBattleItems(newItems);
-                              setBuildBattleSelection({ P1: 0, P2: 1 });
-                              setBuildBattleConfirmed({ P1: false, P2: false });
-                              setBuildBattleRotation({ P1: false, P2: false });
-                              // Start cursors in the middle of the screen (960x540)
-                              setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
-                              setBuildBattlePhase('select');
-                              setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
-                              setBuildTurn(0);
-                              setBuildBattleRound(1);
-                              setBuildBattleScores({ P1: 0, P2: 0 });
-                              setBuildBattlePlacedEntities([]);
-                              setBuildBattlePlacedThisRound({});
+                              setBuildBattleVotes({ P1: null, P2: null });
+                              setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+                              setBuildBattleVoteTimer(null);
                               setGameState((p) => ({
                                 ...p,
-                                status: "build_battle_playing",
-                                levelDeaths: 0,
-                                levelTime: 0,
-                                collectedCoins: [],
-                                deaths: 0,
-                                blocksPlaced: 0,
+                                status: "build_battle_vote",
                               }));
                             } else {
                               setGameState((p) => ({
@@ -8529,7 +8740,7 @@ const App: React.FC = () => {
                         label={t.back}
                         danger
                         onClick={() =>
-                          setGameState((p) => ({ ...p, status: "menu" }))
+                          setGameState((p) => ({ ...p, status: "local_multiplayer_menu" }))
                         }
                         isSelected={menuSelection === 16}
                         onHover={setMenuSelection}
@@ -8546,6 +8757,287 @@ const App: React.FC = () => {
                       >
                         ⚙️ {t.settings || "SETTINGS"}
                       </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Build Battle Level Selection voting container */}
+              {gameState.status === "build_battle_vote" && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="fixed inset-0 z-[150] flex flex-col items-center justify-center p-4 bg-neutral-950/95 overflow-y-auto"
+                >
+                  <div className="w-full max-w-5xl bg-neutral-900 border-2 border-neutral-800 rounded-3xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-md flex flex-col gap-6">
+                    {/* Header */}
+                    <div className="text-center">
+                      <h2 className="text-2xl sm:text-3xl font-arcade text-yellow-500 tracking-wider mb-2 animate-pulse">
+                        {lang === "de" ? "🗳️ LEVEL-ABSTIMMUNG" : "🗳️ LEVEL SELECTION VOTE"}
+                      </h2>
+                      <p className="text-xs text-neutral-400 uppercase tracking-widest font-mono">
+                        {lang === "de" ? "Wähle dein Schlachtfeld für dieses Duell!" : "Choose your battleground for this match!"}
+                      </p>
+                    </div>
+
+                    {/* Timer Banner */}
+                    {buildBattleVoteTimer !== null && (
+                      <div className="w-full bg-yellow-500/10 border-2 border-yellow-500/40 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 animate-pulse shadow-[0_0_20px_rgba(234,179,8,0.2)]">
+                        <span className="text-[10px] font-arcade text-yellow-500 uppercase tracking-widest">
+                          {lang === "de" ? "Abstimmung beendet in" : "Voting finishes in"}
+                        </span>
+                        <span className="text-4xl font-arcade font-black text-white px-6 py-2 bg-neutral-950 rounded-xl border border-yellow-500 animate-bounce">
+                          {buildBattleVoteTimer}s
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Voting grid and controller status */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full">
+                      {/* Player 1 Col */}
+                      <div className="lg:col-span-1 bg-red-950/20 border border-red-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                            <h3 className="text-xs sm:text-sm font-arcade text-red-500 uppercase font-black">
+                              PLAYER 1 (P1)
+                            </h3>
+                          </div>
+                          <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
+                            <div>
+                              <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">{lang === "de" ? "Aktuelle Auswahl:" : "Current selection:"}</span>
+                              <span className="text-xs font-arcade text-white tracking-wide">
+                                {BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P1]?.name}
+                              </span>
+                            </div>
+                            {BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P1] && (
+                              <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] relative mt-1 select-none">
+                                <LevelPreview
+                                  level={BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P1]}
+                                  width={180}
+                                  height={100}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="mb-4">
+                            <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">{lang === "de" ? "Status:" : "Status:"}</span>
+                            {buildBattleVotes.P1 ? (
+                              <span className="inline-block py-1 px-3 bg-red-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-red-700">
+                                🔒 LOCKED IN!
+                              </span>
+                            ) : (
+                              <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
+                                ⏳ WÄHLT...
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
+                            <div className="flex justify-between border-b border-neutral-800/50 pb-1">
+                              <span>W / S / A / D</span>
+                              <span>{lang === "de" ? "Navigation" : "Navigate"}</span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span>SPACE / Q</span>
+                              <span className="text-red-400 font-bold">{lang === "de" ? "Einloggen / Zurück" : "Lock / Unlock"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Map election list */}
+                      <div className="lg:col-span-2 bg-neutral-950/50 border border-neutral-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[300px] max-h-[420px] overflow-y-auto">
+                        <div className="text-[10px] font-arcade text-neutral-400 tracking-wider mb-1 uppercase">
+                          {lang === "de" ? "Wähle aus 10 offiziellen Maps:" : "Select from 10 official maps:"}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {BUILD_BATTLE_LEVELS.map((lvl, index) => {
+                            const isP1Hovered = buildBattleVoteSelection.P1 === index;
+                            const isP2Hovered = buildBattleVoteSelection.P2 === index;
+                            const hasP1VotedThis = buildBattleVotes.P1 === lvl.id;
+                            const hasP2VotedThis = buildBattleVotes.P2 === lvl.id;
+
+                            // Calculate vote counts
+                            let votesAmt = 0;
+                            if (hasP1VotedThis) votesAmt++;
+                            if (hasP2VotedThis) votesAmt++;
+
+                            return (
+                              <div
+                                key={lvl.id}
+                                onClick={() => {
+                                  if (buildBattleVotes.P1 === lvl.id) {
+                                    setBuildBattleVotes(prev => ({ ...prev, P1: null }));
+                                    audio.playDie && audio.playDie();
+                                  } else {
+                                    setBuildBattleVotes(prev => ({ ...prev, P1: lvl.id }));
+                                    setBuildBattleVoteSelection(p => ({ ...p, P1: index }));
+                                    audio.playCoin && audio.playCoin();
+                                  }
+                                }}
+                                className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
+                                  hasP1VotedThis && hasP2VotedThis
+                                    ? "bg-purple-950/30 border-purple-500/70 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                                    : hasP1VotedThis
+                                    ? "bg-red-950/30 border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                                    : hasP2VotedThis
+                                    ? "bg-blue-950/30 border-blue-500/70 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                                    : isP1Hovered && isP2Hovered
+                                    ? "bg-neutral-800/80 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+                                    : isP1Hovered
+                                    ? "bg-neutral-800/80 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                                    : isP2Hovered
+                                    ? "bg-neutral-800/80 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                                    : "bg-neutral-900 border-neutral-800 hover:border-neutral-700"
+                                } relative`}
+                              >
+                                {isP1Hovered && (
+                                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500 rounded-l-xl" />
+                                )}
+                                {isP2Hovered && (
+                                  <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-500 rounded-r-xl" />
+                                )}
+
+                                <div className="flex items-center gap-3">
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-arcade text-white tracking-wide flex items-center gap-2">
+                                      {lvl.name}
+                                      {votesAmt > 0 && (
+                                        <span className="font-sans text-[10px] bg-yellow-500 text-neutral-950 font-black px-1.5 py-0.5 rounded-full">
+                                          {votesAmt} {votesAmt === 1 ? (lang === "de" ? "Stimme" : "Vote") : (lang === "de" ? "Stimmen" : "Votes")}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-500 font-mono tracking-tight uppercase">
+                                      {lang === "de" ? "Dimensionen:" : "Dimensions:"} {lvl.width || 960}x{lvl.height || 540} · {lvl.entities?.length || 0} {lang === "de" ? "Elemente" : "Entities"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    {hasP1VotedThis && (
+                                      <span className="py-0.5 px-2 bg-red-500 border border-red-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
+                                        P1
+                                      </span>
+                                    )}
+                                    {hasP2VotedThis && (
+                                      <span className="py-0.5 px-2 bg-blue-500 border border-blue-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
+                                        P2
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {!hasP1VotedThis && !hasP2VotedThis && (
+                                    <div className="flex gap-1">
+                                      {isP1Hovered && (
+                                        <span className="text-[9px] font-mono text-red-500/90 font-bold tracking-tight lowercase">
+                                          P1 [Space]
+                                        </span>
+                                      )}
+                                      {isP2Hovered && (
+                                        <span className="text-[9px] font-mono text-blue-500/90 font-bold tracking-tight lowercase">
+                                          P2 [Enter]
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Player 2 Col */}
+                      <div className="lg:col-span-1 bg-blue-950/20 border border-blue-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(59,130,246,0.05)]">
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" />
+                            <h3 className="text-xs sm:text-sm font-arcade text-blue-400 uppercase font-black">
+                              PLAYER 2 (P2)
+                            </h3>
+                          </div>
+                          <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
+                            <div>
+                              <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">{lang === "de" ? "Aktuelle Auswahl:" : "Current selection:"}</span>
+                              <span className="text-xs font-arcade text-white tracking-wide">
+                                {BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P2]?.name}
+                              </span>
+                            </div>
+                            {BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P2] && (
+                              <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] mt-1 select-none">
+                                <LevelPreview
+                                  level={BUILD_BATTLE_LEVELS[buildBattleVoteSelection.P2]}
+                                  width={180}
+                                  height={100}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="mb-4">
+                            <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">{lang === "de" ? "Status:" : "Status:"}</span>
+                            {buildBattleVotes.P2 ? (
+                              <span className="inline-block py-1 px-3 bg-blue-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-blue-700">
+                                🔒 LOCKED IN!
+                              </span>
+                            ) : (
+                              <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
+                                ⏳ WÄHLT...
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
+                            <div className="flex justify-between border-b border-neutral-800/50 pb-1">
+                              <span>▲ / ▼ / ◀ / ▶</span>
+                              <span>{lang === "de" ? "Navigation" : "Navigate"}</span>
+                            </div>
+                            <div className="flex justify-between pt-1">
+                              <span>ENTER / SHIFT</span>
+                              <span className="text-blue-400 font-bold">{lang === "de" ? "Einloggen / Zurück" : "Lock / Unlock"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-neutral-800 pt-5 mt-2">
+                      <button
+                        onClick={() => {
+                          setGameState(p => ({ ...p, status: "build_battle_setup" }));
+                        }}
+                        className="py-2.5 px-5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-arcade text-[10px] tracking-wider uppercase transition-all border-b-4 border-neutral-950 active:translate-y-px active:border-b-0 cursor-pointer"
+                      >
+                        {lang === "de" ? "◀ ZURÜCK" : "◀ BACK"}
+                      </button>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const totalLevels = BUILD_BATTLE_LEVELS.length;
+                            const p1Idx = Math.floor(Math.random() * totalLevels);
+                            const p2Idx = Math.floor(Math.random() * totalLevels);
+                            setBuildBattleVotes({
+                              P1: BUILD_BATTLE_LEVELS[p1Idx].id,
+                              P2: BUILD_BATTLE_LEVELS[p2Idx].id
+                            });
+                            setBuildBattleVoteSelection({ P1: p1Idx, P2: p2Idx });
+                            audio.playCoin && audio.playCoin();
+                          }}
+                          className="py-2.5 px-5 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 rounded-xl font-arcade text-[10px] tracking-wider uppercase transition-all border-b-4 border-yellow-700 active:translate-y-px active:border-b-0 cursor-pointer"
+                        >
+                          🎲 RANDOM VOTE
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -10712,6 +11204,8 @@ const App: React.FC = () => {
                                   nextStatus = "brawler_setup";
                                 else if (p.previousStatus === "vs_playing")
                                   nextStatus = "vs_setup";
+                                else if (p.previousStatus === "build_battle_playing")
+                                  nextStatus = "build_battle_setup";
                                 else if (
                                   p.previousStatus === "playing" ||
                                   p.previousStatus === "random_run"
@@ -11005,186 +11499,215 @@ const App: React.FC = () => {
 
               {/* Build Battle Won / Round Ended Screen overlay */}
               {gameState.status === "build_battle_won" && (
-                <div key="build_battle_won_screen" className="absolute inset-0 flex flex-col items-center justify-center bg-yellow-950/80 backdrop-blur-md z-40">
-                  <div className="bg-neutral-950 p-8 border-2 border-yellow-500 rounded-3xl flex flex-col items-center w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.25)] animate-scale-up">
-                    <div className="text-5xl mb-4 animate-bounce">👑</div>
-                    
-                    <h2 className="text-2xl text-yellow-400 font-extrabold font-arcade mb-2 text-center uppercase tracking-wider">
-                      {gameState.winner ? `${gameState.winner} GEWINNT!` : "ZIEL ERREICHT!"}
-                    </h2>
-                    
-                    <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-6">
-                      RUNDE {buildBattleRound} BEENDET
-                    </div>
-
-                    <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 mb-4 flex flex-col gap-3">
-                      <div className="text-[9px] text-yellow-500/80 font-arcade uppercase tracking-wider text-center border-b border-neutral-800/80 pb-2">
-                        PUNKTESTAND
+                <motion.div
+                  key="build_battle_won_screen"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 flex flex-col items-center justify-center bg-yellow-950/80 backdrop-blur-md z-40"
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      className="bg-neutral-950 p-8 border-2 border-yellow-500 rounded-3xl flex flex-col items-center w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.25)]"
+                    >
+                      <div className="text-5xl mb-4 animate-bounce">👑</div>
+                      
+                      <h2 className="text-2xl text-yellow-400 font-extrabold font-arcade mb-2 text-center uppercase tracking-wider">
+                        {gameState.winner ? `${gameState.winner} GEWINNT!` : "ZIEL ERREICHT!"}
+                      </h2>
+                      
+                      <div className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest mb-6">
+                        RUNDE {buildBattleRound} BEENDET
                       </div>
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded bg-cyan-400" />
-                          <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 1</span>
+
+                      <div className="w-full bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 mb-4 flex flex-col gap-3">
+                        <div className="text-[9px] text-yellow-500/80 font-arcade uppercase tracking-wider text-center border-b border-neutral-800/80 pb-2">
+                          PUNKTESTAND
                         </div>
-                        <span className="text-cyan-400 text-lg font-bold font-arcade">{buildBattleScores.P1}</span>
-                      </div>
-                      <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3 h-3 rounded bg-amber-400" />
-                          <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 2</span>
+                        <div className="flex items-center justify-between px-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded bg-cyan-400" />
+                            <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 1</span>
+                          </div>
+                          <span className="text-cyan-400 text-lg font-bold font-arcade">{buildBattleScores.P1}</span>
                         </div>
-                        <span className="text-amber-400 text-lg font-bold font-arcade">{buildBattleScores.P2}</span>
-                      </div>
-                    </div>
-
-                    {lastBuildBattleRoundStats && (
-                      <div className="w-full bg-neutral-950/80 border border-neutral-900/60 rounded-2xl p-3.5 mb-6 flex flex-col gap-2 shadow-[inset_0_0_15px_rgba(0,0,0,0.6)]">
-                        <div className="text-[8px] text-yellow-500 font-arcade uppercase tracking-wider text-center border-b border-neutral-900 pb-1.5 mb-1">
-                          Runden-Statistik & Ränge
-                        </div>
-                        <div className="text-[9px] text-neutral-300 leading-relaxed font-arcade flex flex-col gap-2">
-                          {/* Round Winner */}
-                          <div className="flex justify-between items-center text-neutral-400">
-                            <span>🏆 Rundensieg (+1 Pkt):</span>
-                            <span className="font-bold">
-                              {lastBuildBattleRoundStats.winner && lastBuildBattleRoundStats.winner !== "NIEMAND" && lastBuildBattleRoundStats.winner !== "EVERYONE_FINISHED" ? (
-                                <span className={lastBuildBattleRoundStats.winner.includes("1") || lastBuildBattleRoundStats.winner === "P1" ? "text-cyan-400" : "text-amber-400"}>
-                                  {lastBuildBattleRoundStats.winner}
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">Keiner</span>
-                              )}
-                            </span>
+                        <div className="flex items-center justify-between px-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 rounded bg-amber-400" />
+                            <span className="text-neutral-200 text-xs font-arcade uppercase">SPIELER 2</span>
                           </div>
-
-                          {/* Coins P1 */}
-                          <div className="flex justify-between items-center text-neutral-400">
-                            <span className="flex items-center gap-1">🪙 P1 Münzen gerettet:</span>
-                            <span className="text-cyan-400 font-bold font-mono">
-                              {lastBuildBattleRoundStats.p1Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p1Coins} Pkt)</span>
-                            </span>
-                          </div>
-
-                          {/* Coins P2 */}
-                          <div className="flex justify-between items-center text-neutral-400">
-                            <span className="flex items-center gap-1">🪙 P2 Münzen gerettet:</span>
-                            <span className="text-amber-400 font-bold font-mono">
-                              {lastBuildBattleRoundStats.p2Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p2Coins} Pkt)</span>
-                            </span>
-                          </div>
-
-                          {/* Total Added */}
-                          <div className="flex justify-between items-center border-t border-neutral-900 pt-2 text-neutral-200 mt-1 uppercase text-[7px] tracking-wider font-extrabold">
-                            <span>Rundengewinn:</span>
-                            <div className="flex gap-2.5">
-                              <span className="text-cyan-400 font-mono font-bold">P1: +{lastBuildBattleRoundStats.p1ScoreAdded}</span>
-                              <span className="text-amber-400 font-mono font-bold">P2: +{lastBuildBattleRoundStats.p2ScoreAdded}</span>
-                            </div>
-                          </div>
+                          <span className="text-amber-400 text-lg font-bold font-arcade">{buildBattleScores.P2}</span>
                         </div>
                       </div>
-                    )}
 
-                    {(() => {
-                      const matchWinner = buildBattleScores.P1 >= buildBattleTargetPointsConfig
-                        ? (customization.name || "Spieler 1")
-                        : buildBattleScores.P2 >= buildBattleTargetPointsConfig
-                          ? (customizationP2.name || "Spieler 2")
-                          : null;
-                      return (
-                        <>
-                          {matchWinner && (
-                            <div className="w-full text-center p-3 bg-green-950/60 border border-green-500/30 rounded-2xl mb-3 animate-pulse">
-                              <span className="text-[10px] font-arcade text-green-400 font-bold block uppercase tracking-wider mb-1">
-                                🏆 MATCH ENTSCHIEDEN! 🏆
-                              </span>
-                              <span className="text-[11px] font-bold text-white block">
-                                {matchWinner} gewinnt das Match ({buildBattleTargetPointsConfig} Punkte)!
+                      {lastBuildBattleRoundStats && (
+                        <div className="w-full bg-neutral-950/80 border border-neutral-900/60 rounded-2xl p-3.5 mb-6 flex flex-col gap-2 shadow-[inset_0_0_15px_rgba(0,0,0,0.6)]">
+                          <div className="text-[8px] text-yellow-500 font-arcade uppercase tracking-wider text-center border-b border-neutral-900 pb-1.5 mb-1">
+                            Runden-Statistik & Ränge
+                          </div>
+                          <div className="text-[9px] text-neutral-300 leading-relaxed font-arcade flex flex-col gap-2">
+                            {/* Round Winner */}
+                            <div className="flex justify-between items-center text-neutral-400">
+                              <span>🏆 Rundensieg (+1 Pkt):</span>
+                              <span className="font-bold">
+                                {lastBuildBattleRoundStats.winner && lastBuildBattleRoundStats.winner !== "NIEMAND" && lastBuildBattleRoundStats.winner !== "EVERYONE_FINISHED" ? (
+                                  <span className={lastBuildBattleRoundStats.winner.includes("1") || lastBuildBattleRoundStats.winner === "P1" ? "text-cyan-400" : "text-amber-400"}>
+                                    {lastBuildBattleRoundStats.winner}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500">Keiner</span>
+                                )}
                               </span>
                             </div>
-                          )}
 
-                          <div className="flex flex-col gap-2 w-full">
-                            {matchWinner ? (
-                              <button
-                                onClick={() => {
-                                  setBuildBattleScores({ P1: 0, P2: 0 });
-                                  setBuildBattleRound(1);
-                                  const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
-                                  setBuildBattleItems(newItems);
-                                  setBuildBattlePhase('select');
-                                  setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
-                                  setBuildTurn(0);
-                                  setBuildBattlePlacedThisRound({});
-                                  setBuildBattlePlacedEntities([]);
-                                  setBuildBattleSelection({ P1: 0, P2: 1 });
-                                  setBuildBattleConfirmed({ P1: false, P2: false });
-                                  setBuildBattleRotation({ P1: false, P2: false });
-                                  setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
-                                  setResetTrigger(p => p + 1);
-                                  setRespawnTrigger(p => p + 1);
-                                  setGameState(p => ({
-                                    ...p,
-                                    status: "build_battle_playing",
-                                  }));
-                                  showToast("Neues Match gestartet!");
-                                }}
-                                className="py-3 px-6 bg-green-500 hover:bg-green-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-green-700 active:translate-y-px active:border-b-0 text-center animate-bounce animate-pulse"
-                              >
-                                MATCH NEUSTARTEN
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
-                                  setBuildBattleItems(newItems);
-                                  setBuildBattlePhase('select');
-                                  setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
-                                  setBuildTurn(0);
-                                  setBuildBattleRound(p => p + 1);
-                                  setBuildBattlePlacedThisRound({});
-                                  setBuildBattleSelection({ P1: 0, P2: 1 });
-                                  setBuildBattleConfirmed({ P1: false, P2: false });
-                                  setBuildBattleRotation({ P1: false, P2: false });
-                                  setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
-                                  setResetTrigger(p => p + 1);
-                                  setRespawnTrigger(p => p + 1);
-                                  setGameState(p => ({
-                                    ...p,
-                                    status: "build_battle_playing",
-                                  }));
-                                  showToast(`Start Runde ${buildBattleRound + 1}!`);
-                                }}
-                                className="py-3 px-6 bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-yellow-700 active:translate-y-px active:border-b-0 text-center"
-                              >
-                                NÄCHSTE RUNDE (BAUEN)
-                              </button>
+                            {/* Coins P1 */}
+                            <div className="flex justify-between items-center text-neutral-400">
+                              <span className="flex items-center gap-1">🪙 P1 Münzen gerettet:</span>
+                              <span className="text-cyan-400 font-bold font-mono">
+                                {lastBuildBattleRoundStats.p1Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p1Coins} Pkt)</span>
+                              </span>
+                            </div>
+
+                            {/* Coins P2 */}
+                            <div className="flex justify-between items-center text-neutral-400">
+                              <span className="flex items-center gap-1">🪙 P2 Münzen gerettet:</span>
+                              <span className="text-amber-400 font-bold font-mono">
+                                {lastBuildBattleRoundStats.p2Coins} <span className="text-[7px] text-neutral-500 font-normal">({lastBuildBattleRoundStats.p2Coins} Pkt)</span>
+                              </span>
+                            </div>
+
+                            {/* Block Kills */}
+                            {((lastBuildBattleRoundStats.p1Kills || 0) > 0 || (lastBuildBattleRoundStats.p2Kills || 0) > 0) && (
+                              <div className="flex flex-col gap-1.5 border-t border-neutral-900/30 pt-1.5 mt-0.5">
+                                {(lastBuildBattleRoundStats.p1Kills || 0) > 0 && (
+                                  <div className="flex justify-between items-center text-neutral-400">
+                                    <span className="flex items-center gap-1">💥 P1 Block-Kill Bonus:</span>
+                                    <span className="text-cyan-400 font-bold font-mono">+1 Pkt</span>
+                                  </div>
+                                )}
+                                {(lastBuildBattleRoundStats.p2Kills || 0) > 0 && (
+                                  <div className="flex justify-between items-center text-neutral-400">
+                                    <span className="flex items-center gap-1">💥 P2 Block-Kill Bonus:</span>
+                                    <span className="text-amber-400 font-bold font-mono">+1 Pkt</span>
+                                  </div>
+                                )}
+                              </div>
                             )}
 
-                            <button
-                              onClick={() => {
-                                setGameState(p => ({ ...p, status: "build_battle_setup" }));
-                              }}
-                              className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
-                            >
-                              LEVEL-MENÜ
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setGameState(p => ({ ...p, status: "menu" }));
-                              }}
-                              className="py-2.5 px-6 bg-red-950/25 hover:bg-red-900/40 border border-red-900/30 text-red-400 font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
-                            >
-                              HAUPTMENÜ
-                            </button>
+                            {/* Total Added */}
+                            <div className="flex justify-between items-center border-t border-neutral-900 pt-2 text-neutral-200 mt-1 uppercase text-[7px] tracking-wider font-extrabold">
+                              <span>Rundengewinn:</span>
+                              <div className="flex gap-2.5">
+                                <span className="text-cyan-400 font-mono font-bold">P1: +{lastBuildBattleRoundStats.p1ScoreAdded}</span>
+                                <span className="text-amber-400 font-mono font-bold">P2: +{lastBuildBattleRoundStats.p2ScoreAdded}</span>
+                              </div>
+                            </div>
                           </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
+                        </div>
+                      )}
+
+                      {(() => {
+                        const matchWinner = buildBattleScores.P1 >= buildBattleTargetPointsConfig
+                          ? (customization.name || "Spieler 1")
+                          : buildBattleScores.P2 >= buildBattleTargetPointsConfig
+                            ? (customizationP2.name || "Spieler 2")
+                            : null;
+                        return (
+                          <>
+                            {matchWinner && (
+                              <div className="w-full text-center p-3 bg-green-950/60 border border-green-500/30 rounded-2xl mb-3 animate-pulse">
+                                <span className="text-[10px] font-arcade text-green-400 font-bold block uppercase tracking-wider mb-1">
+                                  🏆 MATCH ENTSCHIEDEN! 🏆
+                                </span>
+                                <span className="text-[11px] font-bold text-white block">
+                                  {matchWinner} gewinnt das Match ({buildBattleTargetPointsConfig} Punkte)!
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex flex-col gap-2 w-full">
+                              {matchWinner ? (
+                                <button
+                                  onClick={() => {
+                                    setBuildBattleScores({ P1: 0, P2: 0 });
+                                    setBuildBattleRound(1);
+                                    setBuildBattleVotes({ P1: null, P2: null });
+                                    setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+                                    setBuildBattleVoteTimer(null);
+                                    setGameState(p => ({
+                                      ...p,
+                                      status: "build_battle_vote",
+                                    }));
+                                    showToast("Neues Match & Abstimmung gestartet!");
+                                  }}
+                                  className="py-3 px-6 bg-green-500 hover:bg-green-400 text-neutral-950 font-black rounded-xl text-xs tracking-wider uppercase transition-all font-arcade border-b-4 border-green-700 active:translate-y-px active:border-b-0 text-center animate-bounce animate-pulse"
+                                >
+                                  MATCH NEUSTARTEN
+                                </button>
+                              ) : (
+                                <div className="relative overflow-hidden w-full bg-neutral-900 rounded-xl border-2 border-yellow-500/50 flex flex-col justify-center cursor-pointer mb-2"
+                                  onClick={() => {
+                                    const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
+                                    setBuildBattleItems(newItems);
+                                    setBuildBattlePhase('select');
+                                    setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
+                                    setBuildTurn(0);
+                                    setBuildBattleRound(p => p + 1);
+                                    setBuildBattlePlacedThisRound({});
+                                    setBuildBattleSelection({ P1: 0, P2: 1 });
+                                    setBuildBattleConfirmed({ P1: false, P2: false });
+                                    setBuildBattleRotation({ P1: false, P2: false });
+                                    setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+                                    setResetTrigger(p => p + 1);
+                                    setRespawnTrigger(p => p + 1);
+                                    setGameState(p => ({
+                                      ...p,
+                                      status: "build_battle_playing",
+                                    }));
+                                    showToast(`Start Runde ${buildBattleRound + 1}!`);
+                                  }}
+                                >
+                                  <motion.div 
+                                    className="absolute left-0 top-0 bottom-0 bg-yellow-500/30"
+                                    initial={{ width: "100%" }}
+                                    animate={{ width: "0%" }}
+                                    transition={{ duration: 5, ease: "linear" }}
+                                  />
+                                  <div className="relative z-10 flex flex-col items-center justify-center p-2.5 text-center drop-shadow-md">
+                                    <span className="text-[9px] sm:text-[10px] text-yellow-400 uppercase font-arcade tracking-widest font-bold leading-normal">NÄCHSTE RUNDE IN KÜRZE...</span>
+                                    <span className="text-[7px] text-yellow-500/80 uppercase font-arcade tracking-widest mt-1">(KLICKEN ZUM ÜBERSPRINGEN)</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setGameState(p => ({ ...p, status: "build_battle_setup" }));
+                                }}
+                                className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                              >
+                                LEVEL-MENÜ
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setGameState(p => ({ ...p, status: "menu" }));
+                                }}
+                                className="py-2.5 px-6 bg-red-950/25 hover:bg-red-900/40 border border-red-900/30 text-red-400 font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
+                              >
+                                HAUPTMENÜ
+                              </button>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </motion.div>
+                  </motion.div>
+                )}
 
               {/* Online Summary Screen */}
               {gameState.status === "online_summary" && (
@@ -11867,7 +12390,7 @@ const App: React.FC = () => {
                     lang={lang}
                     menuSelection={menuSelection}
                     setMenuSelection={setMenuSelection}
-                    onBack={() => setGameState((p) => ({ ...p, status: "menu" }))}
+                    onBack={() => setGameState((p) => ({ ...p, status: p.previousStatus || "menu" }))}
                     onKeybindings={() => {
                       setGameState((p) => ({ ...p, status: "keybindings" }));
                       setMenuSelection(0);
@@ -12500,29 +13023,12 @@ const App: React.FC = () => {
                           }));
                           setMenuSelection(0);
                         } else if (gameState.status === "build_battle_setup") {
-                          const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
-                          setBuildBattleItems(newItems);
-                          setBuildBattleSelection({ P1: 0, P2: 1 });
-                          setBuildBattleConfirmed({ P1: false, P2: false });
-                          setBuildBattleRotation({ P1: false, P2: false });
-                          setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
-                          setBuildBattlePhase('select');
-                          setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
-                          setBuildTurn(0);
-                          setBuildBattleRound(1);
-                          setBuildBattleScores({ P1: 0, P2: 0 });
-                          setBuildBattlePlacedEntities([]);
-                          setBuildBattlePlacedThisRound({});
-                          setResetTrigger(p => p + 1);
-                          setRespawnTrigger(0);
+                          setBuildBattleVotes({ P1: null, P2: null });
+                          setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+                          setBuildBattleVoteTimer(null);
                           setGameState((p) => ({
                             ...p,
-                            status: "build_battle_playing",
-                            levelDeaths: 0,
-                            levelTime: 0,
-                            collectedCoins: [],
-                            deaths: 0,
-                            blocksPlaced: 0,
+                            status: "build_battle_vote",
                           }));
                         }
                       }

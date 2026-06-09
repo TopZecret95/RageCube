@@ -143,7 +143,7 @@ export interface Achievement {
   rewardId?: string;
 }
 
-export type Status = 'intro' | 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'editor_type_select' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book' | 'geometry_dash_menu' | 'geometry_dash_play' | 'build_battle_setup' | 'build_battle_playing' | 'build_battle_won';
+export type Status = 'intro' | 'menu' | 'customizing' | 'shop' | 'playing' | 'paused' | 'dead' | 'won' | 'generating' | 'settings' | 'keybindings' | 'highscores' | 'editor' | 'editor_type_select' | 'tutorial' | 'random_run' | 'testing' | 'brawler_testing' | 'custom_level_select' | 'achievements' | 'vs_setup' | 'vs_playing' | 'vs_won' | 'difficulty_select' | 'brawler_setup' | 'brawler_powerup_setup' | 'brawler_playing' | 'brawler_won' | 'online_menu' | 'online_lobby' | 'online_playing' | 'online_won' | 'book' | 'geometry_dash_menu' | 'geometry_dash_play' | 'build_battle_setup' | 'build_battle_vote' | 'build_battle_playing' | 'build_battle_won';
 
 export interface GameState {
   status: Status;

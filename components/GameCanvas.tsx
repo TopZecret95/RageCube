@@ -166,6 +166,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const projectiles = useRef<Projectile[]>([]);
   const bombs = useRef<Bomb[]>([]);
   const explosions = useRef<Explosion[]>([]);
+  const killedByBlocks_ref = useRef<Record<string, string>>({});
   const particles = useRef<Particle[]>([]);
   const cameraRef = useRef({ x: 0, y: 0 });
   const cameraZoom = useRef(1.0);
@@ -595,7 +596,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       });
       const exactTime = (Date.now() - levelStartTime.current) / 1000;
-      onWin(winnerName, livesStats, exactTime, isLocalFinish, broughtCoins);
+      onWin(winnerName, livesStats, exactTime, isLocalFinish, broughtCoins, killedByBlocks_ref.current);
     },
     [onWin, gameMode],
   );
@@ -1494,6 +1495,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (respawnTrigger > 0) {
       initPlayers(true);
       players.current.forEach(resetPlayerSize);
+      killedByBlocks_ref.current = {};
       // Keep collected powerups that are one-time? No, reset them.
       // But we keep coins.
       // Reset ability powerups logic:
@@ -1514,6 +1516,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   // Full Level Reset (Ghost Reset)
   useEffect(() => {
     if (resetTrigger > 0) {
+      killedByBlocks_ref.current = {};
       // Reset Ghost for the new attempt
       ghostFrameIndex.current = 0;
       hasStartedMoving.current = false;
@@ -3938,6 +3941,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 );
                 
                 if (status === "build_battle_playing") {
+                  if (entity && entity.id) {
+                    const isP1Block = entity.id.includes("bb_P1_");
+                    const isP2Block = entity.id.includes("bb_P2_");
+                    if (isP1Block && p.name !== "P1") {
+                      killedByBlocks_ref.current[p.name] = "P1";
+                    } else if (isP2Block && p.name !== "P2") {
+                      killedByBlocks_ref.current[p.name] = "P2";
+                    }
+                  }
                   p.dead = true;
                   p.finished = true;
                   p.vel = { x: 0, y: 0 };
@@ -4430,6 +4442,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 );
                 
                 if (status === "build_battle_playing") {
+                  if (entity && entity.id) {
+                    const isP1Block = entity.id.includes("bb_P1_");
+                    const isP2Block = entity.id.includes("bb_P2_");
+                    if (isP1Block && p.name !== "P1") {
+                      killedByBlocks_ref.current[p.name] = "P1";
+                    } else if (isP2Block && p.name !== "P2") {
+                      killedByBlocks_ref.current[p.name] = "P2";
+                    }
+                  }
                   p.dead = true;
                   p.finished = true;
                   p.vel = { x: 0, y: 0 };
@@ -4878,7 +4899,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ((level.autoScroll || geometryDashMode) && p.pos.y + p.h < cameraRef.current.y - 50);
 
         const dieBottom =
-          (!p.gravityFlipped && p.pos.y > currentLevelHeight) ||
+          (!p.gravityFlipped && p.pos.y > (status === "build_battle_playing" ? cameraRef.current.y + GAME_HEIGHT + 30 : currentLevelHeight)) ||
           (p.gravityFlipped && p.pos.y > currentLevelHeight + 2500) ||
           (gameMode === "brawler" &&
             brawlerSuddenDeath &&

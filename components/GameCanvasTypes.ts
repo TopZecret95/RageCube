@@ -16,7 +16,14 @@ export interface GameCanvasProps {
   customization: PlayerCustomization;
   customizationP2?: PlayerCustomization; // New Prop for VS Mode
   onDie: () => void;
-  onWin: (winner?: string, lives?: Record<string, number>) => void;
+  onWin: (
+    winner?: string,
+    lives?: Record<string, number>,
+    exactTime?: number,
+    isLocalFinish?: boolean,
+    broughtCoins?: Record<string, string[]>,
+    killedByBlocks?: Record<string, string>,
+  ) => void;
   onCoin: (id: string) => void;
   onBlockPlace: () => void;
   onJump?: () => void;
