@@ -29,6 +29,7 @@ export type SyncState = {
   hookPos?: { x: number; y: number };
   oneTimeBuild?: boolean;
   oneTimeHook?: boolean;
+  oneTimeDash?: boolean;
   moveStartTime?: number;
   timestamp: number;
 };

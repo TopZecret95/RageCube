@@ -159,6 +159,7 @@ export interface PlayerState {
   oneTimeHook: boolean;
   oneTimeDoubleJump: boolean;
   oneTimeTripleJump: boolean;
+  oneTimeDash: boolean;
   tripleJumpActive: boolean;
 
   // New Brawler Powerups
@@ -175,6 +176,7 @@ export interface PlayerState {
   lastSyncTime?: number;
   platformDelta: Vector2;
   lastPlatformVel: Vector2;
+  groundedOnEntityId?: string;
   collectedPowerupIds: string[];
   hasStartedMove: boolean;
   moveStartTime: number;

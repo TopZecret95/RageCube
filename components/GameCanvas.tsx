@@ -741,6 +741,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       oneTimeHook: false,
       oneTimeDoubleJump: false,
       oneTimeTripleJump: false,
+      oneTimeDash: false,
       tripleJumpActive: false,
       shieldTimer: 0,
       slowTimer: 0,
@@ -748,6 +749,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       meleeTimer: 0,
       platformDelta: { x: 0, y: 0 },
       lastPlatformVel: { x: 0, y: 0 },
+      groundedOnEntityId: undefined,
       collectedPowerupIds: [],
       collectedCoinIds: [],
       hasStartedMove: false,
@@ -1018,6 +1020,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (state.oneTimeBuild !== undefined)
           p.oneTimeBuild = state.oneTimeBuild;
         if (state.oneTimeHook !== undefined) p.oneTimeHook = state.oneTimeHook;
+        if (state.oneTimeDash !== undefined) p.oneTimeDash = state.oneTimeDash;
       }
     };
 
@@ -1571,20 +1574,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   };
 
   const triggerDash = (p: PlayerState) => {
-    if (!p || p.finished || gameMode !== "brawler") return;
+    if (!p || p.finished) return;
 
-    // Check if the class explicitly has dash capability.
-    // "Dash soll explizit für die einzelnen Klassen die Dash benutzen verfügbar sein"
-    // Standard class shouldn't have dash.
     if (p.dashCooldown > 0) return;
-    if (p.brawlerClass === "standard") return; // explicitly disabling for standard if desired. Or we could disable powerup_dash across the board, but the stats determine dash ability.
 
-    const stats = getBrawlerStats(p.brawlerClass, gameMode);
-    p.dashTimer = 10;
-    p.dashCooldown = stats.dashCooldownBase;
+    const hasOneTime = !!p.oneTimeDash;
+    const isBrawlerWithDash = gameMode === "brawler" && p.brawlerClass !== "standard";
+
+    if (!hasOneTime && !isBrawlerWithDash) return;
+
+    if (hasOneTime) {
+      p.oneTimeDash = false; // Consume powerup on use
+    }
+
+    const bClass = p.brawlerClass || "standard";
+    const stats = getBrawlerStats(bClass, gameMode);
+    p.dashTimer = 12;
+    p.dashCooldown = hasOneTime ? 30 : stats.dashCooldownBase;
     p.dashDirection = { x: p.facing, y: 0 };
     audio.playJump();
-    spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, p.color, 10, "spark");
+    spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, p.color, 12, "spark");
     if (isOnline) {
       onlineService.sendEvent("player_dashed", { id: p.onlineId });
     }
@@ -1767,6 +1776,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           type: "ice" as const,
           expires: Date.now() + 15000,
         };
+        adjustNewBlockToGluedRoot(newBlock);
         tempBlocks.current.push(newBlock);
         if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
           onlineService.sendEvent("block", newBlock);
@@ -1785,6 +1795,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           type: "slime" as const,
           expires: Date.now() + 15000,
          };
+        adjustNewBlockToGluedRoot(newBlock);
         tempBlocks.current.push(newBlock);
         if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
           onlineService.sendEvent("block", newBlock);
@@ -1803,6 +1814,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           type: "wall" as const,
           expires: Date.now() + 15000,
         };
+        adjustNewBlockToGluedRoot(newBlock);
         tempBlocks.current.push(newBlock);
         if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
           onlineService.sendEvent("block", newBlock);
@@ -1984,6 +1996,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               : ("slime" as const),
           expires: Date.now() + 10000,
         };
+        adjustNewBlockToGluedRoot(newBlock);
         tempBlocks.current.push(newBlock);
         if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
           onlineService.sendEvent("block", newBlock);
@@ -2439,6 +2452,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         expires: isOneTime ? Number.MAX_SAFE_INTEGER : Date.now() + 500,
         ownerIndex: p.playerIndex,
       };
+      adjustNewBlockToGluedRoot(newBlock);
       tempBlocks.current.push(newBlock);
       if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
         onlineService.sendEvent("block", newBlock);
@@ -2595,6 +2609,247 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const canvasWidth = GAME_WIDTH * dpr;
   const canvasHeight = GAME_HEIGHT * dpr;
 
+  const getGluedRoot = (entityCheck: Entity, time: number, dt: number): Entity | null => {
+    const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+    if (currentEntities.length === 0) return null;
+
+    if (gluedBFSMapRef.current.time !== time || gluedBFSMapRef.current.dt !== dt) {
+      gluedBFSMapRef.current.time = time;
+      gluedBFSMapRef.current.dt = dt;
+      gluedBFSMapRef.current.connections.clear();
+
+      const connections = gluedBFSMapRef.current.connections;
+      const queue: { ent: Entity; root: Entity }[] = [];
+
+      const isAdjacent = (e1: Entity, e2: Entity) => {
+        const pad = 2; // tolerating adjacent positions within 2px
+        const w1 = e1.w || 30;
+        const h1 = e1.h || 30;
+        const w2 = e2.w || 30;
+        const h2 = e2.h || 30;
+        return (
+          e1.x < e2.x + w2 + pad &&
+          e1.x + w1 > e2.x - pad &&
+          e1.y < e2.y + h2 + pad &&
+          e1.y + h1 > e2.y - pad
+        );
+      };
+
+      for (const ent of currentEntities) {
+        const isRoot =
+          ent.type === "moving_platform_h" || ent.movingH ||
+          ent.type === "moving_platform_v" || ent.movingV ||
+          (ent.type as any) === "orbit";
+
+        if (isRoot) {
+          const id = ent.id || `${ent.x}_${ent.y}`;
+          connections.set(id, ent);
+          queue.push({ ent, root: ent });
+        }
+      }
+
+      while (queue.length > 0) {
+        const { ent, root } = queue.shift()!;
+        const entId = ent.id || `${ent.x}_${ent.y}`;
+
+        for (const neighbor of currentEntities) {
+          const neighId = neighbor.id || `${neighbor.x}_${neighbor.y}`;
+          if (!connections.has(neighId)) {
+            const hasGlue = ent.type === "glue" || neighbor.type === "glue";
+            if (hasGlue && isAdjacent(ent, neighbor)) {
+              connections.set(neighId, root);
+              queue.push({ ent: neighbor, root });
+            }
+          }
+        }
+      }
+    }
+
+    const id = entityCheck.id || `${entityCheck.x}_${entityCheck.y}`;
+    return gluedBFSMapRef.current.connections.get(id) || null;
+  };
+
+  const getDynamicEntity = (e: Entity, time: number, dt: number) => {
+    const gluedRoot = getGluedRoot(e, time, dt);
+    const isDynamic = e.type === "moving_platform_h" || 
+                      e.movingH || 
+                      e.type === "moving_platform_v" || 
+                      e.movingV || 
+                      (e.type as any) === "orbit" ||
+                      e.type === "fragile" || 
+                      e.fragile ||
+                      collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
+                      !!gluedRoot;
+
+    if (!isDynamic) return e;
+
+    if (gluedRoot) {
+      const speed = gluedRoot.moveSpeed ?? 0.002;
+      const range = gluedRoot.moveRange ?? 100;
+      let rootX = gluedRoot.x;
+      let rootY = gluedRoot.y;
+      let rdx = 0;
+      let rdy = 0;
+
+      if (gluedRoot.type === "moving_platform_h" || gluedRoot.movingH) {
+        const offset = Math.sin(time * speed) * range;
+        const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+        rootX = gluedRoot.x + offset;
+        rdx = offset - prevOffset;
+      } else if (gluedRoot.type === "moving_platform_v" || gluedRoot.movingV) {
+        const offset = Math.sin(time * speed) * range;
+        const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+        rootY = gluedRoot.y + offset;
+        rdy = offset - prevOffset;
+      } else if ((gluedRoot.type as any) === "orbit") {
+        const oSpeed = gluedRoot.moveSpeed ?? 0.0025;
+        const oRange = gluedRoot.moveRange ?? 80;
+        const angle = time * oSpeed;
+        const prevAngle = (time - 16.66 * dt) * oSpeed;
+        const offsetX = Math.cos(angle) * oRange;
+        const offsetY = Math.sin(angle) * oRange;
+        const prevOffsetX = Math.cos(prevAngle) * oRange;
+        const prevOffsetY = Math.sin(prevAngle) * oRange;
+        rootX = gluedRoot.x + offsetX;
+        rootY = gluedRoot.y + offsetY;
+        rdx = offsetX - prevOffsetX;
+        rdy = offsetY - prevOffsetY;
+      }
+
+      const offsetX = rootX - gluedRoot.x;
+      const offsetY = rootY - gluedRoot.y;
+
+      return {
+        ...e,
+        x: e.x + offsetX,
+        y: e.y + offsetY,
+        dx: rdx,
+        dy: rdy,
+        baseX: e.x,
+        baseY: e.y,
+      };
+    }
+
+    const speed = e.moveSpeed ?? 0.002;
+    const range = e.moveRange ?? 100;
+    let updated = { ...e, baseX: e.x, baseY: e.y };
+
+    if (e.type === "moving_platform_h" || e.movingH) {
+      const offset = Math.sin(time * speed) * range;
+      const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+      updated = { ...updated, x: e.x + offset, dx: offset - prevOffset };
+    } else if (e.type === "moving_platform_v" || e.movingV) {
+      const offset = Math.sin(time * speed) * range;
+      const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
+      updated = { ...updated, y: e.y + offset, dy: offset - prevOffset };
+    } else if ((e.type as any) === "orbit") {
+      const oSpeed = e.moveSpeed ?? 0.0025;
+      const oRange = e.moveRange ?? 80;
+      const angle = time * oSpeed;
+      const prevAngle = (time - 16.66 * dt) * oSpeed;
+      const offsetX = Math.cos(angle) * oRange;
+      const offsetY = Math.sin(angle) * oRange;
+      const prevOffsetX = Math.cos(prevAngle) * oRange;
+      const prevOffsetY = Math.sin(prevAngle) * oRange;
+      updated = {
+        ...updated,
+        x: e.x + offsetX,
+        y: e.y + offsetY,
+        dx: offsetX - prevOffsetX,
+        dy: offsetY - prevOffsetY
+      };
+    }
+
+    if (e.type === "fragile" || e.fragile) {
+      const id = e.id || `${e.x}_${e.y}`;
+      const state = fragileStates.current[id];
+      if (state) {
+        const elapsed = time - state.touchedAt;
+
+        // 0 - 1000ms: Fading out, solid
+        if (elapsed < 1000) {
+          const opacity = 1 - elapsed / 1000;
+          return { ...updated, shake: true, opacity };
+        }
+
+        // 1000ms - 2000ms: Invisible, not solid
+        if (elapsed < 2000) {
+          return dt === 0 ? { ...updated, opacity: 0 } : null;
+        }
+
+        // 2000ms - 3000ms: Fading in, not solid
+        if (elapsed < 3000) {
+          const opacity = (elapsed - 2000) / 1000;
+          return dt === 0 ? { ...updated, opacity } : null;
+        }
+
+        // 3000ms+: Back to normal
+        delete fragileStates.current[id];
+      }
+    }
+
+    if (
+      gameMode === "brawler" &&
+      brawlerHazardMode === "collapsing_platforms"
+    ) {
+      const id = e.id || `${e.x}_${e.y}`;
+      const state = collapsingStates.current[id];
+      if (state) {
+        const elapsed = time - state.touchedAt;
+        if (elapsed > 3000) {
+          return null;
+        } else {
+          updated = { ...updated, shake: true };
+        }
+      }
+    }
+
+    return updated;
+  };
+
+  const adjustNewBlockToGluedRoot = (block: { x: number; y: number; w: number; h: number }) => {
+    const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+    for (const ent of currentEntities) {
+      const dEnt = getDynamicEntity(ent, gameTimeRef.current, 0);
+      if (!dEnt) continue;
+      const pad = 4;
+      const isAdjacentCurrent = (
+        block.x < dEnt.x + dEnt.w + pad &&
+        block.x + block.w > dEnt.x - pad &&
+        block.y < dEnt.y + dEnt.h + pad &&
+        block.y + block.h > dEnt.y - pad
+      );
+      if (isAdjacentCurrent) {
+        const gluedRoot = getGluedRoot(ent, gameTimeRef.current, 0);
+        const rootObj = gluedRoot || (
+          ent.type === "moving_platform_h" || ent.movingH ||
+          ent.type === "moving_platform_v" || ent.movingV ||
+          (ent.type as any) === "orbit" ? ent : null
+        );
+        if (rootObj) {
+          const speed = rootObj.moveSpeed ?? 0.002;
+          const range = rootObj.moveRange ?? 100;
+          let rdx = 0;
+          let rdy = 0;
+          if (rootObj.type === "moving_platform_h" || rootObj.movingH) {
+            rdx = Math.sin(gameTimeRef.current * speed) * range;
+          } else if (rootObj.type === "moving_platform_v" || rootObj.movingV) {
+            rdy = Math.sin(gameTimeRef.current * speed) * range;
+          } else if ((rootObj.type as any) === "orbit") {
+            const oSpeed = rootObj.moveSpeed ?? 0.0025;
+            const oRange = rootObj.moveRange ?? 80;
+            const angle = gameTimeRef.current * oSpeed;
+            rdx = Math.cos(angle) * oRange;
+            rdy = Math.sin(angle) * oRange;
+          }
+          block.x -= rdx;
+          block.y -= rdy;
+          break;
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2623,7 +2878,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     let accumulator = 0;
     const PHYSICS_STEP = 1000 / 60;
 
-    const getGluedRoot = (entityCheck: Entity, time: number, dt: number): Entity | null => {
+    const getGluedRoot_unused = (entityCheck: Entity, time: number, dt: number): Entity | null => {
       const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
       if (currentEntities.length === 0) return null;
 
@@ -2686,7 +2941,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       return gluedBFSMapRef.current.connections.get(id) || null;
     };
 
-    const getDynamicEntity = (e: Entity, time: number, dt: number) => {
+    const getDynamicEntity_unused = (e: Entity, time: number, dt: number) => {
       const gluedRoot = getGluedRoot(e, time, dt);
       // Only copy if it's dynamic
       const isDynamic = e.type === "moving_platform_h" || 
@@ -2827,6 +3082,49 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       return updated;
     };
 
+    const adjustNewBlockToGluedRoot_unused = (block: { x: number; y: number; w: number; h: number }) => {
+      const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+      for (const ent of currentEntities) {
+        const dEnt = getDynamicEntity(ent, gameTimeRef.current, 0);
+        if (!dEnt) continue;
+        const pad = 4;
+        const isAdjacentCurrent = (
+          block.x < dEnt.x + dEnt.w + pad &&
+          block.x + block.w > dEnt.x - pad &&
+          block.y < dEnt.y + dEnt.h + pad &&
+          block.y + block.h > dEnt.y - pad
+        );
+        if (isAdjacentCurrent) {
+          const gluedRoot = getGluedRoot(ent, gameTimeRef.current, 0);
+          const rootObj = gluedRoot || (
+            ent.type === "moving_platform_h" || ent.movingH ||
+            ent.type === "moving_platform_v" || ent.movingV ||
+            (ent.type as any) === "orbit" ? ent : null
+          );
+          if (rootObj) {
+            const speed = rootObj.moveSpeed ?? 0.002;
+            const range = rootObj.moveRange ?? 100;
+            let rdx = 0;
+            let rdy = 0;
+            if (rootObj.type === "moving_platform_h" || rootObj.movingH) {
+              rdx = Math.sin(gameTimeRef.current * speed) * range;
+            } else if (rootObj.type === "moving_platform_v" || rootObj.movingV) {
+              rdy = Math.sin(gameTimeRef.current * speed) * range;
+            } else if ((rootObj.type as any) === "orbit") {
+              const oSpeed = rootObj.moveSpeed ?? 0.0025;
+              const oRange = rootObj.moveRange ?? 80;
+              const angle = gameTimeRef.current * oSpeed;
+              rdx = Math.cos(angle) * oRange;
+              rdy = Math.sin(angle) * oRange;
+            }
+            block.x -= rdx;
+            block.y -= rdy;
+            break;
+          }
+        }
+      }
+    };
+
     const updateCamera = () => {
       // Camera Logic
       let targetCameraX = 0;
@@ -2874,9 +3172,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const isLocalBuildBattle = !isOnline && status === "build_battle_playing";
 
       if (isLocalBuildBattle && players.current.length >= 2) {
-        const p1 = players.current[0];
-        const p2 = players.current[1];
-        if (p1 && p2) {
+        const aliveBuildBattlePlayers = players.current.filter(p => !p.dead);
+        if (aliveBuildBattlePlayers.length === 1) {
+          cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
+          const p = aliveBuildBattlePlayers[0];
+          targetCameraX = p.pos.x - GAME_WIDTH / 2 + 15;
+          targetCameraY = p.pos.y - GAME_HEIGHT / 2 + 15;
+        } else if (aliveBuildBattlePlayers.length >= 2) {
+          const p1 = aliveBuildBattlePlayers[0];
+          const p2 = aliveBuildBattlePlayers[1];
           let minX = Math.min(p1.pos.x, p2.pos.x);
           let maxX = Math.max(p1.pos.x + p1.w, p2.pos.x + p2.w);
           let minY = Math.min(p1.pos.y, p2.pos.y);
@@ -2894,91 +3198,126 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const dx = maxX - minX;
           const dy = maxY - minY;
 
-          // Compute target zoom based on the distance with a padding of 160
-          const zx = GAME_WIDTH / (dx + 160);
-          const zy = GAME_HEIGHT / (dy + 160);
-          const targetZoom = Math.max(0.2, Math.min(1.0, Math.min(zx, zy)));
-
-          // Smoothly interpolate zoom
+          // Smoothly adapt zoom level according to players' bounding box
+          const paddingX = 140;
+          const paddingY = 140;
+          const targetZoomX = GAME_WIDTH / (dx + paddingX);
+          const targetZoomY = GAME_HEIGHT / (dy + paddingY);
+          const targetZoom = Math.max(0.45, Math.min(1.0, Math.min(targetZoomX, targetZoomY)));
           cameraZoom.current += (targetZoom - cameraZoom.current) * 0.1;
 
-          // Target center is the midpoint of the bounding box
-          const cx = minX + dx / 2;
-          const cy = minY + dy / 2;
-
-          // Bound center so that the camera frame doesn't show beyond level boundaries
           const levelW = levelRef.current.width || GAME_WIDTH;
           const levelH = levelRef.current.height || GAME_HEIGHT;
 
-          const halfVisWidth = GAME_WIDTH / (2 * cameraZoom.current);
-          const halfVisHeight = GAME_HEIGHT / (2 * cameraZoom.current);
+          const visW = GAME_WIDTH / cameraZoom.current;
+          const visH = GAME_HEIGHT / cameraZoom.current;
 
-          let centerX = cx;
-          let centerY = cy;
+          let centerX = (minX + maxX) / 2;
+          let centerY = (minY + maxY) / 2;
 
-          if (halfVisWidth * 2 > levelW) {
+          if (visW > levelW) {
             centerX = levelW / 2;
           } else {
-            centerX = Math.max(halfVisWidth, Math.min(centerX, levelW - halfVisWidth));
+            centerX = Math.max(visW / 2, Math.min(centerX, levelW - visW / 2));
           }
 
-          if (halfVisHeight * 2 > levelH) {
+          if (visH > levelH) {
             centerY = levelH / 2;
           } else {
-            centerY = Math.max(halfVisHeight, Math.min(centerY, levelH - halfVisHeight));
+            centerY = Math.max(visH / 2, Math.min(centerY, levelH - visH / 2));
           }
 
-          // Top-left coordinate of the camera:
           targetCameraX = centerX - GAME_WIDTH / 2;
           targetCameraY = centerY - GAME_HEIGHT / 2;
         } else {
           cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
-          let totalX = 0;
-          let totalY = 0;
-          let activeCount = 0;
-          players.current.forEach((p) => {
-            if (p.lives > 0 || gameMode !== "brawler") {
-              totalX += p.pos.x;
-              totalY += p.pos.y;
-              activeCount++;
-            }
-          });
-          if (activeCount > 0) {
-            targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
-            targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
+          const anyPlayer = players.current[0];
+          if (anyPlayer) {
+            targetCameraX = anyPlayer.pos.x - GAME_WIDTH / 2 + 15;
+            targetCameraY = anyPlayer.pos.y - GAME_HEIGHT / 2 + 15;
           }
         }
       } else {
-        cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
+        // Dynamic camera in normal modes to look ahead based on speed and player spread
+        let followedPlayers = players.current.filter((p) => !p.dead && (p.lives > 0 || gameMode !== "brawler"));
+        if (isSpectatingNowLocal && followedPlayer) {
+          followedPlayers = [followedPlayer];
+        }
 
-        if (isSpectatingNowLocal) {
-          if (followedPlayer) {
-            targetCameraX = followedPlayer.pos.x - GAME_WIDTH / 2 + 15;
-            targetCameraY = followedPlayer.pos.y - GAME_HEIGHT / 2 + 15;
+        let avgX = 0;
+        let avgY = 0;
+        let avgVelX = 0;
+        let minX = 999999;
+        let maxX = -999999;
+        let minY = 999999;
+        let maxY = -999999;
+        let activeCount = 0;
+
+        followedPlayers.forEach((p) => {
+          avgX += p.pos.x + p.w / 2;
+          avgY += p.pos.y + p.h / 2;
+          avgVelX += p.vel.x || 0;
+          minX = Math.min(minX, p.pos.x);
+          maxX = Math.max(maxX, p.pos.x + p.w);
+          minY = Math.min(minY, p.pos.y);
+          maxY = Math.max(maxY, p.pos.y + p.h);
+          activeCount++;
+        });
+
+        if (activeCount > 0) {
+          avgX /= activeCount;
+          avgY /= activeCount;
+          avgVelX /= activeCount;
+
+          const dx = maxX - minX;
+          const dy = maxY - minY;
+
+          let targetZoom = 1.0;
+          if (activeCount >= 2) {
+            const paddingX = 200;
+            const paddingY = 200;
+            const targetZoomX = GAME_WIDTH / (dx + paddingX);
+            const targetZoomY = GAME_HEIGHT / (dy + paddingY);
+            targetZoom = Math.max(0.45, Math.min(1.0, Math.min(targetZoomX, targetZoomY)));
+          }
+          cameraZoom.current += (targetZoom - cameraZoom.current) * 0.1;
+
+          let cx = avgX;
+          let cy = avgY;
+
+          if (activeCount >= 2) {
+            cx = (minX + maxX) / 2;
+            cy = (minY + maxY) / 2;
           } else {
-            const localP = players.current.find(
-              (p) => p.onlineId === onlineService.localPlayer?.id,
-            );
-            if (localP) {
-              targetCameraX = localP.pos.x - GAME_WIDTH / 2 + 15;
-              targetCameraY = localP.pos.y - GAME_HEIGHT / 2 + 15;
-            }
+            const lookAhead = 150 + Math.max(0, avgVelX * 12);
+            cx = avgX + lookAhead;
           }
+
+          const levelW = levelRef.current.width || GAME_WIDTH;
+          const levelH = levelRef.current.height || GAME_HEIGHT;
+
+          const visW = GAME_WIDTH / cameraZoom.current;
+          const visH = GAME_HEIGHT / cameraZoom.current;
+
+          let centerX = cx;
+          let centerY = cy;
+
+          if (visW > levelW) {
+            centerX = levelW / 2;
+          } else {
+            centerX = Math.max(visW / 2, Math.min(centerX, levelW - visW / 2));
+          }
+
+          if (visH > levelH) {
+            centerY = levelH / 2;
+          } else {
+            centerY = Math.max(visH / 2, Math.min(centerY, levelH - visH / 2));
+          }
+
+          targetCameraX = centerX - GAME_WIDTH / 2;
+          targetCameraY = centerY - GAME_HEIGHT / 2;
         } else {
-          let totalX = 0;
-          let totalY = 0;
-          let activeCount = 0;
-          players.current.forEach((p) => {
-            if (p.lives > 0 || gameMode !== "brawler") {
-              totalX += p.pos.x;
-              totalY += p.pos.y;
-              activeCount++;
-            }
-          });
-          if (activeCount > 0) {
-            targetCameraX = totalX / activeCount - GAME_WIDTH / 2 + 15;
-            targetCameraY = totalY / activeCount - GAME_HEIGHT / 2 + 15;
-          }
+          cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
         }
       }
 
@@ -3396,8 +3735,23 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (p.dashCooldown > 0) p.dashCooldown--;
         if (p.dashTimer > 0) {
           p.dashTimer--;
-          p.vel.x = p.dashDirection.x * 15 * dt;
-          p.vel.y = p.dashDirection.y * 15 * dt;
+          p.vel.x = p.dashDirection.x * 25 * dt;
+          p.vel.y = 0; // Lock Y vertical drop during dash
+        }
+
+        // If grounded on a platform, find the current frame's platform movement delta
+        if (p.isGrounded && p.groundedOnEntityId) {
+          const platform = collidableEntities.find(
+            (ent) =>
+              ent.id === p.groundedOnEntityId ||
+              `${(ent as any).baseX ?? ent.x}_${(ent as any).baseY ?? ent.y}` === p.groundedOnEntityId,
+          );
+          if (platform) {
+            p.platformDelta = {
+              x: platform.dx || 0,
+              y: platform.dy || 0,
+            };
+          }
         }
 
         // Apply platform movement from previous frame if grounded
@@ -3552,18 +3906,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (entity.type === "gravity_zero")
                 p.gravity = (p.gravityFlipped ? -GRAVITY : GRAVITY) * 0.1;
 
-              if (entity.type === "block_dash" && p.dashCooldown === 0) {
-                p.dashTimer = 10;
-                p.dashCooldown = 60;
-                p.dashDirection = { x: p.facing, y: 0 };
-                audio.playJump();
-                spawnParticles(
-                  p.pos.x + p.w / 2,
-                  p.pos.y + p.h / 2,
-                  p.color,
-                  10,
-                  "spark",
-                );
+              if (entity.type === "block_dash") {
+                if (p.dashTimer < 6) {
+                  p.dashTimer = 12;
+                  p.dashCooldown = 30; // reset cooldown so they are ready
+                  p.dashDirection = { x: p.facing || 1, y: 0 };
+                  audio.playJump();
+                  spawnParticles(
+                    p.pos.x + p.w / 2,
+                    p.pos.y + p.h / 2,
+                    p.color,
+                    12,
+                    "spark",
+                  );
+                }
               }
               if (entity.type === "block_shrink") {
                 if (!p.isShrunk) {
@@ -3654,7 +4010,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.vel.x += moveX * dt; // Apply acceleration with time scaling
           }
 
-          p.vel.y += p.gravity * stats.gravityMul * dt; // Apply gravity with time scaling
+          if (p.dashTimer > 0) {
+            p.vel.x = p.dashDirection.x * 25 * dt;
+            p.vel.y = 0; // Lock Y vertical drop during dash
+          } else {
+            p.vel.y += p.gravity * stats.gravityMul * dt; // Apply gravity with time scaling
+          }
 
           // Wall Slide Logic
           if (p.isWallSliding) {
@@ -3761,12 +4122,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (checkCollision(playerRectX, entity)) {
             // Pass-through entities
             if (
-              !geometryDashMode && (
-                entity.type === "walkthrough_wall" ||
-                entity.type === "troll_wall" ||
-                entity.type === "fake_goal" ||
-                entity.type === "fake_ice" ||
-                entity.type === "fake_slime"
+              entity.type === "glue" || (
+                !geometryDashMode && (
+                  entity.type === "walkthrough_wall" ||
+                  entity.type === "troll_wall" ||
+                  entity.type === "fake_goal" ||
+                  entity.type === "fake_ice" ||
+                  entity.type === "fake_slime"
+                )
               )
             )
               continue; // Do nothing, just pass
@@ -3785,6 +4148,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.oneTimeHook ||
                 p.oneTimeDoubleJump ||
                 p.oneTimeTripleJump ||
+                p.oneTimeDash ||
                 p.tripleJumpActive ||
                 p.isShrunk ||
                 p.isGrown
@@ -3793,6 +4157,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.oneTimeHook = false;
                 p.oneTimeDoubleJump = false;
                 p.oneTimeTripleJump = false;
+                p.oneTimeDash = false;
                 p.tripleJumpActive = false;
 
                 if (p.isShrunk) {
@@ -3900,6 +4265,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             }
             if (entity.type === "powerup_triple_jump") {
               p.oneTimeTripleJump = true;
+              collectPowerup(powerupId, p);
+              audio.playCoin();
+              continue;
+            }
+            if (entity.type === "powerup_dash") {
+              p.oneTimeDash = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
               continue;
@@ -4256,14 +4627,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             continue;
           }
 
-          if (checkCollision(playerRect, entity)) {
+          // Increase collision bounding box downwards if the platform is moving downwards
+          // to prevent the player from frame-detaching due to the platform accelerating away
+          let collisionRect = { ...playerRect };
+          const eDy = (entity as any).dy || 0;
+          if (p.vel.y >= 0 && eDy > 0) {
+            collisionRect.h += eDy + 20; 
+          } else if (p.gravity < 0 && p.vel.y <= 0 && eDy < 0) {
+            // Inverted gravity, falling upwards onto an upward moving platform
+            collisionRect.y -= Math.abs(eDy) + 20;
+            collisionRect.h += Math.abs(eDy) + 20;
+          }
+
+          if (checkCollision(collisionRect, entity)) {
             if (
-              !geometryDashMode && (
-                entity.type === "walkthrough_wall" ||
-                entity.type === "troll_wall" ||
-                entity.type === "fake_goal" ||
-                entity.type === "fake_ice" ||
-                entity.type === "fake_slime"
+              entity.type === "glue" || (
+                !geometryDashMode && (
+                  entity.type === "walkthrough_wall" ||
+                  entity.type === "troll_wall" ||
+                  entity.type === "fake_goal" ||
+                  entity.type === "fake_ice" ||
+                  entity.type === "fake_slime"
+                )
               )
             )
               continue; // Do nothing
@@ -4283,6 +4668,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.oneTimeHook ||
                 p.oneTimeDoubleJump ||
                 p.oneTimeTripleJump ||
+                p.oneTimeDash ||
                 p.tripleJumpActive ||
                 p.isShrunk ||
                 p.isGrown
@@ -4291,6 +4677,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                 p.oneTimeHook = false;
                 p.oneTimeDoubleJump = false;
                 p.oneTimeTripleJump = false;
+                p.oneTimeDash = false;
                 p.tripleJumpActive = false;
 
                 if (p.isShrunk) {
@@ -4403,6 +4790,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             }
             if (entity.type === "powerup_triple_jump") {
               p.oneTimeTripleJump = true;
+              collectPowerup(powerupId, p);
+              audio.playCoin();
+              continue;
+            }
+            if (entity.type === "powerup_dash") {
+              p.oneTimeDash = true;
               collectPowerup(powerupId, p);
               audio.playCoin();
               continue;
@@ -4634,18 +5027,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             const platformTop = entity.y;
             const prevPlatformTop = platformTop - (entity.dy || 0);
 
-            const wasAbove = prevPlayerFeet <= prevPlatformTop + 5; // 5px margin
+            const wasAbove = prevPlayerFeet <= prevPlatformTop + 15; // increased margin for fast moving platforms
 
             // Only treat as a "landing" if we were on the correct side in the previous frame.
             // This prevents "teleporting" through blocks from below in low gravity.
             const sideCorrect =
               (p.gravity >= 0 && wasAbove) || (p.gravity < 0 && !wasAbove);
 
-            if (
-              (isFalling && sideCorrect) ||
-              (wasAbove &&
-                (entity.movingV || entity.type === "moving_platform_v"))
-            ) {
+            if (sideCorrect) {
               // Physics Resolution
               if (p.gravity >= 0) {
                 p.pos.y = entity.y - playerRect.h;
@@ -4681,8 +5070,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     y: (entity as any).dy || 0,
                   };
                   p.lastPlatformVel = { ...p.platformDelta };
+                  p.groundedOnEntityId = entity.id || `${(entity as any).baseX ?? entity.x}_${(entity as any).baseY ?? entity.y}`;
                 } else {
                   p.lastPlatformVel = { x: 0, y: 0 };
+                  p.groundedOnEntityId = undefined;
                 }
 
                 if (entity.type === "fragile" || entity.fragile) {
@@ -4712,6 +5103,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           p.surfaceType = dominantSurface;
         } else {
           p.surfaceType = "none";
+          p.groundedOnEntityId = undefined;
         }
 
         // Apply friction based on dominant surface
@@ -4882,24 +5274,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           p.scrollX = (p.scrollX || 0) + currentScrollSpeed * dtInSeconds;
         }
 
-        // Keep players from running off the right edge in auto-scroll
-        if ((level.autoScroll || geometryDashMode) && p.hasStartedMove) {
-          const maxRight = (p.scrollX || 0) + GAME_WIDTH - p.w;
-          if (p.pos.x > maxRight) {
-            p.pos.x = maxRight;
-            if (p.vel.x > 0) p.vel.x = 0;
-          }
-        }
-
+        // Allow players to run off the right edge without restriction
         const pWallX = (level.autoScroll || geometryDashMode) && p.hasStartedMove ? (p.scrollX || 0) : 0;
 
         const dieTop =
-          (p.gravityFlipped && p.pos.y + p.h < 0) ||
-          (!p.gravityFlipped && p.pos.y < -2500) ||
-          ((level.autoScroll || geometryDashMode) && p.pos.y + p.h < cameraRef.current.y - 50);
+          (p.gravityFlipped && p.pos.y + p.h < -2500) ||
+          (!p.gravityFlipped && p.pos.y < -2500);
 
         const dieBottom =
-          (!p.gravityFlipped && p.pos.y > (status === "build_battle_playing" ? cameraRef.current.y + GAME_HEIGHT + 30 : currentLevelHeight)) ||
+          (!p.gravityFlipped && p.pos.y > currentLevelHeight) ||
           (p.gravityFlipped && p.pos.y > currentLevelHeight + 2500) ||
           (gameMode === "brawler" &&
             brawlerSuddenDeath &&
@@ -4907,8 +5290,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ((level.autoScroll || geometryDashMode) &&
             p.pos.y > cameraRef.current.y + GAME_HEIGHT + 50);
 
-        const dieLeftRight =
-          (level.autoScroll || geometryDashMode) && p.hasStartedMove && p.pos.x < pWallX + 10;
+        const dieLeftRight = false;
 
         if (dieTop || dieBottom || dieLeftRight) {
           if (isOnline && p.onlineId !== onlineService.localPlayer?.id) return;
@@ -5172,6 +5554,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             hookPos: localP.hookPos,
             oneTimeBuild: localP.oneTimeBuild,
             oneTimeHook: localP.oneTimeHook,
+            oneTimeDash: localP.oneTimeDash,
           };
           if (localP.lives !== undefined) syncData.health = localP.lives;
           if (localP.inventory !== undefined)
@@ -5408,24 +5791,23 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.stroke();
         } else if (ent.type === "glue") {
           skipDefaultFill = true;
-          // semi-transparent sticky lime base
-          ctx.fillStyle = "rgba(132, 204, 22, 0.25)";
-          ctx.fillRect(drawX, drawY, ent.w, ent.h);
+          // A light layer on the edges, no fill
+          ctx.fillStyle = "rgba(163, 230, 53, 0.4)";
+          // top edge
+          ctx.fillRect(drawX, drawY, ent.w, 4);
+          // bottom edge
+          ctx.fillRect(drawX, drawY + ent.h - 4, ent.w, 4);
+          // left edge
+          ctx.fillRect(drawX, drawY + 4, 4, ent.h - 8);
+          // right edge
+          ctx.fillRect(drawX + ent.w - 4, drawY + 4, 4, ent.h - 8);
 
-          // Slimy borders
-          ctx.strokeStyle = "rgba(163, 230, 53, 0.8)";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(drawX + 1, drawY + 1, ent.w - 2, ent.h - 2);
+          // Slimy little dots in the middle to hint it's there
+          ctx.fillStyle = "rgba(132, 204, 22, 0.7)";
+          ctx.fillRect(drawX + ent.w / 2 - 2, drawY + ent.h / 2 - 2, 4, 4);
+          ctx.fillRect(drawX + ent.w / 2 - 8, drawY + ent.h / 2 + 4, 3, 3);
+          ctx.fillRect(drawX + ent.w / 2 + 6, drawY + ent.h / 2 - 6, 3, 3);
 
-          // Internal sticky lines / gooey pattern
-          ctx.strokeStyle = "rgba(132, 204, 22, 0.5)";
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(drawX + 3, drawY + 3);
-          ctx.lineTo(drawX + ent.w - 3, drawY + ent.h - 3);
-          ctx.moveTo(drawX + ent.w - 3, drawY + 3);
-          ctx.lineTo(drawX + 3, drawY + ent.h - 3);
-          ctx.stroke();
 
           // Sticky gel bubbles
           ctx.fillStyle = "rgba(190, 242, 100, 0.9)";
@@ -5737,6 +6119,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             ctx.strokeStyle = (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") ? "#a855f7" : "#0ea5e9";
             ctx.lineWidth = 2;
             ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+          } else if (ent.type === "block_dash") {
+            ctx.fillStyle = "rgba(245, 158, 11, 0.45)"; // Translucent Amber
+            ctx.fillRect(drawX, drawY, ent.w, ent.h);
+            ctx.strokeStyle = "#f59e0b"; // Solid Amber Outline
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+
+            // Draw clean thunderbolt icons centered inside block
+            ctx.save();
+            ctx.fillStyle = "#f59e0b";
+            ctx.font = '14px "Press Start 2P", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("⚡", drawX + ent.w / 2, drawY + ent.h / 2);
+            ctx.restore();
           } else {
             ctx.fillRect(drawX, drawY, ent.w, ent.h);
           }
@@ -5981,13 +6378,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       drawExplosions(ctx, explosions.current);
 
       // Draw Temp Blocks
-      tempBlocks.current.forEach((block) => {
+      tempBlocks.current.forEach((baseBlock) => {
+        const block = getDynamicEntity(baseBlock, gameTimeRef.current, 0);
+        if (!block) return;
         // If permanent, don't fade out visually
-        if (block.expires > Date.now() + 100000) {
+        if (baseBlock.expires > Date.now() + 100000) {
           ctx.fillStyle = COLORS.TEMP_BLOCK;
           ctx.globalAlpha = 1.0;
         } else {
-          const timeLeft = block.expires - Date.now();
+          const timeLeft = baseBlock.expires - Date.now();
           ctx.fillStyle = COLORS.TEMP_BLOCK;
           ctx.globalAlpha = Math.max(0, timeLeft / 500);
         }
@@ -6531,6 +6930,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           p.oneTimeHook ||
           p.oneTimeDoubleJump ||
           p.oneTimeTripleJump ||
+          p.oneTimeDash ||
           p.tripleJumpActive;
         if ((hasOneTime || p.inventory) && gameMode !== "brawler") {
           let indColor = "#fff";
@@ -6711,6 +7111,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             } else if (p.oneTimeTripleJump || p.tripleJumpActive) {
               indColor = "#ff00ff";
               letter = "🚀";
+            } else if (p.oneTimeDash) {
+              indColor = "#f59e0b";
+              letter = "💨";
             }
           }
 
