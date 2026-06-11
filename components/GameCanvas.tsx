@@ -2168,6 +2168,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   // Input Listeners (Keyboard + Wheel)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       // Prevent scrolling with arrows/space
       if (
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].indexOf(
@@ -2242,6 +2243,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       });
     };
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (keys.current[e.code]) {
         keys.current[e.code] = false;
         if (isStartingRef.current || paused) return;
@@ -7155,6 +7157,52 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         drawPlayerAccessories(ctx, px, py, w, h, p);
         ctx.restore(); // Matches player entry ctx.save()
+
+        // --- Draw Chat Bubble (Online Multiplayer) ---
+        if (isOnline && p.onlineId) {
+          const now = Date.now();
+          const recentMsgs = onlineService.messages.filter((m) => m.senderId === p.onlineId && m.type !== 'system' && now - m.timestamp < 5000);
+          if (recentMsgs.length > 0) {
+            const recentMsg = recentMsgs[recentMsgs.length - 1]; // latest
+            ctx.save();
+            ctx.globalAlpha = 1.0;
+            ctx.font = '8px "Press Start 2P", monospace';
+            const textWidth = ctx.measureText(recentMsg.text).width;
+            const bubblePx = Math.round(p.pos.x) + (p.w / 2);
+            
+            // Calculate height overhead depending on name rendering
+            const showNames = gameMode === "vs" || gameMode === "brawler";
+            const actualNameOffset = gameMode !== "brawler" && (p.inventory || p.oneTimeBuild) ? 22 : 8;
+            const bubblePy = Math.round(p.pos.y) - (showNames ? actualNameOffset + 15 : 25);
+            
+            const padX = 6;
+            const padY = 6;
+            const bubbleW = textWidth + padX * 2;
+            const bubbleH = 8 + padY * 2;
+            const bx = bubblePx - bubbleW / 2;
+            const by = bubblePy - bubbleH;
+
+            // Background
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; // readable but transparent
+            ctx.fillRect(bx, by, bubbleW, bubbleH);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            ctx.strokeRect(bx, by, bubbleW, bubbleH);
+
+            // Pointer
+            ctx.beginPath();
+            ctx.moveTo(bubblePx - 4, by + bubbleH);
+            ctx.lineTo(bubblePx + 4, by + bubbleH);
+            ctx.lineTo(bubblePx, by + bubbleH + 4);
+            ctx.fill();
+
+            // Text
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(recentMsg.text, bubblePx, by + bubbleH / 2 + 1);
+            ctx.restore();
+          }
+        }
       });
 
       // Draw HUD UI

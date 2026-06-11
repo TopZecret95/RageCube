@@ -1,0 +1,287 @@
+54:  onlineService,
+59:} from "./services/onlineService";
+3561:    if (onlineService.lobbyCode) {
+3985:        if (onlineService.isPaused) return;
+3992:          const isHost = onlineService.lobbyCode ? onlineService.isHost : true;
+4026:    if (onlineService.lobbyCode && !onlineService.isHost) return;
+4029:      if (onlineService.isPaused) return;
+4085:        if (onlineService.lobbyCode && onlineService.isHost) {
+4086:          onlineService.broadcastLobbyState(
+4262:    if ((!collection || collection.length === 0) && onlineService.lobbyCode) {
+4277:      if (onlineService.lobbyCode && onlineService.isHost) {
+4279:          await onlineService.broadcastLobbyState(
+4288:          await onlineService.startGame(); // Ensure everyone transitions to playing
+4294:        if (prev.customLevelsQueue || onlineService.lobbyCode) {
+4317:            (onlineService.lobbyCode ? collection : null),
+4333:        onlineService.lobbyCode ||
+4339:        onlineService.returnToLobby();
+4436:    // Fallback to onlineService.currentVote since stateRef doesn't have it
+4437:    const currentVoteCopy = currentVote || onlineService.currentVote;
+4441:    if (onlineService.currentVote) {
+4442:      onlineService.currentVote = null;
+4455:    const totalPlayers = Array.from(onlineService.players.values()).length;
+4460:      onlineService.sendChatMessage(
+4472:        onlineService.startGame();
+4489:        onlineService.broadcastLobbyState(
+4498:        onlineService.kickPlayer(currentVoteCopy.targetId);
+4502:      onlineService.sendChatMessage(
+4507:    if (onlineService.isHost) {
+4508:      onlineService.clearVote();
+4543:    if (onlineService.lobbyCode && onlineService.currentVote) {
+4546:        onlineService.castVote("yes");
+4550:        onlineService.castVote("no");
+4587:          if (onlineService.lobbyCode) {
+4588:            if (onlineService.isHost) {
+4594:              onlineService.broadcastLobbyState(
+4983:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+4991:            if (st.gameState.onlineMode && onlineService.isHost) {
+4992:              onlineService.broadcastLobbyState(
+5012:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+5016:            if (st.gameState.onlineMode && onlineService.isHost) {
+5017:              onlineService.broadcastLobbyState(
+5033:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+5034:          if (st.gameState.onlineMode && onlineService.isHost) {
+5035:            if (onlineService.lobbyCode) {
+5036:              onlineService.broadcastLobbyState(
+5232:      if (isBuildBattle && !onlineService.lobbyCode) {
+5250:          (!onlineService.lobbyCode || onlineService.isHost) &&
+5263:          !onlineService.lobbyCode
+5269:      if (onlineService.lobbyCode) {
+5272:            onlineService.sendEvent("give_up", { name: playerName });
+5282:            if (onlineService.isHost) {
+5283:              onlineService.returnToLobby();
+5337:          if (onlineService.lobbyCode) {
+5338:            if (onlineService.isHost) {
+5339:              onlineService.closeLobby();
+5341:              onlineService.disconnect();
+5595:        onlineService.disconnect();
+5629:            onlineService.broadcastLobbyState(
+5668:            onlineService.broadcastLobbyState(
+5695:          onlineService.broadcastLobbyState(
+5716:          onlineService.broadcastLobbyState(
+5734:              onlineService.startGame();
+5755:              onlineService.broadcastLobbyState(
+5768:            onlineService.closeLobby();
+5777:              (p) => p.id === onlineService.localPlayer?.id,
+5779:            if (localP) onlineService.setReady(!localP.ready);
+5788:            onlineService.disconnect();
+5827:        if (onlineService.lobbyCode) {
+5845:          else if (!onlineService.lobbyCode) maxItems = 2; // Play Again, Lobby, Menu
+5852:              if (onlineService.lobbyCode && onlineService.isHost) {
+5853:                onlineService.returnToLobby();
+5857:                  status: onlineService.lobbyCode
+5865:              if (onlineService.lobbyCode) onlineService.disconnect();
+5868:          } else if (onlineService.lobbyCode) {
+5871:              if (onlineService.isHost) onlineService.returnToLobby();
+5873:              onlineService.disconnect();
+5964:      const isHost = onlineService.isHost;
+5965:      const isOnline = !!onlineService.lobbyCode;
+5993:              if (sel === 0) onlineService.initiateVote("next");
+5994:              else if (sel === 1) onlineService.initiateVote("repeat");
+5995:              else if (sel === 2) onlineService.returnToLobby();
+5997:                onlineService.disconnect();
+6001:              if (sel === 0) onlineService.initiateVote("repeat");
+6002:              else if (sel === 1) onlineService.returnToLobby();
+6004:                onlineService.disconnect();
+6012:              onlineService.disconnect();
+6116:      const code = await onlineService.createLobby(localPlayer, mode, {
+6139:      onlineService.broadcastLobbyState(
+6153:    if (onlineService.localPlayer) {
+6155:        ...onlineService.localPlayer,
+6158:      onlineService.updateLocalPlayer(updatedPlayer);
+6180:      await onlineService.joinLobby(code, localPlayer);
+6189:      onlineService.disconnect();
+6195:    onlineService.onLobbyUpdate = (
+6212:        onlineService.localPlayer &&
+6213:        (onlineService.localPlayer.team === undefined ||
+6214:          onlineService.localPlayer.team === null)
+6217:          (p) => p.id === onlineService.localPlayer?.id,
+6221:            ...onlineService.localPlayer,
+6224:          onlineService.updateLocalPlayer(updatedPlayer);
+6233:      if (onlineService.lobbyCode && !onlineService.isHost) {
+6234:        const hostExists = players.some((p) => p.id === onlineService.hostId);
+6238:          onlineService.disconnect();
+6249:      if (updatedVsCollision !== undefined && !onlineService.isHost) {
+6253:      if (updatedPowerups !== undefined && !onlineService.isHost) {
+6263:      if (mode === "editor" && newLevel && !onlineService.isHost) {
+6267:      if (teamMode && !onlineService.isHost) {
+6271:      if (hazardMode && !onlineService.isHost) {
+6274:      if (suddenDeath !== undefined && !onlineService.isHost) {
+6277:      if (comboPowerups !== undefined && !onlineService.isHost) {
+6296:          } else if (!onlineService.isHost) {
+6307:    onlineService.onGameStart = (
+6357:    onlineService.onStatusChange = (status) => {
+6377:          onlineService.currentLevel ||
+6410:        onlineService.disconnect();
+6418:        onlineService.disconnect();
+6421:    onlineService.onDisconnect = () => {
+6429:    onlineService.onError = (msg) => {
+6433:    onlineService.onChatUpdate = (msgs) => {
+6436:    onlineService.onVoteUpdate = (vote) => {
+6441:      if (onlineService.isHost && onlineService.currentVote) {
+6442:        const totalPlayers = Array.from(onlineService.players.values()).length;
+6443:        const votesCast = Object.keys(onlineService.currentVote.votes).length;
+6445:          Date.now() > onlineService.currentVote.endTime ||
+6453:    onlineService.onAppEvent = (id, event, data) => {
+6472:        onlineService.handleCastVote(id, data.choice);
+6474:      if (event === "editor-sync" && onlineService.lobbyCode) {
+6475:        if (onlineService.isHost) {
+6479:          onlineService.broadcastLobbyState("editor", data);
+6486:        if (onlineService.isHost && !onlineService.currentVote) {
+6488:          onlineService.currentVote = {
+6494:          onlineService.broadcastLobbyState(
+6503:            onlineService.currentVote,
+6512:        if (onlineService.isHost && isPlaying) {
+6521:            const roomPlayers = onlineService.players.size;
+6523:            const isOnlineRoom = !!onlineService.lobbyCode;
+6551:              onlineService.sendEvent("start_timer", { duration: 20 });
+6577:      onlineService.onLobbyUpdate = undefined;
+6578:      onlineService.onGameStart = undefined;
+6579:      onlineService.onStatusChange = undefined;
+6580:      onlineService.onChatUpdate = undefined;
+6581:      onlineService.onVoteUpdate = undefined;
+6582:      onlineService.onDisconnect = undefined;
+6583:      onlineService.onError = undefined;
+6584:      onlineService.onEvent = undefined;
+6585:      onlineService.onAppEvent = undefined;
+6609:      if (onlineService.lobbyCode) {
+6610:        if (onlineService.isHost) {
+6622:            onlineService.players.values(),
+6625:            const isLocal = p.id === onlineService.localPlayer?.id;
+6633:                onlineService.localPlayer?.name
+6654:          onlineService.sendEvent("online_results", {
+6657:          onlineService.finishGame();
+6697:    [onlineService],
+6709:      if (!onlineService.isPaused) {
+7003:        if (onlineService.lobbyCode) {
+7004:          if (onlineService.isHost) {
+7011:            onlineService.broadcastLobbyState(
+7036:        onlineService.lobbyCode ||
+7040:        if (onlineService.lobbyCode) {
+7042:          const isLocalName = onlineService.localPlayer?.name;
+7058:              id: onlineService.localPlayer?.id,
+7074:            onlineService.sendEvent("finish_stats", myStats);
+7076:            if (onlineService.isHost) {
+7085:                const roomPlayers = onlineService.players.size;
+7087:                const isOnlineRoom = !!onlineService.lobbyCode;
+7113:                  onlineService.sendEvent("start_timer", { duration: 20 });
+7859:      {onlineService.lobbyCode && onlineService.isPaused && (
+7868:            {onlineService.isHost && (
+7870:                onClick={() => onlineService.togglePause()}
+7918:              {Array.from(onlineService.players.values())
+7919:                .filter((p) => p.id !== onlineService.localPlayer?.id)
+7945:              {Array.from(onlineService.players.values()).filter(
+7946:                (p) => p.id !== onlineService.localPlayer?.id,
+7979:                  onlineService.initiateVote("kick", kickConfirmTarget.id);
+8016:                  onlineService.initiateVote(voteConfirmType);
+8035:      {onlineService.lobbyCode && currentVote && (
+8052:                    ? `KICK ${onlineService.players.get(currentVote.targetId || "")?.name.toUpperCase() || "PLAYER"}?`
+8058:                onClick={() => onlineService.castVote("yes")}
+8061:                          onlineService.localPlayer &&
+8062:                          currentVote.votes[onlineService.localPlayer.id] ===
+8077:                onClick={() => onlineService.castVote("no")}
+8080:                          onlineService.localPlayer &&
+8081:                          currentVote.votes[onlineService.localPlayer.id] ===
+8112:                {Array.from(onlineService.players.values()).length}{" "}
+8206:                    {onlineService.lobbyCode && (
+8227:                  {onlineService.lobbyCode && (
+8229:                      {onlineService.isHost && (
+8231:                          onClick={() => onlineService.togglePause()}
+8232:                          className={`px-2 py-0.5 text-[10px] md:text-xs font-bold uppercase transition-all border-b-2 active:translate-y-px ${onlineService.isPaused ? "bg-green-600 border-green-900 text-white" : "bg-yellow-600 border-yellow-900 text-white"}`}
+8234:                          {onlineService.isPaused ? "RESUME" : "PAUSE"}
+8454:                          onlineService.lobbyCode
+8456:                          if (onlineService.isHost) {
+8457:                            onlineService.broadcastLobbyState(
+8462:                            onlineService.sendEvent("editor-sync", levelData);
+8494:                          onlineService.lobbyCode
+8496:                          if (onlineService.isHost) {
+8499:                            onlineService.broadcastLobbyState(
+8505:                            onlineService.sendEvent("editor-sync", levelData);
+8613:                      onlineService.isPaused
+8648:                    isOnline={!!onlineService.lobbyCode}
+8649:                    onlinePing={onlineService.ping}
+10734:                              if (gameState.onlineMode && !onlineService.isHost)
+10738:                              if (onlineService.isHost) {
+10739:                                onlineService.broadcastLobbyState(
+10754:                            className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerSuddenDeath ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+10780:                              if (gameState.onlineMode && !onlineService.isHost)
+10784:                              if (onlineService.isHost) {
+10785:                                onlineService.broadcastLobbyState(
+10803:                            className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerComboPowerups ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+10829:                                  !onlineService.isHost
+10833:                                if (onlineService.isHost)
+10834:                                  onlineService.broadcastLobbyState(
+10870:                                  !onlineService.isHost
+10880:                                  onlineService.isHost
+10882:                                  onlineService.broadcastLobbyState(
+10908:                                    !onlineService.isHost
+10918:                                    onlineService.isHost
+10920:                                    onlineService.broadcastLobbyState(
+11845:                            {onlineService.currentMode === "editor"
+11847:                              : onlineService.currentMode === "vs"
+11854:                              {onlineService.lobbyCode}
+11858:                        {onlineService.isHost && (
+11860:                            {onlineService.currentMode === "vs" && (
+11868:                                  onlineService.broadcastLobbyState(
+11891:                            {onlineService.currentMode === "vs" && (
+11894:                                  onlineService.toggleFinishTimer()
+11943:                        {!onlineService.isHost && (
+11961:                                p.id === onlineService.localPlayer?.id;
+11999:                                  {onlineService.isHost && !p.isHost && (
+12002:                                        onlineService.kickPlayer(p.id)
+12023:                                              ...onlineService.localPlayer!,
+12026:                                            onlineService.updateLocalPlayer(
+12068:                              {onlineService.isHost &&
+12082:                                          onlineService.clearSuggestions()
+12108:                                                    onlineService.handleSuggestion(
+12119:                                                    onlineService.handleSuggestion(
+12144:                              {!onlineService.isHost && (
+12157:                                          onlineService.localPlayer?.id,
+12175:                                                onlineService.suggestLevel(l);
+12198:                                      onlineService.localPlayer?.id,
+12206:                                            onlineService.localPlayer?.id,
+12279:                              onlineService.sendChatMessage(text);
+12301:                                  onlineService.sendChatMessage(ping)
+12319:                                          onlineService.localPlayer?.id,
+12385:                                    onlineService.startGame();
+12395:                                      p.id === onlineService.localPlayer?.id,
+12398:                                    onlineService.setReady(!localP.ready);
+12432:                                if (onlineService.isHost) {
+12433:                                  onlineService.closeLobby();
+12435:                                  onlineService.disconnect();
+12822:                        if (isBuildBattle && !onlineService.lobbyCode) {
+12849:                            (!onlineService.lobbyCode || onlineService.isHost) &&
+12894:                            !onlineService.lobbyCode
+12911:                        if (onlineService.lobbyCode) {
+12916:                              onlineService.sendEvent("give_up", {
+12930:                              if (onlineService.isHost) {
+12931:                                onlineService.returnToLobby();
+12998:                            if (onlineService.lobbyCode) {
+12999:                              onlineService.disconnect();
+13047:                          {(!onlineService.lobbyCode || onlineService.isHost) &&
+13062:                                  onlineService.lobbyCode
+13068:                                    onlineService.lobbyCode &&
+13069:                                    onlineService.isHost
+13071:                                    onlineService.returnToLobby();
+13075:                                      status: onlineService.lobbyCode
+13091:                                  if (onlineService.lobbyCode)
+13092:                                    onlineService.disconnect();
+13102:                          ) : onlineService.lobbyCode ? (
+13108:                                  if (onlineService.isHost) {
+13109:                                    onlineService.returnToLobby();
+13120:                                  onlineService.disconnect();
+13650:                              className={`border-b border-neutral-800/50 ${res.id === onlineService.localPlayer?.id ? "bg-cyan-900/20" : ""}`}
+13657:                                {res.id === onlineService.localPlayer?.id
+13677:                      {onlineService.lobbyCode ? (
+13679:                          {onlineService.isHost ? (
+13705:                                    onlineService.lobbyCode &&
+13706:                                    onlineService.isHost
+13725:                                      await onlineService.broadcastLobbyState(
+13736:                                    onlineService.startGame();
+13772:                                onClick={() => onlineService.returnToLobby()}
+13794:                                  if (onlineService.isHost) {
+13795:                                    onlineService.closeLobby();
+13797:                                    onlineService.disconnect();
+13843:                                    onlineService.disconnect();
+14900:                      if (onlineService.lobbyCode && gameState.isHost) {
+14908:                        onlineService.broadcastLobbyState(

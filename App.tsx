@@ -3331,6 +3331,8 @@ const App: React.FC = () => {
   const [onlineSuggestions, setOnlineSuggestions] = useState<any[]>([]);
   const [showSuggestionMenu, setShowSuggestionMenu] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [showInGameChat, setShowInGameChat] = useState(false);
+  const [inGameChatText, setInGameChatText] = useState("");
   const [onlineError, setOnlineError] = useState("");
 
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -4514,8 +4516,18 @@ const App: React.FC = () => {
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement
     ) {
+      if (e.code === "Escape" && showInGameChat) {
+         setShowInGameChat(false);
+      }
       return;
     }
+
+    if ((e.code === "KeyT" || e.code === "Enter") && onlineService.lobbyCode && (stateRef.current.gameState.status.includes("playing") || stateRef.current.gameState.status.includes("setup"))) {
+       e.preventDefault();
+       setShowInGameChat(true);
+       return;
+    }
+
     const st = stateRef.current; // Read from Ref
     if (st.isTransitioning) {
       e.preventDefault();
@@ -5277,6 +5289,18 @@ const App: React.FC = () => {
             handleWin("GAVE UP");
           },
         });
+        if (isBuildBattle && onlineService.isHost) {
+          buttons.push({
+            action: () => {
+              onlineService.sendEvent("force_end_round", { name: playerName });
+              setGameState((p) => ({
+                ...p,
+                status: p.previousStatus || "playing",
+              }));
+              handleWin("EVERYONE_FINISHED");
+            },
+          });
+        }
         buttons.push({
           action: () => {
             if (onlineService.isHost) {
@@ -6041,7 +6065,7 @@ const App: React.FC = () => {
         }
       }
     }
-  }, []); // Empty dependency array = attached once, never removed!
+  }, [showInGameChat]); // Dependency array updated
 
   useEffect(() => {
     // Prevent gaming mouse thumb buttons (Back/Forward) from leaving the game
@@ -6467,6 +6491,14 @@ const App: React.FC = () => {
             type: "system",
           },
         ]);
+      }
+      if (event === "force_end_round") {
+        showToast("Host hat die Runde beendet!");
+        setGameState((p) => ({
+          ...p,
+          status: "build_battle_won",
+          winner: "NIEMAND (RUNDE BEENDET)",
+        }));
       }
       if (event === "cast_vote") {
         onlineService.handleCastVote(id, data.choice);
@@ -8655,6 +8687,37 @@ const App: React.FC = () => {
                     geometryDashMode={!!gameState.geometryDashMode}
                     levelDeaths={gameState.levelDeaths}
                   />
+                )}
+
+                {/* In-Game Quick Chat Input */}
+                {showInGameChat && (
+                  <div className="absolute bottom-4 left-4 z-50 animate-pop pointer-events-auto">
+                    <input
+                      type="text"
+                      className="bg-black/90 border-2 border-cyan-500 rounded px-3 py-2 text-white font-mono text-sm w-80 shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder="Say something... (Enter to send, Esc to cancel)"
+                      value={inGameChatText}
+                      onChange={(e) => setInGameChatText(e.target.value)}
+                      autoFocus
+                      onBlur={() => setShowInGameChat(false)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          if (inGameChatText.trim()) {
+                            onlineService.sendChatMessage(inGameChatText);
+                            const newCount = (gameState.chatMessagesSent || 0) + 1;
+                            setGameState((p) => ({ ...p, chatMessagesSent: newCount }));
+                            checkAchievements({ chatMessagesSent: newCount });
+                            setInGameChatText("");
+                          }
+                          setShowInGameChat(false);
+                        } else if (e.key === "Escape") {
+                          setInGameChatText("");
+                          setShowInGameChat(false);
+                        }
+                      }}
+                    />
+                  </div>
                 )}
 
                 {/* Build Battle Interactive Overlay HUD */}
@@ -12924,6 +12987,22 @@ const App: React.FC = () => {
                               handleWin("GAVE UP");
                             },
                           });
+                          if (isBuildBattle && onlineService.isHost) {
+                            buttons.push({
+                              label: "RUNDE BEENDEN",
+                              danger: true,
+                              onClick: () => {
+                                onlineService.sendEvent("force_end_round", {
+                                  name: playerName,
+                                });
+                                setGameState((p) => ({
+                                  ...p,
+                                  status: p.previousStatus || "playing",
+                                }));
+                                handleWin("EVERYONE_FINISHED");
+                              },
+                            });
+                          }
                           buttons.push({
                             label: t.backToLobby,
                             onClick: () => {
@@ -13343,8 +13422,7 @@ const App: React.FC = () => {
                               <span>🏆 Rundensieg (+1 Pkt):</span>
                               <span className="font-bold">
                                 {lastBuildBattleRoundStats.winner &&
-                                lastBuildBattleRoundStats.winner !==
-                                  "NIEMAND" &&
+                                !lastBuildBattleRoundStats.winner.startsWith("NIEMAND") &&
                                 lastBuildBattleRoundStats.winner !==
                                   "EVERYONE_FINISHED" ? (
                                   <span
@@ -13360,7 +13438,7 @@ const App: React.FC = () => {
                                     {lastBuildBattleRoundStats.winner}
                                   </span>
                                 ) : (
-                                  <span className="text-gray-500">Keiner</span>
+                                  <span className="text-gray-500">{lastBuildBattleRoundStats.winner}</span>
                                 )}
                               </span>
                             </div>
