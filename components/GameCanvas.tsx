@@ -3210,9 +3210,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         scrollWallX.current = cameraRef.current.x; // Stay where it was initialized, instead of resetting to 0
       }
 
-      const isLocalBuildBattle = !isOnline && status === "build_battle_playing";
+      const isBuildBattle = status && status.includes("build_battle");
 
-      if (isLocalBuildBattle && players.current.length >= 2) {
+      if (isBuildBattle && players.current.length >= 2) {
         const aliveBuildBattlePlayers = players.current.filter(p => !p.dead);
         if (aliveBuildBattlePlayers.length === 1) {
           cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
@@ -3354,7 +3354,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      if (!isLocalBuildBattle) {
+      if (!isBuildBattle) {
         targetCameraX = Math.max(0, Math.min(targetCameraX, maxCamX));
         targetCameraY = Math.max(0, Math.min(targetCameraY, maxCamY));
       }
@@ -3768,8 +3768,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (p.dashCooldown > 0) p.dashCooldown--;
         if (p.dashTimer > 0) {
           p.dashTimer--;
-          p.vel.x = p.dashDirection.x * 25 * dt;
-          p.vel.y = 0; // Lock Y vertical drop during dash
+          p.vel.x = p.dashDirection.x * 15 * dt;
+          p.vel.y = p.dashDirection.y * 15 * dt;
         }
 
         // If grounded on a platform, find the current frame's platform movement delta
@@ -3939,20 +3939,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (entity.type === "gravity_zero")
                 p.gravity = (p.gravityFlipped ? -GRAVITY : GRAVITY) * 0.1;
 
-              if (entity.type === "block_dash") {
-                if (p.dashTimer < 6) {
-                  p.dashTimer = 12;
-                  p.dashCooldown = 30; // reset cooldown so they are ready
-                  p.dashDirection = { x: p.facing || 1, y: 0 };
-                  audio.playJump();
-                  spawnParticles(
-                    p.pos.x + p.w / 2,
-                    p.pos.y + p.h / 2,
-                    p.color,
-                    12,
-                    "spark",
-                  );
-                }
+              if (entity.type === "block_dash" && p.dashCooldown === 0) {
+                p.dashTimer = 10;
+                p.dashCooldown = 60;
+                p.dashDirection = { x: p.facing, y: 0 };
+                audio.playJump();
+                spawnParticles(
+                  p.pos.x + p.w / 2,
+                  p.pos.y + p.h / 2,
+                  p.color,
+                  12,
+                  "spark",
+                );
               }
               if (entity.type === "block_shrink") {
                 if (!p.isShrunk) {
@@ -4043,12 +4041,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.vel.x += moveX * dt; // Apply acceleration with time scaling
           }
 
-          if (p.dashTimer > 0) {
-            p.vel.x = p.dashDirection.x * 25 * dt;
-            p.vel.y = 0; // Lock Y vertical drop during dash
-          } else {
-            p.vel.y += p.gravity * stats.gravityMul * dt; // Apply gravity with time scaling
-          }
+          p.vel.y += p.gravity * stats.gravityMul * dt; // Apply gravity with time scaling
 
           // Wall Slide Logic
           if (p.isWallSliding) {

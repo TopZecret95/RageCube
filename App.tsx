@@ -2308,6 +2308,20 @@ const App: React.FC = () => {
   const [assetLoadProgress, setAssetLoadProgress] = useState(0);
   const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
 
+  const highscoreInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (gameState.status === "won" || gameState.status === "random_run_won") {
+      const timer = setTimeout(() => {
+        if (highscoreInputRef.current) {
+          highscoreInputRef.current.focus();
+          highscoreInputRef.current.select();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.status]);
+
   useEffect(() => {
     const loadAssets = async () => {
       assetLoader.onProgress((p) => setAssetLoadProgress(p));
@@ -13355,10 +13369,10 @@ const App: React.FC = () => {
                             </h3>
                             <input
                               type="text"
+                              ref={highscoreInputRef}
                               placeholder={t.enterName}
                               maxLength={8}
                               value={playerName}
-                              autoFocus
                               onChange={(e) =>
                                 setPlayerName(e.target.value.toUpperCase())
                               }

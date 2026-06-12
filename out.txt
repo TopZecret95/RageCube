@@ -1,18 +1,96 @@
-335:        e.type === "wall" ||
-336:        e.type === "ice" ||
-337:        e.type === "slime" ||
-338:        e.type === "fragile"
-1938:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
-1943:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
-2597:      .filter((e) => e.type === "coin")
-2599:    const teleporters = levelRef.current.entities.filter((e) => e.type === "teleport");
-2608:      const isDynamic = e.type === "moving_platform_h" || 
-2610:                        e.type === "moving_platform_v" || 
-2612:                        e.type === "fragile" || 
-2622:      if (e.type === "moving_platform_h" || e.movingH) {
-2626:      } else if (e.type === "moving_platform_v" || e.movingV) {
-2632:      if (e.type === "fragile" || e.fragile) {
-2765:              (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
-2866:            (e) => e.type === "powerup_spawner",
-4665:            (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
-6510:            ? levelRef.current.entities.filter((e) => e.type === "coin").length
+  useState,
+    const [input, setInput] = useState("");
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [localValue, setLocalValue] = useState(value);
+    const [localValue, setLocalValue] = useState(value);
+  const [lang, setLang] = useState<Language>(Language.DE);
+  const [level, setLevel] = useState<LevelData>(INITIAL_LEVELS[0]);
+  const [customization, setCustomization] = useState<PlayerCustomization>(
+  const [customizationP2, setCustomizationP2] = useState<PlayerCustomization>({
+  const [settings, setSettings] = useState<GameSettings>(() => {
+  const [highScores, setHighScores] = useState<HighScore[]>([]);
+  const [playerName, setPlayerName] = useState(() => settings.playerName || "");
+  const [customLevels, setCustomLevels] = useState<LevelData[]>([]);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const [isRainbowUnlocked, setIsRainbowUnlocked] = useState(false);
+  const [isInvisibleUnlocked, setIsInvisibleUnlocked] = useState(false);
+  const [isCoffeeUnlocked, setIsCoffeeUnlocked] = useState(false);
+  const [isMatrixUnlocked, setIsMatrixUnlocked] = useState(false);
+  const [isVoidUnlocked, setIsVoidUnlocked] = useState(false);
+  const [editorData, setEditorData] = useState<LevelData | null>(null);
+  const [editorVerified, setEditorVerified] = useState(false);
+  const [editorHistory, setEditorHistory] = useState<{
+  const [menuSelection, setMenuSelection] = useState(0);
+  const [gdSelectedLevelIndex, setGdSelectedLevelIndex] = useState(0);
+  const [editingKey, setEditingKey] = useState<{
+  const [highscoreLevelIndex, setHighscoreLevelIndex] = useState(0);
+  const [globalScores, setGlobalScores] = useState<LeaderboardEntry[]>([]);
+  const [isLoadingScores, setIsLoadingScores] = useState(false);
+  const [showLevelMenu, setShowLevelMenu] = useState(false);
+  const [selectedLevels, setSelectedLevels] = useState<LevelData[]>([]);
+  const [cheatBuffer, setCheatBuffer] = useState("");
+  const [levelSource, setLevelSource] = useState<
+  const [levelSortMode, setLevelSortMode] = useState<SortMode>("date");
+  const [brawlerPowerups, setBrawlerPowerups] = useState<
+    useState<BrawlerTeamMode>("TEAMS");
+  const [brawlerTeam1, setBrawlerTeam1] = useState<number>(0);
+  const [brawlerTeam2, setBrawlerTeam2] = useState<number>(1);
+    useState<BrawlerHazardMode>("none");
+  const [brawlerSuddenDeath, setBrawlerSuddenDeath] = useState<boolean>(true);
+    useState<boolean>(false);
+  const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
+  const [buildBattlePhase, setBuildBattlePhase] = useState<
+  const [buildBattlePhaseTimer, setBuildBattlePhaseTimer] = useState<number>(0);
+    useState<number>(0);
+    useState<number>(15);
+    useState<number>(30);
+    useState<number>(5);
+  const [buildBattleAllowedItems, setBuildBattleAllowedItems] = useState<
+    useState<boolean>(false);
+  const [buildBattleCustomPresets, setBuildBattleCustomPresets] = useState<
+  const [newPresetName, setNewPresetName] = useState<string>("");
+  const [buildBattleItems, setBuildBattleItems] = useState<
+  const [buildBattleSelection, setBuildBattleSelection] = useState<{
+  const [buildBattleConfirmed, setBuildBattleConfirmed] = useState<{
+  const [buildBattleSurrenders, setBuildBattleSurrenders] = useState<
+  const [buildBattleRotation, setBuildBattleRotation] = useState<{
+  const [buildBattleCursors, setBuildBattleCursors] = useState<{
+  const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2 (may be unused now)
+  const [selectedBuildItem, setSelectedBuildItem] = useState<string>("wall");
+  const [buildBattleScores, setBuildBattleScores] = useState<
+  const [lastBuildBattleRoundStats, setLastBuildBattleRoundStats] = useState<{
+  const [buildBattleScoresOnline, setBuildBattleScoresOnline] = useState<
+  const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
+  const [buildBattleVotes, setBuildBattleVotes] = useState<{
+  const [buildBattleVoteSelection, setBuildBattleVoteSelection] = useState<{
+  const [buildBattleVoteTimer, setBuildBattleVoteTimer] = useState<
+  const [buildBattlePlacedEntities, setBuildBattlePlacedEntities] = useState<
+  const [buildBattlePlacedThisRound, setBuildBattlePlacedThisRound] = useState<
+    useState<string>("build1");
+  const [buildBattleHoverPos, setBuildBattleHoverPos] = useState<{
+  const [shopTab, setShopTab] = useState<"effects" | "cosmetics" | "sounds">(
+  const [hoveredShopItem, setHoveredShopItem] = useState<any>(null);
+  const [gameState, setGameState] = useState<GameState>({
+  const [assetLoadProgress, setAssetLoadProgress] = useState(0);
+  const [isAssetsLoaded, setIsAssetsLoaded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+    useState<LevelData[]>(INITIAL_LEVELS);
+  const [respawnTrigger, setRespawnTrigger] = useState(0);
+  const [resetTrigger, setResetTrigger] = useState(0);
+  const [achievementToast, setAchievementToast] = useState<Achievement | null>(
+  const [onlineLobbyInput, setOnlineLobbyInput] = useState("");
+  const [showJoinPrompt, setShowJoinPrompt] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+  const [kickMenuOpen, setKickMenuOpen] = useState(false);
+    useState<OnlinePlayer | null>(null);
+  const [voteConfirmType, setVoteConfirmType] = useState<VoteType | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
+  const [onlineSuggestions, setOnlineSuggestions] = useState<any[]>([]);
+  const [showSuggestionMenu, setShowSuggestionMenu] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [showInGameChat, setShowInGameChat] = useState(false);
+  const [inGameChatText, setInGameChatText] = useState("");
+  const [onlineError, setOnlineError] = useState("");
+  const [onlineFinishTimer, setOnlineFinishTimer] = useState<number | null>(
+  const [onlineResults, setOnlineResults] = useState<any[]>([]);
