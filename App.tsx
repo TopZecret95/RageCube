@@ -133,7 +133,7 @@ const BUILD_BATTLE_POSSIBLE_ITEMS = [
     icon: "⚡",
     args: { w: 30, h: 30 },
   },
-  { type: "powerup_dash", label: "DASH", icon: "💨", args: { w: 30, h: 30 } },
+  { type: "block_dash", label: "DASH BLOCK", icon: "💨", args: { w: 30, h: 30 } },
   // Neue Blöcke / Erweiterung:
   { type: "fan", label: "VENTILATOR", icon: "🌬️", args: { w: 60, h: 30 } },
   {
@@ -4619,14 +4619,18 @@ const App: React.FC = () => {
               collectedCoins: [],
             })); // Clear coins on exit test
           }
-        } else if (status === "vs_playing" || status === "brawler_playing") {
+        } else if (
+          status === "vs_playing" ||
+          status === "brawler_playing" ||
+          status === "build_battle_playing"
+        ) {
           setGameState((p) => ({
             ...p,
             status: "paused",
             previousStatus: status,
           }));
         } else {
-          setGameState((p) => ({ ...p, status: "paused" }));
+          setGameState((p) => ({ ...p, status: "paused", previousStatus: status }));
         }
       }
       return;
@@ -10107,7 +10111,7 @@ const App: React.FC = () => {
                                                 !item.isModifier &&
                                                 [
                                                   "powerup_double_jump",
-                                                  "powerup_dash",
+                                                  "block_dash",
                                                 ].includes(item.type),
                                             ),
                                         },
