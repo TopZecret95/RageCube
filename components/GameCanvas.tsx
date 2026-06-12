@@ -954,6 +954,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       });
     }
 
+    if (status && status.includes("build_battle") && buildBattleSurrenders) {
+      players.current.forEach((p) => {
+        if (p && buildBattleSurrenders[p.name]) {
+          p.dead = true;
+          p.finished = true;
+          p.vel = { x: 0, y: 0 };
+        }
+      });
+    }
+
     if (geometryDashMode) {
       hasStartedMoving.current = true;
       players.current.forEach((p) => {

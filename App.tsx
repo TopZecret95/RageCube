@@ -6517,6 +6517,15 @@ const App: React.FC = () => {
       }
       if (event === "force_end_round") {
         showToast("Host hat die Runde beendet!");
+        setLastBuildBattleRoundStats({
+          winner: "NIEMAND (RUNDE BEENDET)",
+          p1Coins: 0,
+          p2Coins: 0,
+          p1ScoreAdded: 0,
+          p2ScoreAdded: 0,
+          p1Kills: 0,
+          p2Kills: 0,
+        });
         setGameState((p) => ({
           ...p,
           status: "build_battle_won",
@@ -6959,7 +6968,7 @@ const App: React.FC = () => {
           winnerKey = isPlayer1 ? "P1" : "P2";
         }
 
-        if (winnerName === "EVERYONE_FINISHED") {
+        if (winnerName === "EVERYONE_FINISHED" || winnerName === "HOST_ENDED") {
           p1Coins = 0;
           p2Coins = 0;
           p1ScoreAdded = 0;
@@ -7041,6 +7050,13 @@ const App: React.FC = () => {
             ...p,
             status: "build_battle_won",
             winner: "NIEMAND (ZU EINFACH)",
+          }));
+        } else if (winnerName === "HOST_ENDED") {
+          showToast("Host hat die Runde beendet!");
+          setGameState((p) => ({
+            ...p,
+            status: "build_battle_won",
+            winner: "NIEMAND (RUNDE BEENDET)",
           }));
         } else {
           let msg = `Ziel erreicht! Punkt für ${winnerName}!`;
@@ -13049,7 +13065,7 @@ const App: React.FC = () => {
                                   ...p,
                                   status: p.previousStatus || "playing",
                                 }));
-                                handleWin("EVERYONE_FINISHED");
+                                handleWin("HOST_ENDED");
                               },
                             });
                           }
