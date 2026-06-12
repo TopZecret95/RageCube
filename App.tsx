@@ -5299,7 +5299,11 @@ const App: React.FC = () => {
               ...p,
               status: p.previousStatus || "playing",
             }));
-            handleWin("GAVE UP");
+            if (isBuildBattle) {
+              setBuildBattleSurrenders((prev) => ({ ...prev, [playerName]: true }));
+            } else {
+              handleWin("GAVE UP");
+            }
           },
         });
         if (isBuildBattle && onlineService.isHost) {
@@ -6492,18 +6496,24 @@ const App: React.FC = () => {
         setOnlineFinishTimer(data?.duration || 20);
       }
       if (event === "give_up") {
-        const playerName = data?.name || "Unknown";
+        const pName = data?.name || "Unknown";
         setChatMessages((prev) => [
           ...prev,
           {
             id: Math.random().toString(),
-            text: `${playerName} gave up!`,
+            text: `${pName} gave up!`,
             senderId: "system",
             senderName: "SYSTEM",
             timestamp: Date.now(),
             type: "system",
           },
         ]);
+        const isBb =
+          stateRef.current.gameState.status === "build_battle_playing" ||
+          stateRef.current.gameState.previousStatus === "build_battle_playing";
+        if (isBb) {
+          setBuildBattleSurrenders((prev) => ({ ...prev, [pName]: true }));
+        }
       }
       if (event === "force_end_round") {
         showToast("Host hat die Runde beendet!");
@@ -13019,8 +13029,12 @@ const App: React.FC = () => {
                                 ...p,
                                 status: p.previousStatus || "playing",
                               }));
-                              // Locally we treat it as finished with poor stats
-                              handleWin("GAVE UP");
+                              if (isBuildBattle) {
+                                setBuildBattleSurrenders((prev) => ({ ...prev, [playerName]: true }));
+                              } else {
+                                // Locally we treat it as finished with poor stats
+                                handleWin("GAVE UP");
+                              }
                             },
                           });
                           if (isBuildBattle && onlineService.isHost) {
