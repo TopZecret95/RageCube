@@ -4124,6 +4124,13 @@ const App: React.FC = () => {
 
   // Reset selection on state change
   useEffect(() => {
+    const setupStates = ["vs_setup", "brawler_setup"];
+    if (setupStates.includes(gameState.status)) {
+      setSelectedLevels([]);
+    }
+  }, [gameState.status]);
+
+  useEffect(() => {
     const resetStates = [
       "menu",
       "multiplayer_menu",

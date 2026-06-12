@@ -3283,6 +3283,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         let followedPlayers = players.current.filter((p) => !p.dead && (p.lives > 0 || gameMode !== "brawler"));
         if (isSpectatingNowLocal && followedPlayer) {
           followedPlayers = [followedPlayer];
+        } else if (isOnline && liveLocalPlayer) {
+          followedPlayers = [liveLocalPlayer];
         }
 
         let avgX = 0;
@@ -3310,17 +3312,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           avgY /= activeCount;
           avgVelX /= activeCount;
 
-          const dx = maxX - minX;
-          const dy = maxY - minY;
-
           let targetZoom = 1.0;
-          if (activeCount >= 2) {
-            const paddingX = 200;
-            const paddingY = 200;
-            const targetZoomX = GAME_WIDTH / (dx + paddingX);
-            const targetZoomY = GAME_HEIGHT / (dy + paddingY);
-            targetZoom = Math.max(0.45, Math.min(1.0, Math.min(targetZoomX, targetZoomY)));
-          }
           cameraZoom.current += (targetZoom - cameraZoom.current) * 0.1;
 
           let cx = avgX;
