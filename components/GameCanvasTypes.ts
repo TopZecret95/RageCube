@@ -51,6 +51,7 @@ export interface GameCanvasProps {
   spectateTargetId?: string;
   opponentOpacity?: number;
   status?: string;
+  buildBattleSurrenders?: Record<string, boolean>;
   geometryDashMode?: boolean;
   gdSpeedMode?: number;
   levelDeaths?: number;

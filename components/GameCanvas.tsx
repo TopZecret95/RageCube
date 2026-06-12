@@ -151,6 +151,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   spectateTargetId,
   opponentOpacity = 0.5,
   status,
+  buildBattleSurrenders,
   geometryDashMode = false,
   gdSpeedMode = 1,
   levelDeaths = 0,
@@ -1532,6 +1533,34 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ];
     }
   }, [resetTrigger]);
+
+  // Handle Build Battle client/local surrenders as player death
+  useEffect(() => {
+    if (
+      status === "build_battle_playing" &&
+      buildBattleSurrenders &&
+      players.current &&
+      players.current.length > 0
+    ) {
+      players.current.forEach((p) => {
+        if (p && buildBattleSurrenders[p.name] && !p.dead && !p.finished) {
+          spawnParticles(
+            p.pos.x + p.w / 2,
+            p.pos.y + p.h / 2,
+            p.color,
+            20,
+            "blood",
+          );
+          p.dead = true;
+          p.finished = true;
+          p.vel = { x: 0, y: 0 };
+          shakeIntensity.current = 10;
+          audio.playDie(p.deathSound);
+          checkBuildBattleWinCondition();
+        }
+      });
+    }
+  }, [buildBattleSurrenders, status, checkBuildBattleWinCondition]);
 
   const triggerJump = (p: PlayerState) => {
     if (!p || p.finished) return;

@@ -2207,6 +2207,9 @@ const App: React.FC = () => {
     P1: boolean;
     P2: boolean;
   }>({ P1: false, P2: false });
+  const [buildBattleSurrenders, setBuildBattleSurrenders] = useState<
+    Record<string, boolean>
+  >({});
   const [buildBattleRotation, setBuildBattleRotation] = useState<{
     P1: boolean;
     P2: boolean;
@@ -2338,7 +2341,8 @@ const App: React.FC = () => {
     if (
       buildBattlePhase === "select" ||
       buildBattlePhase === "build" ||
-      buildBattlePhase === "countdown"
+      buildBattlePhase === "countdown" ||
+      buildBattlePhase === "run"
     ) {
       const interval = setInterval(() => {
         setBuildBattleIntroCountdown((c) => {
@@ -2397,7 +2401,10 @@ const App: React.FC = () => {
         // Rebuild level dynamically? GameCanvas takes `level`, we can override there
       } else if (buildBattlePhase === "countdown") {
         setBuildBattlePhase("run");
+        setBuildBattlePhaseTimer(300); // 5 minutes (300 seconds) max!
         setRespawnTrigger((p) => p + 1);
+      } else if (buildBattlePhase === "run") {
+        handleWin("ZEIT_ABGELAUFEN");
       }
     }
   }, [
@@ -3132,6 +3139,7 @@ const App: React.FC = () => {
           setBuildBattlePlacedThisRound({});
           setBuildBattleSelection({ P1: 0, P2: 1 });
           setBuildBattleConfirmed({ P1: false, P2: false });
+          setBuildBattleSurrenders({});
           setBuildBattleRotation({ P1: false, P2: false });
           setBuildBattleCursors({
             P1: { x: 480, y: 270 },
@@ -3233,6 +3241,7 @@ const App: React.FC = () => {
       setBuildBattleItems(newItems);
       setBuildBattleSelection({ P1: 0, P2: 1 });
       setBuildBattleConfirmed({ P1: false, P2: false });
+      setBuildBattleSurrenders({});
       setBuildBattleRotation({ P1: false, P2: false });
       setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
       setBuildBattlePhase("select");
@@ -5249,13 +5258,13 @@ const App: React.FC = () => {
         buttons.push({
           action: () => {
             setGameState((p) => ({ ...p, status: p.previousStatus || "playing" }));
-            handleWin("P2");
+            setBuildBattleSurrenders((prev) => ({ ...prev, P1: true }));
           },
         });
         buttons.push({
           action: () => {
             setGameState((p) => ({ ...p, status: p.previousStatus || "playing" }));
-            handleWin("P1");
+            setBuildBattleSurrenders((prev) => ({ ...prev, P2: true }));
           },
         });
       }
@@ -6926,7 +6935,10 @@ const App: React.FC = () => {
         if (
           winnerName &&
           winnerName !== "EVERYONE_FINISHED" &&
-          winnerName !== "NIEMAND"
+          winnerName !== "NIEMAND" &&
+          winnerName !== "ZEIT_ABGELAUFEN" &&
+          !winnerName.startsWith("AUFGEBEN") &&
+          winnerName !== "GAVE UP"
         ) {
           const customName = customization.name || "P1";
           const isPlayer1 =
@@ -6998,12 +7010,20 @@ const App: React.FC = () => {
             status: "build_battle_won",
             winner: "NIEMAND",
           }));
-        } else if (winnerName === "AUFGEBEN") {
-          showToast("Match aufgegeben! Keine Punkte.");
+        } else if (winnerName === "ZEIT_ABGELAUFEN") {
+          showToast("Zeit abgelaufen! Keine Punkte.");
           setGameState((p) => ({
             ...p,
             status: "build_battle_won",
-            winner: "NIEMAND (AUFGEGEBEN)",
+            winner: "NIEMAND (ZEIT ABGELAUFEN)",
+          }));
+        } else if (winnerName.startsWith("AUFGEBEN") || winnerName === "GAVE UP") {
+          const who = winnerName === "AUFGEBEN_P1" ? "Spieler 1" : winnerName === "AUFGEBEN_P2" ? "Spieler 2" : "Ein Spieler";
+          showToast(`${who} hat aufgegeben! Keine Punkte.`);
+          setGameState((p) => ({
+            ...p,
+            status: "build_battle_won",
+            winner: `NIEMAND (${who.toUpperCase()} AUFGEGEBEN)`,
           }));
         } else if (winnerName === "EVERYONE_FINISHED") {
           showToast("Zu einfach! Alle im Ziel! Keine Punkte.");
@@ -8690,6 +8710,7 @@ const App: React.FC = () => {
                     opponentOpacity={settings.opponentOpacity}
                     geometryDashMode={!!gameState.geometryDashMode}
                     levelDeaths={gameState.levelDeaths}
+                    buildBattleSurrenders={buildBattleSurrenders}
                   />
                 )}
 
@@ -8777,6 +8798,17 @@ const App: React.FC = () => {
                         </span>
                         <span className="text-white font-arcade text-3xl">
                           {buildBattlePhaseTimer}
+                        </span>
+                      </div>
+                    )}
+
+                    {buildBattlePhase === "run" && (
+                      <div className="absolute top-20 right-4 bg-black/60 backdrop-blur border border-neutral-800 p-4 rounded-xl flex flex-col items-center justify-center">
+                        <span className="text-green-400 font-arcade text-lg tracking-wider">
+                          ZEIT
+                        </span>
+                        <span className={`font-arcade text-3xl ${buildBattlePhaseTimer <= 30 ? "text-red-500 animate-pulse" : "text-white"}`}>
+                          {Math.floor(buildBattlePhaseTimer / 60)}:{(buildBattlePhaseTimer % 60).toString().padStart(2, "0")}
                         </span>
                       </div>
                     )}
@@ -12895,7 +12927,7 @@ const App: React.FC = () => {
                                 ...p,
                                 status: p.previousStatus || "playing",
                               }));
-                              handleWin("P2");
+                              setBuildBattleSurrenders((prev) => ({ ...prev, P1: true }));
                             },
                           });
                           buttons.push({
@@ -12906,7 +12938,7 @@ const App: React.FC = () => {
                                 ...p,
                                 status: p.previousStatus || "playing",
                               }));
-                              handleWin("P1");
+                              setBuildBattleSurrenders((prev) => ({ ...prev, P2: true }));
                             },
                           });
                         }
@@ -13375,11 +13407,17 @@ const App: React.FC = () => {
                       }}
                       className="bg-neutral-950 p-8 border-2 border-yellow-500 rounded-3xl flex flex-col items-center w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.25)]"
                     >
-                      <div className="text-5xl mb-4 animate-bounce">👑</div>
+                      <div className="text-5xl mb-4 animate-bounce">
+                        {gameState.winner && gameState.winner.includes("NIEMAND") ? "🏳️" : "👑"}
+                      </div>
 
                       <h2 className="text-2xl text-yellow-400 font-extrabold font-arcade mb-2 text-center uppercase tracking-wider">
                         {gameState.winner
-                          ? `${gameState.winner} GEWINNT!`
+                          ? gameState.winner.includes("NIEMAND")
+                            ? gameState.winner.includes("AUFGEBEN")
+                              ? "MATCH AUFGEGEBEN!"
+                              : gameState.winner
+                            : `${gameState.winner} GEWINNT!`
                           : "ZIEL ERREICHT!"}
                       </h2>
 
@@ -13584,6 +13622,7 @@ const App: React.FC = () => {
                                       P1: false,
                                       P2: false,
                                     });
+                                    setBuildBattleSurrenders({});
                                     setBuildBattleRotation({
                                       P1: false,
                                       P2: false,
