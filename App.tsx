@@ -2337,6 +2337,32 @@ const App: React.FC = () => {
   }, []);
 
   // --- BUILD-BATTLE EFFECTS ---
+  // --- ONLINE BUILD BATTLE SYNC (HOST -> CLIENT) ---
+  useEffect(() => {
+    if (onlineService.isHost && onlineService.lobbyCode && gameState.status.includes('build_battle')) {
+      onlineService.sendEvent('bb_sync', {
+         phase: buildBattlePhase,
+         timer: buildBattlePhaseTimer,
+         selection: buildBattleSelection,
+         confirmed: buildBattleConfirmed,
+         cursors: buildBattleCursors,
+         items: buildBattleItems,
+         placed: buildBattlePlacedEntities,
+         placedThisRound: buildBattlePlacedThisRound,
+         round: buildBattleRound,
+         scores: buildBattleScores,
+         rotation: buildBattleRotation,
+         votes: buildBattleVotes,
+         voteSelection: buildBattleVoteSelection,
+         voteTimer: buildBattleVoteTimer,
+      });
+    }
+  }, [
+    gameState.status,
+    buildBattlePhase, buildBattlePhaseTimer, buildBattleSelection, buildBattleConfirmed, buildBattleCursors, buildBattleItems, buildBattlePlacedEntities, buildBattlePlacedThisRound, buildBattleRound, buildBattleScores, buildBattleRotation, buildBattleVotes, buildBattleVoteSelection, buildBattleVoteTimer,
+    onlineService.isHost, onlineService.lobbyCode
+  ]);
+
   useEffect(() => {
     if (gameState.status !== "build_battle_playing") {
       setBuildBattleIntroCountdown(0);
@@ -2708,6 +2734,18 @@ const App: React.FC = () => {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (onlineService.lobbyCode && !onlineService.isHost) {
+        let sendCode = e.code;
+        let sendKey = e.key;
+        if (e.code === "KeyW") { sendCode = "ArrowUp"; sendKey = "ArrowUp"; }
+        if (e.code === "KeyS") { sendCode = "ArrowDown"; sendKey = "ArrowDown"; }
+        if (e.code === "KeyA") { sendCode = "ArrowLeft"; sendKey = "ArrowLeft"; }
+        if (e.code === "KeyD") { sendCode = "ArrowRight"; sendKey = "ArrowRight"; }
+        if (e.code === "Space" || e.code === "KeyQ") { sendCode = "Enter"; sendKey = "Enter"; }
+        if (e.code === "KeyE") { sendCode = "ShiftRight"; sendKey = "Shift"; }
+        onlineService.sendEvent('bb_remote_key', { code: sendCode, key: sendKey });
+        return;
+      }
       if (buildBattleIntroCountdown > 0) return;
 
       if (buildBattlePhase === "select") {
@@ -3143,6 +3181,7 @@ const App: React.FC = () => {
         buildBattleScores.P1 >= buildBattleTargetPointsConfig ||
         buildBattleScores.P2 >= buildBattleTargetPointsConfig;
       if (!isMatchOver) {
+        if (onlineService.lobbyCode && !onlineService.isHost) return;
         const timer = setTimeout(() => {
           const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
           setBuildBattleItems(newItems);
@@ -3165,6 +3204,12 @@ const App: React.FC = () => {
             ...p,
             status: "build_battle_playing",
           }));
+          if (onlineService.lobbyCode && onlineService.isHost) {
+            onlineService.broadcastLobbyState(
+              undefined, undefined, undefined, undefined, undefined,
+              "build_battle_playing", undefined, undefined, undefined, undefined, undefined, undefined
+            );
+          }
           showToast(`Start Runde ${buildBattleRound + 1}!`);
         }, 5000);
         return () => clearTimeout(timer);
@@ -5113,6 +5158,17 @@ const App: React.FC = () => {
               : "brawler_setup",
         }));
     } else if (status === "build_battle_vote") {
+      if (onlineService.lobbyCode && !onlineService.isHost) {
+        let sendCode = e.code;
+        let sendKey = e.key;
+        if (e.code === "KeyW") { sendCode = "ArrowUp"; sendKey = "ArrowUp"; }
+        if (e.code === "KeyS") { sendCode = "ArrowDown"; sendKey = "ArrowDown"; }
+        if (e.code === "KeyA") { sendCode = "ArrowLeft"; sendKey = "ArrowLeft"; }
+        if (e.code === "KeyD") { sendCode = "ArrowRight"; sendKey = "ArrowRight"; }
+        if (e.code === "Space" || e.code === "KeyQ") { sendCode = "Enter"; sendKey = "Enter"; }
+        onlineService.sendEvent('bb_remote_key', { code: sendCode, key: sendKey });
+        return;
+      }
       const totalLevels = BUILD_BATTLE_LEVELS.length;
       const key = e.key.toLowerCase();
       const code = e.code;
@@ -6513,6 +6569,25 @@ const App: React.FC = () => {
     }, 250);
 
     onlineService.onAppEvent = (id, event, data) => {
+      if (event === "bb_remote_key" && onlineService.isHost) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { code: data.code, key: data.key }));
+      }
+      if (event === "bb_sync" && !onlineService.isHost) {
+        setBuildBattlePhase(data.phase);
+        setBuildBattlePhaseTimer(data.timer);
+        setBuildBattleSelection(data.selection);
+        setBuildBattleConfirmed(data.confirmed);
+        setBuildBattleCursors(data.cursors);
+        setBuildBattleItems(data.items);
+        setBuildBattlePlacedEntities(data.placed);
+        setBuildBattlePlacedThisRound(data.placedThisRound);
+        setBuildBattleRound(data.round);
+        setBuildBattleScores(data.scores);
+        setBuildBattleRotation(data.rotation);
+        setBuildBattleVotes(data.votes);
+        setBuildBattleVoteSelection(data.voteSelection);
+        setBuildBattleVoteTimer(data.voteTimer);
+      }
       if (event === "start_timer") {
         setOnlineFinishTimer(data?.duration || 20);
       }
@@ -7095,6 +7170,12 @@ const App: React.FC = () => {
             status: "build_battle_won",
             winner: winnerName,
           }));
+        }
+        if (onlineService.lobbyCode && onlineService.isHost) {
+          onlineService.broadcastLobbyState(
+            undefined, undefined, undefined, undefined, undefined,
+            "build_battle_won", undefined, undefined, undefined, undefined, undefined, undefined
+          );
         }
         return;
       }
@@ -13633,6 +13714,7 @@ const App: React.FC = () => {
                               {matchWinner ? (
                                 <button
                                   onClick={() => {
+                                    if (onlineService.lobbyCode && !onlineService.isHost) return;
                                     setBuildBattleScores({ P1: 0, P2: 0 });
                                     setBuildBattleRound(1);
                                     setBuildBattleVotes({ P1: null, P2: null });
@@ -13645,6 +13727,9 @@ const App: React.FC = () => {
                                       ...p,
                                       status: "build_battle_vote",
                                     }));
+                                    if (onlineService.lobbyCode && onlineService.isHost) {
+                                      onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_vote", undefined, undefined, undefined, undefined, undefined, undefined);
+                                    }
                                     showToast(
                                       "Neues Match & Abstimmung gestartet!",
                                     );
@@ -13657,6 +13742,7 @@ const App: React.FC = () => {
                                 <div
                                   className="relative overflow-hidden w-full bg-neutral-900 rounded-xl border-2 border-yellow-500/50 flex flex-col justify-center cursor-pointer mb-2"
                                   onClick={() => {
+                                    if (onlineService.lobbyCode && !onlineService.isHost) return;
                                     const newItems = get8UniqueBuildBattleItems(
                                       buildBattleAllowedItems,
                                     );
@@ -13688,6 +13774,9 @@ const App: React.FC = () => {
                                       ...p,
                                       status: "build_battle_playing",
                                     }));
+                                    if (onlineService.lobbyCode && onlineService.isHost) {
+                                      onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_playing", undefined, undefined, undefined, undefined, undefined, undefined);
+                                    }
                                     showToast(
                                       `Start Runde ${buildBattleRound + 1}!`,
                                     );
@@ -13712,10 +13801,14 @@ const App: React.FC = () => {
 
                               <button
                                 onClick={() => {
+                                  if (onlineService.lobbyCode && !onlineService.isHost) return;
                                   setGameState((p) => ({
                                     ...p,
                                     status: "build_battle_setup",
                                   }));
+                                  if (onlineService.lobbyCode && onlineService.isHost) {
+                                    onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_setup", undefined, undefined, undefined, undefined, undefined, undefined);
+                                  }
                                 }}
                                 className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
                               >
@@ -15072,18 +15165,32 @@ const App: React.FC = () => {
                       if (onlineService.lobbyCode && gameState.isHost) {
                         const firstLevel = selectedLevels[0];
                         setLevel(firstLevel);
+                        
+                        let nextStatus = undefined;
+                        if (gameState.status === "vs_setup") nextStatus = "vs_playing";
+                        else if (gameState.status === "brawler_setup") nextStatus = "brawler_powerup_setup";
+                        else if (gameState.status === "build_battle_setup") nextStatus = "build_battle_vote";
+
                         setGameState((p) => ({
                           ...p,
                           customLevelsQueue: selectedLevels,
                           currentLevelIndex: 0,
+                          ...(nextStatus ? { status: nextStatus } : {})
                         }));
+                        
+                        if (nextStatus === "build_battle_vote") {
+                           setBuildBattleVotes({ P1: null, P2: null });
+                           setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+                           setBuildBattleVoteTimer(null);
+                        }
+
                         onlineService.broadcastLobbyState(
                           gameState.onlineMode!,
                           firstLevel,
                           selectedLevels,
                           brawlerTeamMode,
                           brawlerHazardMode,
-                          undefined,
+                          nextStatus,
                           0,
                           gameState.collisionEnabled,
                           undefined,
