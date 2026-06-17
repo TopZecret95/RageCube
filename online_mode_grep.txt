@@ -1,0 +1,270 @@
+2045-  const toggleLevelSelection = (lvl: LevelData) => {
+2046-    setSelectedLevels((prev) => {
+2047:      if (gameState.onlineMode === "editor") {
+2048-        const exists = prev.find((s) => s.id === lvl.id);
+2049-        if (exists) {
+--
+5072-      ) {
+5073-        if (sel < powerupKeys.length) {
+5074:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+5075-          const key = powerupKeys[sel];
+5076-          const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
+--
+5080-              [key]: Math.max(0, Math.min(100, prev[key] + delta)),
+5081-            };
+5082:            if (st.gameState.onlineMode && onlineService.isHost) {
+5083-              onlineService.broadcastLobbyState(
+5084-                undefined,
+--
+5101-      if (e.code === "Enter" || e.code === "Space") {
+5102-        if (sel < powerupKeys.length) {
+5103:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+5104-          const key = powerupKeys[sel];
+5105-          setBrawlerPowerups((prev) => {
+5106-            const newPowerups = { ...prev, [key]: prev[key] > 0 ? 0 : 100 };
+5107:            if (st.gameState.onlineMode && onlineService.isHost) {
+5108-              onlineService.broadcastLobbyState(
+5109-                undefined,
+--
+5122-          });
+5123-        } else if (sel === powerupKeys.length) {
+5124:          if (st.gameState.onlineMode && !onlineService.isHost) return;
+5125:          if (st.gameState.onlineMode && onlineService.isHost) {
+5126-            if (onlineService.lobbyCode) {
+5127-              onlineService.broadcastLobbyState(
+--
+5134-              );
+5135-            }
+5136:          } else if (!st.gameState.onlineMode) {
+5137-            setGameState((p) => ({ ...p, status: "brawler_playing" }));
+5138-            setRespawnTrigger(0);
+--
+5710-    } else if (status === "online_lobby") {
+5711-      if (e.code === "Escape") {
+5712:        const isEditor = st.gameState.onlineMode === "editor";
+5713-        onlineService.disconnect();
+5714-        setGameState((p) => ({
+--
+5722-        if (st.gameState.isHost && sel === 0) {
+5723-          const sources: any[] =
+5724:            st.gameState.onlineMode === "brawler"
+5725-              ? ["brawler", "custom"]
+5726-              : ["beginner", "advanced", "expert", "god", "custom"];
+--
+5746-            setLevel(list[0]);
+5747-            onlineService.broadcastLobbyState(
+5748:              st.gameState.onlineMode!,
+5749-              list[0],
+5750-              undefined,
+--
+5761-        if (st.gameState.isHost && sel === 0) {
+5762-          const sources: any[] =
+5763:            st.gameState.onlineMode === "brawler"
+5764-              ? ["brawler", "custom"]
+5765-              : ["beginner", "advanced", "expert", "god", "custom"];
+--
+5785-            setLevel(list[0]);
+5786-            onlineService.broadcastLobbyState(
+5787:              st.gameState.onlineMode!,
+5788-              list[0],
+5789-              undefined,
+--
+5812-          setLevel(list[newIdx]);
+5813-          onlineService.broadcastLobbyState(
+5814:            st.gameState.onlineMode!,
+5815-            list[newIdx],
+5816-            undefined,
+--
+5833-          setLevel(list[newIdx]);
+5834-          onlineService.broadcastLobbyState(
+5835:            st.gameState.onlineMode!,
+5836-            list[newIdx],
+5837-            undefined,
+--
+5862-            }));
+5863-          } else if (sel === 4) {
+5864:            if (st.gameState.onlineMode === "brawler") {
+5865-              setGameState((p) => ({
+5866-                ...p,
+--
+5868-                previousStatus: "online_lobby",
+5869-              }));
+5870:            } else if (st.gameState.onlineMode === "vs") {
+5871-              const newValue = !st.gameState.collisionEnabled;
+5872-              setGameState((p) => ({ ...p, collisionEnabled: newValue }));
+--
+5883-            }
+5884-          } else if (sel === 5) {
+5885:            const isEditor = st.gameState.onlineMode === "editor";
+5886-            onlineService.closeLobby();
+5887-            setGameState((p) => ({
+--
+5903-            }));
+5904-          } else if (sel === 2) {
+5905:            const isEditor = st.gameState.onlineMode === "editor";
+5906-            onlineService.disconnect();
+5907-            setGameState((p) => ({
+--
+6520-        setOnlineFinishTimer(null);
+6521-      } else if (status === "closed") {
+6522:        const isEditor = stateRef.current.gameState.onlineMode === "editor";
+6523-        setGameState((p) => ({
+6524-          ...p,
+--
+6528-        onlineService.disconnect();
+6529-      } else if (status === "kicked") {
+6530:        const isEditor = stateRef.current.gameState.onlineMode === "editor";
+6531-        setGameState((p) => ({
+6532-          ...p,
+--
+6538-    };
+6539-    onlineService.onDisconnect = () => {
+6540:      const isEditor = stateRef.current.gameState.onlineMode === "editor";
+6541-      setGameState((p) => ({
+6542-        ...p,
+--
+8635-
+8636-                        if (
+8637:                          gameState.onlineMode === "editor" &&
+8638-                          onlineService.lobbyCode
+8639-                        ) {
+--
+8669-                      onSettingsChange={setSettings}
+8670-                      externalLevelSync={
+8671:                        gameState.onlineMode === "editor"
+8672-                          ? editorData
+8673-                          : undefined
+--
+8675-                      onLevelChange={(levelData) => {
+8676-                        if (
+8677:                          gameState.onlineMode === "editor" &&
+8678-                          onlineService.lobbyCode
+8679-                        ) {
+--
+10959-                          <button
+10960-                            onClick={() => {
+10961:                              if (gameState.onlineMode && !onlineService.isHost)
+10962-                                return;
+10963-                              const newVal = !brawlerSuddenDeath;
+--
+10979-                              }
+10980-                            }}
+10981:                            className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerSuddenDeath ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+10982-                          >
+10983-                            <div
+--
+11005-                          <button
+11006-                            onClick={() => {
+11007:                              if (gameState.onlineMode && !onlineService.isHost)
+11008-                                return;
+11009-                              const newVal = !brawlerComboPowerups;
+--
+11028-                              }
+11029-                            }}
+11030:                            className={`w-12 h-6 flex items-center rounded-full transition-all ${brawlerComboPowerups ? "bg-orange-600" : "bg-neutral-600"} ${gameState.onlineMode && !onlineService.isHost ? "opacity-50 cursor-not-allowed" : ""}`}
+11031-                          >
+11032-                            <div
+--
+11053-                              onClick={() => {
+11054-                                if (
+11055:                                  gameState.onlineMode &&
+11056-                                  !onlineService.isHost
+11057-                                )
+--
+11094-                              onClick={() => {
+11095-                                if (
+11096:                                  gameState.onlineMode &&
+11097-                                  !onlineService.isHost
+11098-                                )
+--
+11104-                                setBrawlerPowerups(newPowerups);
+11105-                                if (
+11106:                                  gameState.onlineMode &&
+11107-                                  onlineService.isHost
+11108-                                ) {
+--
+11132-                                onChange={(v: number) => {
+11133-                                  if (
+11134:                                    gameState.onlineMode &&
+11135-                                    !onlineService.isHost
+11136-                                  )
+--
+11142-                                  setBrawlerPowerups(newPowerups);
+11143-                                  if (
+11144:                                    gameState.onlineMode &&
+11145-                                    onlineService.isHost
+11146-                                  ) {
+--
+11170-
+11171-                    <div className="w-72 flex flex-col gap-2">
+11172:                      {!gameState.onlineMode && (
+11173-                        <MenuButton
+11174-                          index={Object.keys(brawlerPowerups).length}
+--
+12151-                              {t.openLevelMenu || "LEVEL MENÜ"}
+12152-                            </button>
+12153:                            {gameState.onlineMode === "brawler" && (
+12154-                              <button
+12155-                                onClick={() =>
+--
+12173-                      </div>
+12174-                      <h2 className="text-xl text-neutral-400 mb-2 uppercase">
+12175:                        {gameState.onlineMode} MODE
+12176-                      </h2>
+12177-                      {onlineError && (
+--
+12552-                                if (gameState.isHost) {
+12553-                                  if (
+12554:                                    gameState.onlineMode !== "editor" &&
+12555-                                    (!gameState.customLevelsQueue ||
+12556-                                      gameState.customLevelsQueue.length === 0)
+--
+12570-                                  };
+12571-                                  const requiredPlayers =
+12572:                                    gameState.onlineMode === "brawler"
+12573-                                      ? teamModeRequirements[brawlerTeamMode]
+12574:                                      : gameState.onlineMode === "editor"
+12575-                                        ? 1
+12576-                                        : 2;
+--
+12584-                                  }
+12585-
+12586:                                  if (gameState.onlineMode === "brawler") {
+12587-                                    const occupiedTeams = new Set(
+12588-                                      onlinePlayers
+--
+12656-                              onClick={() => {
+12657-                                const isEditor =
+12658:                                  gameState.onlineMode === "editor";
+12659-                                if (onlineService.isHost) {
+12660-                                  onlineService.closeLobby();
+--
+14782-                        onClick={() => {
+14783-                          const sources: any[] =
+14784:                            gameState.onlineMode === "brawler"
+14785-                              ? ["brawler", "custom"]
+14786-                              : [
+--
+15116-                    const isVS =
+15117-                      gameState.status === "vs_setup" ||
+15118:                      gameState.onlineMode === "vs";
+15119-                    const isBrawler =
+15120-                      gameState.status === "brawler_setup" ||
+15121:                      gameState.onlineMode === "brawler";
+15122-                    const isBuildBattle =
+15123-                      gameState.status === "build_battle_setup" ||
+15124:                      gameState.onlineMode === "build_battle";
+15125-
+15126-                    const process = (list: LevelData[]) => {
+--
+15139-                    }
+15140-
+15141:                    if (gameState.onlineMode === "editor") {
+15142-                      return [
+15143-                        {
+--
+15186-
+15187-                        onlineService.broadcastLobbyState(
+15188:                          gameState.onlineMode!,
+15189-                          firstLevel,
+15190-                          selectedLevels,

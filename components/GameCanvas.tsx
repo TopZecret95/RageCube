@@ -49,7 +49,11 @@ import { audio } from "../services/audioService";
 import { onlineService, OnlinePlayer } from "../services/onlineService";
 import { drawPlayerEyes } from "./renderers/playerEyesRender";
 import { drawPlayerAccessories } from "./renderers/playerAccessoriesRender";
-import { drawProjectiles, drawBombs, drawExplosions } from "./renderers/projectilesRender";
+import {
+  drawProjectiles,
+  drawBombs,
+  drawExplosions,
+} from "./renderers/projectilesRender";
 import { getBrawlerStats, getBrawlerLives } from "../utils/brawlerStats";
 
 import {
@@ -86,32 +90,56 @@ const getFusedPowerupType = (holding: string, picked: string): string => {
   }
 
   // Cross-fusions
-  if ((holding === "powerup_grow" && picked === "powerup_shrink") || (holding === "powerup_shrink" && picked === "powerup_grow")) {
+  if (
+    (holding === "powerup_grow" && picked === "powerup_shrink") ||
+    (holding === "powerup_shrink" && picked === "powerup_grow")
+  ) {
     return "powerup_quantum_shift";
   }
 
-  const isOpenOffensive = (type: string) => type === "powerup_fireball" || type === "powerup_bomb" || type === "powerup_melee";
-  if ((holding === "powerup_shield" && isOpenOffensive(picked)) || (picked === "powerup_shield" && isOpenOffensive(holding))) {
+  const isOpenOffensive = (type: string) =>
+    type === "powerup_fireball" ||
+    type === "powerup_bomb" ||
+    type === "powerup_melee";
+  if (
+    (holding === "powerup_shield" && isOpenOffensive(picked)) ||
+    (picked === "powerup_shield" && isOpenOffensive(holding))
+  ) {
     return "powerup_fire_shield";
   }
 
-  if ((holding === "powerup_dash" && picked === "powerup_fireball") || (holding === "powerup_fireball" && picked === "powerup_dash")) {
+  if (
+    (holding === "powerup_dash" && picked === "powerup_fireball") ||
+    (holding === "powerup_fireball" && picked === "powerup_dash")
+  ) {
     return "powerup_lodestar";
   }
 
-  if ((holding === "powerup_melee" && picked === "powerup_ice_block") || (holding === "powerup_ice_block" && picked === "powerup_melee")) {
+  if (
+    (holding === "powerup_melee" && picked === "powerup_ice_block") ||
+    (holding === "powerup_ice_block" && picked === "powerup_melee")
+  ) {
     return "powerup_frost_mourne";
   }
 
-  if ((holding === "powerup_bomb" && picked === "powerup_slime_block") || (holding === "powerup_slime_block" && picked === "powerup_bomb")) {
+  if (
+    (holding === "powerup_bomb" && picked === "powerup_slime_block") ||
+    (holding === "powerup_slime_block" && picked === "powerup_bomb")
+  ) {
     return "powerup_sticky_bomb";
   }
 
-  if ((holding === "powerup_shield" && picked === "powerup_triple_jump") || (holding === "powerup_triple_jump" && picked === "powerup_shield")) {
+  if (
+    (holding === "powerup_shield" && picked === "powerup_triple_jump") ||
+    (holding === "powerup_triple_jump" && picked === "powerup_shield")
+  ) {
     return "powerup_angel_wings";
   }
 
-  if ((holding === "powerup_teleport" && picked === "powerup_steal") || (holding === "powerup_steal" && picked === "powerup_teleport")) {
+  if (
+    (holding === "powerup_teleport" && picked === "powerup_steal") ||
+    (holding === "powerup_steal" && picked === "powerup_teleport")
+  ) {
     return "powerup_trickster";
   }
 
@@ -592,12 +620,24 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         } else {
           livesStats[p.name] = p.deaths || 0;
         }
-        if (p.finished && !p.dead && p.collectedCoinIds && p.collectedCoinIds.length > 0) {
+        if (
+          p.finished &&
+          !p.dead &&
+          p.collectedCoinIds &&
+          p.collectedCoinIds.length > 0
+        ) {
           broughtCoins[p.name] = [...p.collectedCoinIds];
         }
       });
       const exactTime = (Date.now() - levelStartTime.current) / 1000;
-      onWin(winnerName, livesStats, exactTime, isLocalFinish, broughtCoins, killedByBlocks_ref.current);
+      onWin(
+        winnerName,
+        livesStats,
+        exactTime,
+        isLocalFinish,
+        broughtCoins,
+        killedByBlocks_ref.current,
+      );
     },
     [onWin, gameMode],
   );
@@ -606,26 +646,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const allPlayers = players.current;
     if (allPlayers.length === 0) return false;
 
-    const alivePlayers = allPlayers.filter(p => !p.dead && !p.finished);
-    
+    const alivePlayers = allPlayers.filter((p) => !p.dead && !p.finished);
+
     // If there is still someone alive and not finished, the round continues!
     if (alivePlayers.length > 0) return false;
 
     // Okay, everyone is either dead or reached the goal.
-    const goalReachPlayers = allPlayers.filter(p => p.finished && !p.dead);
+    const goalReachPlayers = allPlayers.filter((p) => p.finished && !p.dead);
     // Sort by finishTime if available to get the first to finish
     goalReachPlayers.sort((a, b) => (a.finishTime || 0) - (b.finishTime || 0));
-    
+
     if (goalReachPlayers.length === 0) {
-       // Everyone died. Nobody reached the goal. No points.
-       triggerWin(undefined);
-       return true;
+      // Everyone died. Nobody reached the goal. No points.
+      triggerWin(undefined);
+      return true;
     }
 
     if (goalReachPlayers.length === allPlayers.length) {
-       // Everyone reached the goal! The level is too easy! No points!
-       triggerWin("EVERYONE_FINISHED"); // Special flag
-       return true;
+      // Everyone reached the goal! The level is too easy! No points!
+      triggerWin("EVERYONE_FINISHED"); // Special flag
+      return true;
     }
 
     // Otherwise, whoever finished FIRST gets the win!
@@ -946,7 +986,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       players.current.forEach((p) => {
         const key = p.onlineId || p.name || p.playerIndex.toString();
         if (coinsMap.has(key)) {
-          p.collectedCoinIds = geometryDashMode ? [] : (coinsMap.get(key) || []);
+          p.collectedCoinIds = geometryDashMode ? [] : coinsMap.get(key) || [];
         }
         if (deathsMap.has(key)) {
           p.deaths = deathsMap.get(key) || 0;
@@ -1500,7 +1540,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     if (msg) {
       abilityMessageRef.current = msg;
-      setTimeout(() => { abilityMessageRef.current = null; }, 3000);
+      setTimeout(() => {
+        abilityMessageRef.current = null;
+      }, 3000);
     }
   }, [level.id, gameMode, lang, isOnline, settings.showGhost]);
 
@@ -1618,7 +1660,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     if (p.dashCooldown > 0) return;
 
     const hasOneTime = !!p.oneTimeDash;
-    const isBrawlerWithDash = gameMode === "brawler" && p.brawlerClass !== "standard";
+    const isBrawlerWithDash =
+      gameMode === "brawler" && p.brawlerClass !== "standard";
 
     if (!hasOneTime && !isBrawlerWithDash) return;
 
@@ -1665,7 +1708,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         if (op.name !== p.name) {
           op.slowTimer = 480;
           op.vel.x = 0;
-          spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#38bdf8", 15, "spark");
+          spawnParticles(
+            op.pos.x + op.w / 2,
+            op.pos.y + op.h / 2,
+            "#38bdf8",
+            15,
+            "spark",
+          );
         }
       });
       shakeIntensity.current = 10;
@@ -1682,7 +1731,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (dist < 180) {
             op.vel.x = (dx > 0 ? 1 : -1) * 22;
             op.vel.y = -10;
-            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#eab308", 15, "spark");
+            spawnParticles(
+              op.pos.x + op.w / 2,
+              op.pos.y + op.h / 2,
+              "#eab308",
+              15,
+              "spark",
+            );
           }
         }
       });
@@ -1747,7 +1802,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (checkCollision(hitBox, opBox) && op.shieldTimer <= 0) {
             op.vel.x = p.facing * 30;
             op.vel.y = -12;
-            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#facc15", 25, "spark");
+            spawnParticles(
+              op.pos.x + op.w / 2,
+              op.pos.y + op.h / 2,
+              "#facc15",
+              25,
+              "spark",
+            );
           }
         }
       });
@@ -1759,7 +1820,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       p.vel = { x: p.facing * 12, y: 0 };
       audio.playPowerup();
       shakeIntensity.current = 12;
-      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#a855f7", 12, "spark");
+      spawnParticles(
+        p.pos.x + p.w / 2,
+        p.pos.y + p.h / 2,
+        "#a855f7",
+        12,
+        "spark",
+      );
       return;
     }
     if (type === "powerup_teleport_all") {
@@ -1772,8 +1839,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         p.pos.y = opponent.pos.y;
         opponent.pos.x = tempX;
         opponent.pos.y = tempY;
-        spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#ec4899", 15, "spark");
-        spawnParticles(opponent.pos.x + opponent.w / 2, opponent.pos.y + opponent.h / 2, "#ec4899", 15, "spark");
+        spawnParticles(
+          p.pos.x + p.w / 2,
+          p.pos.y + p.h / 2,
+          "#ec4899",
+          15,
+          "spark",
+        );
+        spawnParticles(
+          opponent.pos.x + opponent.w / 2,
+          opponent.pos.y + opponent.h / 2,
+          "#ec4899",
+          15,
+          "spark",
+        );
         shakeIntensity.current = 15;
       }
       return;
@@ -1783,7 +1862,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       p.oneTimeTripleJump = true;
       p.tripleJumpActive = true;
       p.jumpCount = 0;
-      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#10b981", 12, "spark");
+      spawnParticles(
+        p.pos.x + p.w / 2,
+        p.pos.y + p.h / 2,
+        "#10b981",
+        12,
+        "spark",
+      );
       return;
     }
     if (type === "powerup_black_hole") {
@@ -1798,7 +1883,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             p.inventory = op.inventory;
             op.inventory = null;
           }
-          spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#1e1b4b", 15, "spark");
+          spawnParticles(
+            op.pos.x + op.w / 2,
+            op.pos.y + op.h / 2,
+            "#1e1b4b",
+            15,
+            "spark",
+          );
         }
       });
       shakeIntensity.current = 15;
@@ -1833,7 +1924,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           h: TILE_SIZE,
           type: "slime" as const,
           expires: Date.now() + 15000,
-         };
+        };
         adjustNewBlockToGluedRoot(newBlock);
         tempBlocks.current.push(newBlock);
         if (isOnline && p.onlineId === onlineService.localPlayer?.id) {
@@ -1865,7 +1956,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       audio.playPowerup();
       p.oneTimeHook = true;
       p.hookActive = true;
-      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#14b8a6", 12, "spark");
+      spawnParticles(
+        p.pos.x + p.w / 2,
+        p.pos.y + p.h / 2,
+        "#14b8a6",
+        12,
+        "spark",
+      );
       return;
     }
     if (type === "powerup_nano_spy") {
@@ -1886,7 +1983,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       p.w = 8;
       p.h = 8;
       p.shrinkTimer = 360;
-      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#6366f1", 15, "spark");
+      spawnParticles(
+        p.pos.x + p.w / 2,
+        p.pos.y + p.h / 2,
+        "#6366f1",
+        15,
+        "spark",
+      );
       return;
     }
     if (type === "powerup_fire_shield") {
@@ -1929,11 +2032,24 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       players.current.forEach((op) => {
         if (op.name !== p.name) {
           const hitBox = { x: p.pos.x - 40, y: p.pos.y - 10, w: 100, h: 40 };
-          if (checkCollision(hitBox, { x: op.pos.x, y: op.pos.y, w: op.w, h: op.h })) {
+          if (
+            checkCollision(hitBox, {
+              x: op.pos.x,
+              y: op.pos.y,
+              w: op.w,
+              h: op.h,
+            })
+          ) {
             op.slowTimer = 360;
             op.vel.x = p.facing * 8;
             op.vel.y = -3;
-            spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#06b6d4", 18, "spark");
+            spawnParticles(
+              op.pos.x + op.w / 2,
+              op.pos.y + op.h / 2,
+              "#06b6d4",
+              18,
+              "spark",
+            );
           }
         }
       });
@@ -1958,7 +2074,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       p.shieldTimer = 240;
       p.oneTimeTripleJump = true;
       p.jumpCount = 0;
-      spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#f472b6", 18, "spark");
+      spawnParticles(
+        p.pos.x + p.w / 2,
+        p.pos.y + p.h / 2,
+        "#f472b6",
+        18,
+        "spark",
+      );
       return;
     }
     if (type === "powerup_trickster") {
@@ -1975,8 +2097,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           p.inventory = op.inventory;
           op.inventory = null;
         }
-        spawnParticles(p.pos.x + p.w / 2, p.pos.y + p.h / 2, "#fb7185", 15, "spark");
-        spawnParticles(op.pos.x + op.w / 2, op.pos.y + op.h / 2, "#fb7185", 15, "spark");
+        spawnParticles(
+          p.pos.x + p.w / 2,
+          p.pos.y + p.h / 2,
+          "#fb7185",
+          15,
+          "spark",
+        );
+        spawnParticles(
+          op.pos.x + op.w / 2,
+          op.pos.y + op.h / 2,
+          "#fb7185",
+          15,
+          "spark",
+        );
       }
       return;
     }
@@ -2207,7 +2341,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   // Input Listeners (Keyboard + Wheel)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
       // Prevent scrolling with arrows/space
       if (
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].indexOf(
@@ -2282,7 +2420,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       });
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
       if (keys.current[e.code]) {
         keys.current[e.code] = false;
         if (isStartingRef.current || paused) return;
@@ -2333,26 +2475,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
 
     const handleMouseJumpDown = (e: MouseEvent | TouchEvent) => {
-      if (e.target && (e.target as HTMLElement).closest('button, a')) return;
+      if (e.target && (e.target as HTMLElement).closest("button, a")) return;
       if (geometryDashMode) {
         keys.current["Click"] = true;
-        
+
         if (isStartingRef.current || paused) return;
         hasStartedMoving.current = true;
-        
+
         players.current.forEach((p) => {
           if (!p) return;
-          const isLocal = !isOnline || p.onlineId === onlineService.localPlayer?.id;
+          const isLocal =
+            !isOnline || p.onlineId === onlineService.localPlayer?.id;
           if (!isLocal) return;
-          
+
           if (!p.hasStartedMove) {
             p.hasStartedMove = true;
             const scrollSpeed = level.autoScrollSpeed || 150;
-            const startWallX = level.autoScroll ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15) : 0;
+            const startWallX = level.autoScroll
+              ? Math.max(0, p.pos.x - GAME_WIDTH / 2 + 15)
+              : 0;
             p.moveStartTime = Date.now() - (startWallX / scrollSpeed) * 1000;
             p.scrollX = startWallX;
           }
-          
+
           p.jumpBufferTimer = 6;
           triggerJump(p);
         });
@@ -2650,11 +2795,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const canvasWidth = GAME_WIDTH * dpr;
   const canvasHeight = GAME_HEIGHT * dpr;
 
-  const getGluedRoot = (entityCheck: Entity, time: number, dt: number): Entity | null => {
-    const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+  const getGluedRoot = (
+    entityCheck: Entity,
+    time: number,
+    dt: number,
+  ): Entity | null => {
+    const currentEntities = [
+      ...(levelRef.current?.entities || []),
+      ...tempBlocks.current,
+    ];
     if (currentEntities.length === 0) return null;
 
-    if (gluedBFSMapRef.current.time !== time || gluedBFSMapRef.current.dt !== dt) {
+    if (
+      gluedBFSMapRef.current.time !== time ||
+      gluedBFSMapRef.current.dt !== dt
+    ) {
       gluedBFSMapRef.current.time = time;
       gluedBFSMapRef.current.dt = dt;
       gluedBFSMapRef.current.connections.clear();
@@ -2678,8 +2833,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
       for (const ent of currentEntities) {
         const isRoot =
-          ent.type === "moving_platform_h" || ent.movingH ||
-          ent.type === "moving_platform_v" || ent.movingV ||
+          ent.type === "moving_platform_h" ||
+          ent.movingH ||
+          ent.type === "moving_platform_v" ||
+          ent.movingV ||
           (ent.type as any) === "orbit";
 
         if (isRoot) {
@@ -2712,15 +2869,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const getDynamicEntity = (e: Entity, time: number, dt: number) => {
     const gluedRoot = getGluedRoot(e, time, dt);
-    const isDynamic = e.type === "moving_platform_h" || 
-                      e.movingH || 
-                      e.type === "moving_platform_v" || 
-                      e.movingV || 
-                      (e.type as any) === "orbit" ||
-                      e.type === "fragile" || 
-                      e.fragile ||
-                      collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
-                      !!gluedRoot;
+    const isDynamic =
+      e.type === "moving_platform_h" ||
+      e.movingH ||
+      e.type === "moving_platform_v" ||
+      e.movingV ||
+      (e.type as any) === "orbit" ||
+      e.type === "fragile" ||
+      e.fragile ||
+      collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
+      !!gluedRoot;
 
     if (!isDynamic) return e;
 
@@ -2797,7 +2955,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         x: e.x + offsetX,
         y: e.y + offsetY,
         dx: offsetX - prevOffsetX,
-        dy: offsetY - prevOffsetY
+        dy: offsetY - prevOffsetY,
       };
     }
 
@@ -2848,25 +3006,36 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     return updated;
   };
 
-  const adjustNewBlockToGluedRoot = (block: { x: number; y: number; w: number; h: number }) => {
-    const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+  const adjustNewBlockToGluedRoot = (block: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }) => {
+    const currentEntities = [
+      ...(levelRef.current?.entities || []),
+      ...tempBlocks.current,
+    ];
     for (const ent of currentEntities) {
       const dEnt = getDynamicEntity(ent, gameTimeRef.current, 0);
       if (!dEnt) continue;
       const pad = 4;
-      const isAdjacentCurrent = (
+      const isAdjacentCurrent =
         block.x < dEnt.x + dEnt.w + pad &&
         block.x + block.w > dEnt.x - pad &&
         block.y < dEnt.y + dEnt.h + pad &&
-        block.y + block.h > dEnt.y - pad
-      );
+        block.y + block.h > dEnt.y - pad;
       if (isAdjacentCurrent) {
         const gluedRoot = getGluedRoot(ent, gameTimeRef.current, 0);
-        const rootObj = gluedRoot || (
-          ent.type === "moving_platform_h" || ent.movingH ||
-          ent.type === "moving_platform_v" || ent.movingV ||
-          (ent.type as any) === "orbit" ? ent : null
-        );
+        const rootObj =
+          gluedRoot ||
+          (ent.type === "moving_platform_h" ||
+          ent.movingH ||
+          ent.type === "moving_platform_v" ||
+          ent.movingV ||
+          (ent.type as any) === "orbit"
+            ? ent
+            : null);
         if (rootObj) {
           const speed = rootObj.moveSpeed ?? 0.002;
           const range = rootObj.moveRange ?? 100;
@@ -2912,18 +3081,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const levelCoinIds = levelRef.current.entities
       .filter((e) => e.type === "coin")
       .map((e) => e.id!);
-    const teleporters = levelRef.current.entities.filter((e) => e.type === "teleport");
+    const teleporters = levelRef.current.entities.filter(
+      (e) => e.type === "teleport",
+    );
 
     // Game Loop Logic
     let lastTime = performance.now();
     let accumulator = 0;
     const PHYSICS_STEP = 1000 / 60;
 
-    const getGluedRoot_unused = (entityCheck: Entity, time: number, dt: number): Entity | null => {
-      const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+    const getGluedRoot_unused = (
+      entityCheck: Entity,
+      time: number,
+      dt: number,
+    ): Entity | null => {
+      const currentEntities = [
+        ...(levelRef.current?.entities || []),
+        ...tempBlocks.current,
+      ];
       if (currentEntities.length === 0) return null;
 
-      if (gluedBFSMapRef.current.time !== time || gluedBFSMapRef.current.dt !== dt) {
+      if (
+        gluedBFSMapRef.current.time !== time ||
+        gluedBFSMapRef.current.dt !== dt
+      ) {
         gluedBFSMapRef.current.time = time;
         gluedBFSMapRef.current.dt = dt;
         gluedBFSMapRef.current.connections.clear();
@@ -2985,15 +3166,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const getDynamicEntity_unused = (e: Entity, time: number, dt: number) => {
       const gluedRoot = getGluedRoot(e, time, dt);
       // Only copy if it's dynamic
-      const isDynamic = e.type === "moving_platform_h" || 
-                        e.movingH || 
-                        e.type === "moving_platform_v" || 
-                        e.movingV || 
-                        (e.type as any) === "orbit" ||
-                        e.type === "fragile" || 
-                        e.fragile ||
-                        collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
-                        !!gluedRoot;
+      const isDynamic =
+        e.type === "moving_platform_h" ||
+        e.movingH ||
+        e.type === "moving_platform_v" ||
+        e.movingV ||
+        (e.type as any) === "orbit" ||
+        e.type === "fragile" ||
+        e.fragile ||
+        collapsingStates.current[e.id || `${e.x}_${e.y}`] ||
+        !!gluedRoot;
 
       if (!isDynamic) return e;
 
@@ -3010,7 +3192,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
           rootX = gluedRoot.x + offset;
           rdx = offset - prevOffset;
-        } else if (gluedRoot.type === "moving_platform_v" || gluedRoot.movingV) {
+        } else if (
+          gluedRoot.type === "moving_platform_v" ||
+          gluedRoot.movingV
+        ) {
           const offset = Math.sin(time * speed) * range;
           const prevOffset = Math.sin((time - 16.66 * dt) * speed) * range;
           rootY = gluedRoot.y + offset;
@@ -3070,7 +3255,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           x: e.x + offsetX,
           y: e.y + offsetY,
           dx: offsetX - prevOffsetX,
-          dy: offsetY - prevOffsetY
+          dy: offsetY - prevOffsetY,
         };
       }
 
@@ -3123,25 +3308,36 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       return updated;
     };
 
-    const adjustNewBlockToGluedRoot_unused = (block: { x: number; y: number; w: number; h: number }) => {
-      const currentEntities = [...(levelRef.current?.entities || []), ...tempBlocks.current];
+    const adjustNewBlockToGluedRoot_unused = (block: {
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+    }) => {
+      const currentEntities = [
+        ...(levelRef.current?.entities || []),
+        ...tempBlocks.current,
+      ];
       for (const ent of currentEntities) {
         const dEnt = getDynamicEntity(ent, gameTimeRef.current, 0);
         if (!dEnt) continue;
         const pad = 4;
-        const isAdjacentCurrent = (
+        const isAdjacentCurrent =
           block.x < dEnt.x + dEnt.w + pad &&
           block.x + block.w > dEnt.x - pad &&
           block.y < dEnt.y + dEnt.h + pad &&
-          block.y + block.h > dEnt.y - pad
-        );
+          block.y + block.h > dEnt.y - pad;
         if (isAdjacentCurrent) {
           const gluedRoot = getGluedRoot(ent, gameTimeRef.current, 0);
-          const rootObj = gluedRoot || (
-            ent.type === "moving_platform_h" || ent.movingH ||
-            ent.type === "moving_platform_v" || ent.movingV ||
-            (ent.type as any) === "orbit" ? ent : null
-          );
+          const rootObj =
+            gluedRoot ||
+            (ent.type === "moving_platform_h" ||
+            ent.movingH ||
+            ent.type === "moving_platform_v" ||
+            ent.movingV ||
+            (ent.type as any) === "orbit"
+              ? ent
+              : null);
           if (rootObj) {
             const speed = rootObj.moveSpeed ?? 0.002;
             const range = rootObj.moveRange ?? 100;
@@ -3149,7 +3345,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             let rdy = 0;
             if (rootObj.type === "moving_platform_h" || rootObj.movingH) {
               rdx = Math.sin(gameTimeRef.current * speed) * range;
-            } else if (rootObj.type === "moving_platform_v" || rootObj.movingV) {
+            } else if (
+              rootObj.type === "moving_platform_v" ||
+              rootObj.movingV
+            ) {
               rdy = Math.sin(gameTimeRef.current * speed) * range;
             } else if ((rootObj.type as any) === "orbit") {
               const oSpeed = rootObj.moveSpeed ?? 0.0025;
@@ -3171,8 +3370,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       let targetCameraX = 0;
       let targetCameraY = 0;
 
-      const maxCamX = Math.max(0, (levelRef.current.width || GAME_WIDTH) - GAME_WIDTH);
-      const maxCamY = Math.max(0, (levelRef.current.height || GAME_HEIGHT) - GAME_HEIGHT);
+      const maxCamX = Math.max(
+        0,
+        (levelRef.current.width || GAME_WIDTH) - GAME_WIDTH,
+      );
+      const maxCamY = Math.max(
+        0,
+        (levelRef.current.height || GAME_HEIGHT) - GAME_HEIGHT,
+      );
 
       const allFinished = players.current.every((p) => p.finished);
 
@@ -3213,7 +3418,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const isBuildBattle = status && status.includes("build_battle");
 
       if (isBuildBattle && players.current.length >= 2) {
-        const aliveBuildBattlePlayers = players.current.filter(p => !p.dead);
+        const aliveBuildBattlePlayers = players.current.filter((p) => !p.dead);
         if (aliveBuildBattlePlayers.length === 1) {
           cameraZoom.current += (1.0 - cameraZoom.current) * 0.1;
           const p = aliveBuildBattlePlayers[0];
@@ -3227,13 +3432,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           let minY = Math.min(p1.pos.y, p2.pos.y);
           let maxY = Math.max(p1.pos.y + p1.h, p2.pos.y + p2.h);
 
-          const buildPreviewEntities = levelRef.current.entities.filter(e => (e as any).isBuildPreview);
+          const buildPreviewEntities = levelRef.current.entities.filter(
+            (e) => (e as any).isBuildPreview,
+          );
 
           if (buildPreviewEntities.length > 0) {
-            minX = Math.min(minX, ...buildPreviewEntities.map(e => e.x));
-            maxX = Math.max(maxX, ...buildPreviewEntities.map(e => e.x + (e.w || 30)));
-            minY = Math.min(minY, ...buildPreviewEntities.map(e => e.y));
-            maxY = Math.max(maxY, ...buildPreviewEntities.map(e => e.y + (e.h || 30)));
+            minX = Math.min(minX, ...buildPreviewEntities.map((e) => e.x));
+            maxX = Math.max(
+              maxX,
+              ...buildPreviewEntities.map((e) => e.x + (e.w || 30)),
+            );
+            minY = Math.min(minY, ...buildPreviewEntities.map((e) => e.y));
+            maxY = Math.max(
+              maxY,
+              ...buildPreviewEntities.map((e) => e.y + (e.h || 30)),
+            );
           }
 
           const dx = maxX - minX;
@@ -3244,7 +3457,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const paddingY = 140;
           const targetZoomX = GAME_WIDTH / (dx + paddingX);
           const targetZoomY = GAME_HEIGHT / (dy + paddingY);
-          const targetZoom = Math.max(0.45, Math.min(1.0, Math.min(targetZoomX, targetZoomY)));
+          const targetZoom = Math.max(
+            0.45,
+            Math.min(1.0, Math.min(targetZoomX, targetZoomY)),
+          );
           cameraZoom.current += (targetZoom - cameraZoom.current) * 0.1;
 
           const levelW = levelRef.current.width || GAME_WIDTH;
@@ -3280,7 +3496,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       } else {
         // Dynamic camera in normal modes to look ahead based on speed and player spread
-        let followedPlayers = players.current.filter((p) => !p.dead && (p.lives > 0 || gameMode !== "brawler"));
+        let followedPlayers = players.current.filter(
+          (p) => !p.dead && (p.lives > 0 || gameMode !== "brawler"),
+        );
         if (isSpectatingNowLocal && followedPlayer) {
           followedPlayers = [followedPlayer];
         } else if (isOnline && liveLocalPlayer) {
@@ -3363,7 +3581,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       // However, spectators should follow their target smoothly.
       const oldCamX = cameraRef.current.x;
       const oldCamY = cameraRef.current.y;
-      
+
       if ((level.autoScroll || geometryDashMode) && !isSpectatingNowLocal) {
         cameraRef.current.x = scrollWallX.current;
       } else {
@@ -3482,7 +3700,15 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
       }
 
-      const fakeTypes = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
+      const fakeTypes = [
+        "walkthrough_wall",
+        "troll_wall",
+        "fake_goal",
+        "fake_ice",
+        "fake_slime",
+        "ghost_hazard",
+        "fake",
+      ];
 
       const collidableEntities = [
         ...levelRef.current.entities,
@@ -3596,7 +3822,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               const spawnY = block.y - 20;
               const rect = { x: spawnX, y: spawnY, w: 20, h: 20 };
               const isFree =
-                !levelRef.current.entities.some((e) => checkCollision(rect, e)) &&
+                !levelRef.current.entities.some((e) =>
+                  checkCollision(rect, e),
+                ) &&
                 !dynamicPowerups.current.some((e) => checkCollision(rect, e));
               if (isFree) {
                 const id = `dyn_${Date.now()}_${Math.random()}`;
@@ -3691,7 +3919,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         let pressingLeft = geometryDashMode ? false : checkAction("left");
         let pressingRight = geometryDashMode ? true : checkAction("right");
         let pressingJump = geometryDashMode
-          ? (checkAction("up") || checkAction("action") || checkAction("dash") || keys.current["Space"] || keys.current["ArrowUp"] || keys.current["KeyW"] || keys.current["Click"])
+          ? checkAction("up") ||
+            checkAction("action") ||
+            checkAction("dash") ||
+            keys.current["Space"] ||
+            keys.current["ArrowUp"] ||
+            keys.current["KeyW"] ||
+            keys.current["Click"]
           : checkAction("up");
         let pressingDown = geometryDashMode ? false : checkAction("down");
         const pressingAction = geometryDashMode ? false : checkAction("action");
@@ -3777,7 +4011,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           const platform = collidableEntities.find(
             (ent) =>
               ent.id === p.groundedOnEntityId ||
-              `${(ent as any).baseX ?? ent.x}_${(ent as any).baseY ?? ent.y}` === p.groundedOnEntityId,
+              `${(ent as any).baseX ?? ent.x}_${(ent as any).baseY ?? ent.y}` ===
+                p.groundedOnEntityId,
           );
           if (platform) {
             p.platformDelta = {
@@ -3916,11 +4151,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         p.gravity = p.gravityFlipped ? -GRAVITY : GRAVITY;
         collidableEntities.forEach((entity) => {
           if ((entity.type as any) === "fan") {
+            const dynEnt = getDynamicEntity(entity, gameTimeRef.current, dt);
             const windH = 185;
-            const inWindX = p.pos.x + p.w > entity.x && p.pos.x < entity.x + entity.w;
-            const inWindY = p.pos.y + p.h > entity.y - windH && p.pos.y < entity.y;
+            const inWindX =
+              p.pos.x + p.w > dynEnt.x && p.pos.x < dynEnt.x + dynEnt.w;
+            const inWindY =
+              p.pos.y + p.h > dynEnt.y - windH && p.pos.y < dynEnt.y;
             if (inWindX && inWindY) {
-              const distFrac = 1.0 - (entity.y - p.pos.y) / windH; // Stronger closer to the fan
+              const distFrac = 1.0 - (dynEnt.y - p.pos.y) / windH; // Stronger closer to the fan
               const pushForce = 0.88 * Math.max(0.25, distFrac);
               p.vel.y -= pushForce * (p.gravity < 0 ? -1 : 1);
             }
@@ -4019,8 +4257,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           // Normal Movement
           if (geometryDashMode) {
             let speedMul = 1.0;
-            if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") speedMul = 1.5;
-            if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") speedMul = 0.7;
+            if (p.surfaceType === "ice" || p.wallSurfaceType === "ice")
+              speedMul = 1.5;
+            if (p.surfaceType === "slime" || p.wallSurfaceType === "slime")
+              speedMul = 0.7;
             p.vel.x = ((260 * speedMul) / 60) * dt;
           } else {
             let moveX = 0;
@@ -4148,15 +4388,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (checkCollision(playerRectX, entity)) {
             // Pass-through entities
             if (
-              entity.type === "glue" || (
-                !geometryDashMode && (
-                  entity.type === "walkthrough_wall" ||
+              entity.type === "glue" ||
+              (!geometryDashMode &&
+                (entity.type === "walkthrough_wall" ||
                   entity.type === "troll_wall" ||
                   entity.type === "fake_goal" ||
                   entity.type === "fake_ice" ||
-                  entity.type === "fake_slime"
-                )
-              )
+                  entity.type === "fake_slime"))
             )
               continue; // Do nothing, just pass
             if (entity.type === "ghost_hazard") continue; // Do nothing, just pass
@@ -4336,7 +4574,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
-                
+
                 if (status === "build_battle_playing") {
                   if (entity && entity.id) {
                     const isP1Block = entity.id.includes("bb_P1_");
@@ -4455,7 +4693,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 p.finished = true;
                 if (!p.finishTime) p.finishTime = Date.now();
-                if (status === "build_battle_playing") checkBuildBattleWinCondition();
+                if (status === "build_battle_playing")
+                  checkBuildBattleWinCondition();
                 else triggerWin(p.name);
 
                 if (isOnline) onlineService.sendEvent("win", null);
@@ -4509,17 +4748,20 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             // This is crucial for GD mode where hitting a wall side is fatal.
             // Tolerances increased for GD mode to avoid the ice-block/slide death bug.
             const tolerance = geometryDashMode ? 18 : 10;
-            const isLanding = p.isGrounded || (p.gravity >= 0 && p.vel.y >= -3) || (p.gravity < 0 && p.vel.y <= 3);
+            const isLanding =
+              p.isGrounded ||
+              (p.gravity >= 0 && p.vel.y >= -3) ||
+              (p.gravity < 0 && p.vel.y <= 3);
             if (isLanding) {
               if (p.gravity >= 0) {
                 const prevFeet = p.pos.y + p.h;
                 if (prevFeet <= entity.y + tolerance) {
-                  continue; 
+                  continue;
                 }
               } else {
                 const prevHead = p.pos.y;
                 if (prevHead >= entity.y + entity.h - tolerance) {
-                  continue; 
+                  continue;
                 }
               }
             }
@@ -4658,7 +4900,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           let collisionRect = { ...playerRect };
           const eDy = (entity as any).dy || 0;
           if (p.vel.y >= 0 && eDy > 0) {
-            collisionRect.h += eDy + 20; 
+            collisionRect.h += eDy + 20;
           } else if (p.gravity < 0 && p.vel.y <= 0 && eDy < 0) {
             // Inverted gravity, falling upwards onto an upward moving platform
             collisionRect.y -= Math.abs(eDy) + 20;
@@ -4667,15 +4909,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (checkCollision(collisionRect, entity)) {
             if (
-              entity.type === "glue" || (
-                !geometryDashMode && (
-                  entity.type === "walkthrough_wall" ||
+              entity.type === "glue" ||
+              (!geometryDashMode &&
+                (entity.type === "walkthrough_wall" ||
                   entity.type === "troll_wall" ||
                   entity.type === "fake_goal" ||
                   entity.type === "fake_ice" ||
-                  entity.type === "fake_slime"
-                )
-              )
+                  entity.type === "fake_slime"))
             )
               continue; // Do nothing
             if (entity.type === "ghost_hazard") continue; // Do nothing
@@ -4859,7 +5099,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                   20,
                   "blood",
                 );
-                
+
                 if (status === "build_battle_playing") {
                   if (entity && entity.id) {
                     const isP1Block = entity.id.includes("bb_P1_");
@@ -4978,7 +5218,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
                 p.finished = true;
                 if (!p.finishTime) p.finishTime = Date.now();
-                if (status === "build_battle_playing") checkBuildBattleWinCondition();
+                if (status === "build_battle_playing")
+                  checkBuildBattleWinCondition();
                 else triggerWin(p.name);
 
                 if (isOnline) onlineService.sendEvent("win", null);
@@ -5096,7 +5337,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
                     y: (entity as any).dy || 0,
                   };
                   p.lastPlatformVel = { ...p.platformDelta };
-                  p.groundedOnEntityId = entity.id || `${(entity as any).baseX ?? entity.x}_${(entity as any).baseY ?? entity.y}`;
+                  p.groundedOnEntityId =
+                    entity.id ||
+                    `${(entity as any).baseX ?? entity.x}_${(entity as any).baseY ?? entity.y}`;
                 } else {
                   p.lastPlatformVel = { x: 0, y: 0 };
                   p.groundedOnEntityId = undefined;
@@ -5140,8 +5383,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         if (geometryDashMode) {
           let speedMul = 1.0;
-          if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") speedMul = 1.5;
-          if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") speedMul = 0.7;
+          if (p.surfaceType === "ice" || p.wallSurfaceType === "ice")
+            speedMul = 1.5;
+          if (p.surfaceType === "slime" || p.wallSurfaceType === "slime")
+            speedMul = 0.7;
           p.vel.x = ((260 * speedMul) / 60) * dt;
         } else {
           p.vel.x *= groundFriction;
@@ -5289,19 +5534,26 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Handle Geometry Dash auto-scroll
         if (p.hasStartedMove && (level.autoScroll || geometryDashMode)) {
-          let currentScrollSpeed = geometryDashMode ? 260 : (level.autoScrollSpeed || 150);
-          
+          let currentScrollSpeed = geometryDashMode
+            ? 260
+            : level.autoScrollSpeed || 150;
+
           if (geometryDashMode) {
-             if (p.surfaceType === "ice" || p.wallSurfaceType === "ice") currentScrollSpeed *= 1.5;
-             if (p.surfaceType === "slime" || p.wallSurfaceType === "slime") currentScrollSpeed *= 0.7;
+            if (p.surfaceType === "ice" || p.wallSurfaceType === "ice")
+              currentScrollSpeed *= 1.5;
+            if (p.surfaceType === "slime" || p.wallSurfaceType === "slime")
+              currentScrollSpeed *= 0.7;
           }
-          
-          const dtInSeconds = (1 / 60) * dt; 
+
+          const dtInSeconds = (1 / 60) * dt;
           p.scrollX = (p.scrollX || 0) + currentScrollSpeed * dtInSeconds;
         }
 
         // Allow players to run off the right edge without restriction
-        const pWallX = (level.autoScroll || geometryDashMode) && p.hasStartedMove ? (p.scrollX || 0) : 0;
+        const pWallX =
+          (level.autoScroll || geometryDashMode) && p.hasStartedMove
+            ? p.scrollX || 0
+            : 0;
 
         const dieTop =
           (p.gravityFlipped && p.pos.y + p.h < -2500) ||
@@ -5345,7 +5597,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               20,
               "blood",
             );
-            
+
             if (status === "build_battle_playing") {
               p.dead = true;
               p.finished = true;
@@ -5423,7 +5675,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Check collision with walls
         const projRect = { x: proj.x, y: proj.y, w: proj.w, h: proj.h };
-        const hitWall = [...levelRef.current.entities, ...tempBlocks.current].some(
+        const hitWall = [
+          ...levelRef.current.entities,
+          ...tempBlocks.current,
+        ].some(
           (e) =>
             (e.type === "wall" || e.type === "ice" || e.type === "slime") &&
             checkCollision(projRect, e),
@@ -5604,30 +5859,45 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
       ctx.save();
-      
+
       const visualAlpha = typeof alpha === "number" ? alpha : 0;
 
       // Enable camera interpolation always to align player and world elements with sub-frame precision.
       // Disabling visualAlpha for the camera in auto-scroll/GD mode introduces sub-frame judder/stutter.
       const useCamAlpha = visualAlpha;
 
-      let finalTranslateX = -(cameraRef.current.x + cameraVel.current.x * useCamAlpha);
-      let finalTranslateY = -(cameraRef.current.y + cameraVel.current.y * useCamAlpha);
+      let finalTranslateX = -(
+        cameraRef.current.x +
+        cameraVel.current.x * useCamAlpha
+      );
+      let finalTranslateY = -(
+        cameraRef.current.y +
+        cameraVel.current.y * useCamAlpha
+      );
 
-      const isBuildBattle = level.id.startsWith("build") || status === "build_battle_playing";
+      const isBuildBattle =
+        level.id.startsWith("build") || status === "build_battle_playing";
       const shakeMult = isBuildBattle ? 0 : (settings.screenShake ?? 1);
 
       const zoom = cameraZoom.current || 1.0;
       if (zoom !== 1.0) {
         ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2);
         ctx.scale(zoom, zoom);
-        const cx = (cameraRef.current.x + cameraVel.current.x * useCamAlpha) + GAME_WIDTH / 2;
-        const cy = (cameraRef.current.y + cameraVel.current.y * useCamAlpha) + GAME_HEIGHT / 2;
+        const cx =
+          cameraRef.current.x +
+          cameraVel.current.x * useCamAlpha +
+          GAME_WIDTH / 2;
+        const cy =
+          cameraRef.current.y +
+          cameraVel.current.y * useCamAlpha +
+          GAME_HEIGHT / 2;
         let targetX = -cx;
         let targetY = -cy;
         if (shakeIntensity.current > 0 && shakeMult > 0) {
-          targetX += ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
-          targetY += ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
+          targetX +=
+            ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
+          targetY +=
+            ((Math.random() - 0.5) * shakeIntensity.current * shakeMult) / zoom;
         }
         ctx.translate(targetX, targetY);
       } else {
@@ -5672,727 +5942,782 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Logical Shadows for 3D effect
-      const fakeTypesRender = ["walkthrough_wall", "troll_wall", "fake_goal", "fake_ice", "fake_slime", "ghost_hazard", "fake"];
+      const fakeTypesRender = [
+        "walkthrough_wall",
+        "troll_wall",
+        "fake_goal",
+        "fake_ice",
+        "fake_slime",
+        "ghost_hazard",
+        "fake",
+      ];
       ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
       ctx.beginPath();
       [...levelRef.current.entities, ...tempBlocks.current]
         .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
         .forEach((baseEnt) => {
-        const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
-        if (!ent) return;
-        const isSolid =
-          ent.type === "wall" ||
-          ent.type === "ice" ||
-          ent.type === "slime" ||
-          ent.type === "troll_wall" ||
-          ent.type === "walkthrough_wall" ||
-          ent.type === "fake_ice" ||
-          ent.type === "fake_slime" ||
-          ent.type === "moving_platform_h" ||
-          ent.type === "moving_platform_v" ||
-          ent.type === "fragile";
+          const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
+          if (!ent) return;
+          const isSolid =
+            ent.type === "wall" ||
+            ent.type === "ice" ||
+            ent.type === "slime" ||
+            ent.type === "troll_wall" ||
+            ent.type === "walkthrough_wall" ||
+            ent.type === "fake_ice" ||
+            ent.type === "fake_slime" ||
+            ent.type === "moving_platform_h" ||
+            ent.type === "moving_platform_v" ||
+            ent.type === "fragile";
 
-        if (isSolid) {
-          // Draw a subtle drop shadow
-          ctx.rect(ent.x + 6, ent.y + 6, ent.w, ent.h);
-        }
-      });
+          if (isSolid) {
+            // Draw a subtle drop shadow
+            ctx.rect(ent.x + 6, ent.y + 6, ent.w, ent.h);
+          }
+        });
       ctx.fill();
 
       // Draw Level Entities
       [...levelRef.current.entities, ...dynamicPowerups.current]
         .filter((e) => !(geometryDashMode && fakeTypesRender.includes(e.type)))
         .forEach((baseEnt) => {
-        const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
-        if (!ent) return; // Skip if fragile block is broken
+          const ent = getDynamicEntity(baseEnt, gameTimeRef.current, 0);
+          if (!ent) return; // Skip if fragile block is broken
 
-        const powerupId = ent.id || `${ent.x}_${ent.y}_${ent.type}`;
+          const powerupId = ent.id || `${ent.x}_${ent.y}_${ent.type}`;
 
-        const localPlayer = players.current.find(
-          (p) => !isOnline || p.onlineId === onlineService.localPlayer?.id,
-        );
-
-        if (ent.type === "coin") {
-          if (gameMode === "brawler") return; // Don't render coins in Brawler mode
-          // In multiplayer, coins remain visible for everyone
-          if (players.current.length <= 1 && !isOnline && gameMode !== "vs") {
-            if (collectedCoinsRef.current.includes(ent.id || "")) return;
-          }
-        }
-
-        if (ent.type.startsWith("powerup_")) {
           const localPlayer = players.current.find(
             (p) => !isOnline || p.onlineId === onlineService.localPlayer?.id,
           );
-          // If we have multiple local players (local VS/Brawler), check if ALL local players collected it
-          const allLocalCollected = isOnline
-            ? (localPlayer?.collectedPowerupIds.includes(powerupId) ?? false)
-            : players.current.every((p) =>
-                p.collectedPowerupIds.includes(powerupId),
-              );
 
-          if (allLocalCollected) return;
-        }
-
-        // X-Ray Effect Logic
-        const isFake = !geometryDashMode && (
-          ent.type === "walkthrough_wall" ||
-          ent.type === "ghost_hazard" ||
-          ent.type === "troll_wall" ||
-          ent.type === "fake_goal" ||
-          ent.type === "fake_ice" ||
-          ent.type === "fake_slime"
-        );
-        const isXrayActive = xrayTimerRef.current > 0;
-
-        const isP1Cursor = (ent as any).isP1Cursor;
-        const isP2Cursor = (ent as any).isP2Cursor;
-
-        let alpha = ent.opacity ?? 1.0;
-        if (isP1Cursor || isP2Cursor) {
-           alpha = 0.5 + Math.sin(Date.now() / 200) * 0.2;
-        }
-
-        if (isFake && isXrayActive) {
-          ctx.strokeStyle = "#facc15"; // Yellow outline for revealed fakes
-          ctx.lineWidth = 2;
-        }
-        ctx.globalAlpha = alpha;
-
-        let drawX = ent.x;
-        let drawY = ent.y;
-        if ((ent as any).shake) {
-          drawX += (Math.random() - 0.5) * 4;
-          drawY += (Math.random() - 0.5) * 4;
-        }
-
-        let skipDefaultFill = false;
-
-        if (ent.type === "bomb") {
-          skipDefaultFill = true;
-          // Dark background base
-          ctx.fillStyle = "#1f2937";
-          ctx.fillRect(drawX, drawY, ent.w, ent.h);
-          ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
-          ctx.lineWidth = 1;
-          ctx.strokeRect(drawX, drawY, ent.w, ent.h);
-
-          // DRAW A BOMB
-          const cx = drawX + ent.w / 2;
-          const cy = drawY + ent.h / 2;
-          const r = Math.min(ent.w, ent.h) * 0.35;
-
-          // Fuse
-          ctx.strokeStyle = "#d97706";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy - r);
-          ctx.quadraticCurveTo(cx + 4, cy - r - 6, cx + 8, cy - r - 8);
-          ctx.stroke();
-
-          // Spark
-          ctx.fillStyle = "#f97316";
-          ctx.beginPath();
-          ctx.arc(cx + 8, cy - r - 8, 3, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = "#facc15";
-          ctx.beginPath();
-          ctx.arc(cx + 8, cy - r - 8, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Bomb body
-          ctx.fillStyle = "#111827";
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "#374151";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-
-          // Red outline warning
-          ctx.strokeStyle = "#ef4444";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (ent.type === "glue") {
-          skipDefaultFill = true;
-          // A light layer on the edges, no fill
-          ctx.fillStyle = "rgba(163, 230, 53, 0.4)";
-          // top edge
-          ctx.fillRect(drawX, drawY, ent.w, 4);
-          // bottom edge
-          ctx.fillRect(drawX, drawY + ent.h - 4, ent.w, 4);
-          // left edge
-          ctx.fillRect(drawX, drawY + 4, 4, ent.h - 8);
-          // right edge
-          ctx.fillRect(drawX + ent.w - 4, drawY + 4, 4, ent.h - 8);
-
-          // Slimy little dots in the middle to hint it's there
-          ctx.fillStyle = "rgba(132, 204, 22, 0.7)";
-          ctx.fillRect(drawX + ent.w / 2 - 2, drawY + ent.h / 2 - 2, 4, 4);
-          ctx.fillRect(drawX + ent.w / 2 - 8, drawY + ent.h / 2 + 4, 3, 3);
-          ctx.fillRect(drawX + ent.w / 2 + 6, drawY + ent.h / 2 - 6, 3, 3);
-
-
-          // Sticky gel bubbles
-          ctx.fillStyle = "rgba(190, 242, 100, 0.9)";
-          ctx.beginPath();
-          ctx.arc(drawX + ent.w * 0.35, drawY + ent.h * 0.45, 3, 0, Math.PI * 2);
-          ctx.arc(drawX + ent.w * 0.65, drawY + ent.h * 0.65, 2, 0, Math.PI * 2);
-          ctx.arc(drawX + ent.w * 0.5, drawY + ent.h * 0.25, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        } else if ((ent.type as any) === "fan") {
-          skipDefaultFill = true;
-          // Draw metal box
-          ctx.fillStyle = "#4b5563"; 
-          ctx.fillRect(drawX, drawY, ent.w, ent.h);
-          ctx.fillStyle = "#1f2937"; // Inner grate
-          ctx.fillRect(drawX + 4, drawY + 4, ent.w - 8, ent.h - 8);
-
-          // Draw rotating fan blades
-          const bladesAngle = (Date.now() / 60) % (Math.PI * 2);
-          ctx.strokeStyle = "#9ca3af";
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          const cx = drawX + ent.w / 2;
-          const cy = drawY + ent.h / 2;
-          for (let b = 0; b < 4; b++) {
-            const angle = bladesAngle + (b * Math.PI) / 2;
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + Math.cos(angle) * 10, cy + Math.sin(angle) * 10);
-          }
-          ctx.stroke();
-
-          // Beautiful rising updraft waves
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
-          ctx.lineWidth = 1.5;
-          const time = Date.now();
-          for (let lineX = 8; lineX < ent.w; lineX += 16) {
-            const lineOffset = (lineX * 17) % 100;
-            const animProgress = ((time * 0.12 + lineOffset) % 180);
-            const lineY = drawY - animProgress;
-            if (lineY > drawY - 180) {
-              ctx.beginPath();
-              ctx.moveTo(drawX + lineX, lineY);
-              ctx.lineTo(drawX + lineX + Math.sin(time / 200 + lineX) * 3, lineY - 15);
-              ctx.stroke();
+          if (ent.type === "coin") {
+            if (gameMode === "brawler") return; // Don't render coins in Brawler mode
+            // In multiplayer, coins remain visible for everyone
+            if (players.current.length <= 1 && !isOnline && gameMode !== "vs") {
+              if (collectedCoinsRef.current.includes(ent.id || "")) return;
             }
           }
-        } else if ((ent.type as any) === "orbit") {
-          // Draw pivot anchor cable connects to the original baseX/baseY
-          const bx = (ent as any).baseX ?? ent.x;
-          const by = (ent as any).baseY ?? ent.y;
-          ctx.strokeStyle = "rgba(163, 163, 163, 0.5)"; // Dashed pivot cable
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(bx + ent.w / 2, by + ent.h / 2);
-          ctx.lineTo(drawX + ent.w / 2, drawY + ent.h / 2);
-          ctx.stroke();
-          ctx.setLineDash([]); // Reset line dash
 
-          // Draw base anchor peg
-          ctx.fillStyle = "#78716c";
-          ctx.beginPath();
-          ctx.arc(bx + ent.w / 2, by + ent.h / 2, 5, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = "#06b6d4"; // Neon cyan fill color for the platform itself
-        } else if (
-          ent.type === "wall" ||
-          ent.type === "walkthrough_wall" ||
-          ent.type === "troll_wall"
-        ) {
-          ctx.fillStyle = COLORS.WALL;
-        } else if (ent.type === "hazard" || ent.type === "ghost_hazard") {
-          ctx.fillStyle = COLORS.HAZARD;
-        } else if (ent.type === "goal" || ent.type === "fake_goal") {
-          ctx.fillStyle = isGoalUnlocked ? COLORS.GOAL : COLORS.GOAL_LOCKED;
-        } else if (ent.type === "bounce") {
-          ctx.fillStyle = COLORS.BOUNCE;
-        } else if (ent.type === "coin") {
-          ctx.fillStyle = COLORS.COIN;
-        } else if (ent.type === "ice" || ent.type === "fake_ice") {
-          ctx.fillStyle = COLORS.ICE;
-        } else if (ent.type === "trampoline") {
-          ctx.fillStyle = COLORS.TRAMPOLINE;
-        } else if (ent.type === "slime" || ent.type === "fake_slime") {
-          ctx.fillStyle = COLORS.SLIME;
-        } else if (ent.type === "teleport") {
-          ctx.fillStyle = COLORS.TELEPORT;
-        } else if (ent.type === "powerup_build") {
-          ctx.fillStyle = COLORS.POWERUP_BUILD;
-        } else if (ent.type === "powerup_hook") {
-          ctx.fillStyle = COLORS.POWERUP_HOOK;
-        } else if (ent.type === "powerup_double_jump") {
-          ctx.fillStyle = COLORS.POWERUP_DJ;
-        } else if (ent.type === "powerup_triple_jump") {
-          ctx.fillStyle = "#ff00ff"; // Magenta for triple jump
-        } else if (ent.type === "powerup_slow_mo") {
-          ctx.fillStyle = COLORS.POWERUP_SLOW_MO;
-        } else if (ent.type === "powerup_xray") {
-          ctx.fillStyle = COLORS.POWERUP_XRAY;
-        } else if (ent.type === "powerup_ice_block") {
-          ctx.fillStyle = COLORS.ICE;
-        } else if (ent.type === "powerup_slime_block") {
-          ctx.fillStyle = COLORS.SLIME;
-        } else if (ent.type === "powerup_fireball") {
-          ctx.fillStyle = "#ff4500";
-        } else if (ent.type === "powerup_bomb") {
-          ctx.fillStyle = "#333333";
-        } else if (ent.type === "powerup_shield") {
-          ctx.fillStyle = "#ffd700"; // Gold
-        } else if (ent.type === "powerup_steal") {
-          ctx.fillStyle = "#8a2be2"; // Purple
-        } else if (ent.type === "powerup_slow") {
-          ctx.fillStyle = "#00ffff"; // Cyan
-        } else if (ent.type === "powerup_melee") {
-          ctx.fillStyle = "#ff0000"; // Red
-        } else if (ent.type === "powerup_shrink") {
-          ctx.fillStyle = "#10b981"; // Emerald
-        } else if (ent.type === "powerup_grow") {
-          ctx.fillStyle = "#ef4444"; // Red-500
-        } else if (ent.type === "powerup_dash") {
-          ctx.fillStyle = "#f59e0b"; // Amber
-        } else if (ent.type === "powerup_teleport") {
-          ctx.fillStyle = COLORS.TELEPORT;
-        } else if (ent.type === "block_dash") {
-          ctx.fillStyle = "#f59e0b";
-        } else if (ent.type === "block_shrink") {
-          ctx.fillStyle = "#10b981";
-        } else if (ent.type === "block_grow") {
-          ctx.fillStyle = "#ef4444";
-        } else if (ent.type === "block_gravity") {
-          ctx.fillStyle = "#8b5cf6";
-        } else if (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") {
-          ctx.fillStyle = "rgba(168, 85, 247, 0.4)"; // Purple semi-transparent
-        } else if (ent.type === "gravity_zero" || (ent as any).type === "grav_down") {
-          ctx.fillStyle = "rgba(14, 165, 233, 0.4)"; // Blue semi-transparent
-        } else if (ent.type === "fragile" || ent.fragile) {
-          ctx.fillStyle = "#d6d3d1"; // Stone
-        } else if (
-          ent.type === "moving_platform_h" ||
-          ent.type === "moving_platform_v" ||
-          ent.movingH ||
-          ent.movingV
-        ) {
-          ctx.fillStyle = "#f97316"; // Orange
-        } else if (ent.type === "powerup_spawner") {
-          if (gameMode === "brawler") return; // Invisible in game
-          ctx.fillStyle = "#ff00ff";
-        } else if (ent.type === "checkpoint") {
-          // Check if active
-          const isActive =
-            currentRespawnPos.current.x === ent.x &&
-            currentRespawnPos.current.y === ent.y;
-          ctx.fillStyle = isActive ? "#00ff00" : COLORS.CHECKPOINT;
-        } else if (ent.type === "powerup_remover") {
-          ctx.fillStyle = COLORS.REMOVE_ABILITY;
-        } else {
-          ctx.fillStyle = "#fff";
-        }
-
-        if (ent.type === "coin") {
-          if (players.current.length > 1 || gameMode === "vs" || isOnline) {
-            const coinId = ent.id || "0";
-            const collectors = players.current.filter(
-              (p) =>
-                p && p.collectedCoinIds && p.collectedCoinIds.includes(coinId),
+          if (ent.type.startsWith("powerup_")) {
+            const localPlayer = players.current.find(
+              (p) => !isOnline || p.onlineId === onlineService.localPlayer?.id,
             );
-            const radius = ent.w / 2;
-            const cx = drawX + radius;
-            const cy = drawY + ent.h / 2;
+            // If we have multiple local players (local VS/Brawler), check if ALL local players collected it
+            const allLocalCollected = isOnline
+              ? (localPlayer?.collectedPowerupIds.includes(powerupId) ?? false)
+              : players.current.every((p) =>
+                  p.collectedPowerupIds.includes(powerupId),
+                );
 
-            // Always draw the gold coin body as requested ("don't disappear")
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.fillStyle = COLORS.COIN;
-            ctx.fill();
-            ctx.strokeStyle = "#fff";
+            if (allLocalCollected) return;
+          }
+
+          // X-Ray Effect Logic
+          const isFake =
+            !geometryDashMode &&
+            (ent.type === "walkthrough_wall" ||
+              ent.type === "ghost_hazard" ||
+              ent.type === "troll_wall" ||
+              ent.type === "fake_goal" ||
+              ent.type === "fake_ice" ||
+              ent.type === "fake_slime");
+          const isXrayActive = xrayTimerRef.current > 0;
+
+          const isP1Cursor = (ent as any).isP1Cursor;
+          const isP2Cursor = (ent as any).isP2Cursor;
+
+          let alpha = ent.opacity ?? 1.0;
+          if (isP1Cursor || isP2Cursor) {
+            alpha = 0.5 + Math.sin(Date.now() / 200) * 0.2;
+          }
+
+          if (isFake && isXrayActive) {
+            ctx.strokeStyle = "#facc15"; // Yellow outline for revealed fakes
+            ctx.lineWidth = 2;
+          }
+          ctx.globalAlpha = alpha;
+
+          let drawX = ent.x;
+          let drawY = ent.y;
+          if ((ent as any).shake) {
+            drawX += (Math.random() - 0.5) * 4;
+            drawY += (Math.random() - 0.5) * 4;
+          }
+
+          let skipDefaultFill = false;
+
+          if (ent.type === "bomb") {
+            skipDefaultFill = true;
+            // Dark background base
+            ctx.fillStyle = "#1f2937";
+            ctx.fillRect(drawX, drawY, ent.w, ent.h);
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
             ctx.lineWidth = 1;
+            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+
+            // DRAW A BOMB
+            const cx = drawX + ent.w / 2;
+            const cy = drawY + ent.h / 2;
+            const r = Math.min(ent.w, ent.h) * 0.35;
+
+            // Fuse
+            ctx.strokeStyle = "#d97706";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r);
+            ctx.quadraticCurveTo(cx + 4, cy - r - 6, cx + 8, cy - r - 8);
             ctx.stroke();
 
-            // If someone has collected it, draw colored indicators on top
-            if (collectors.length > 0) {
-              const angleSlice = (Math.PI * 2) / collectors.length;
-              collectors.forEach((p, i) => {
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.arc(cx, cy, radius, i * angleSlice, (i + 1) * angleSlice);
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = 0.7;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-              });
+            // Spark
+            ctx.fillStyle = "#f97316";
+            ctx.beginPath();
+            ctx.arc(cx + 8, cy - r - 8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#facc15";
+            ctx.beginPath();
+            ctx.arc(cx + 8, cy - r - 8, 1.5, 0, Math.PI * 2);
+            ctx.fill();
 
-              // Inner small gold circle to still look like a coin
-              ctx.beginPath();
-              ctx.arc(cx, cy, radius * 0.4, 0, Math.PI * 2);
-              ctx.fillStyle = COLORS.COIN;
-              ctx.fill();
-            }
+            // Bomb body
+            ctx.fillStyle = "#111827";
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#374151";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            // If the LOCAL player has collected it, ghost the whole coin for them
-            const hasLocalCollected = players.current
-              .find(
-                (p) =>
-                  !isOnline || p.onlineId === onlineService.localPlayer?.id,
-              )
-              ?.collectedCoinIds.includes(coinId);
-            if (hasLocalCollected) {
-              ctx.fillStyle = "rgba(0,0,0,0.5)";
-              ctx.beginPath();
-              ctx.arc(cx, cy, radius + 1, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          } else {
+            // Red outline warning
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r - 2, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (ent.type === "glue") {
+            skipDefaultFill = true;
+            // A light layer on the edges, no fill
+            ctx.fillStyle = "rgba(163, 230, 53, 0.4)";
+            // top edge
+            ctx.fillRect(drawX, drawY, ent.w, 4);
+            // bottom edge
+            ctx.fillRect(drawX, drawY + ent.h - 4, ent.w, 4);
+            // left edge
+            ctx.fillRect(drawX, drawY + 4, 4, ent.h - 8);
+            // right edge
+            ctx.fillRect(drawX + ent.w - 4, drawY + 4, 4, ent.h - 8);
+
+            // Slimy little dots in the middle to hint it's there
+            ctx.fillStyle = "rgba(132, 204, 22, 0.7)";
+            ctx.fillRect(drawX + ent.w / 2 - 2, drawY + ent.h / 2 - 2, 4, 4);
+            ctx.fillRect(drawX + ent.w / 2 - 8, drawY + ent.h / 2 + 4, 3, 3);
+            ctx.fillRect(drawX + ent.w / 2 + 6, drawY + ent.h / 2 - 6, 3, 3);
+
+            // Sticky gel bubbles
+            ctx.fillStyle = "rgba(190, 242, 100, 0.9)";
             ctx.beginPath();
             ctx.arc(
-              drawX + ent.w / 2,
-              drawY + ent.h / 2,
-              ent.w / 2,
+              drawX + ent.w * 0.35,
+              drawY + ent.h * 0.45,
+              3,
+              0,
+              Math.PI * 2,
+            );
+            ctx.arc(
+              drawX + ent.w * 0.65,
+              drawY + ent.h * 0.65,
+              2,
+              0,
+              Math.PI * 2,
+            );
+            ctx.arc(
+              drawX + ent.w * 0.5,
+              drawY + ent.h * 0.25,
+              1.5,
               0,
               Math.PI * 2,
             );
             ctx.fill();
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-        } else if (ent.type === "hazard" || ent.type === "ghost_hazard") {
-          const cx = drawX + ent.w / 2;
-          const cy = drawY + ent.h / 2;
-          // Slightly reduced visual size to match tighter hitbox
-          const r = Math.min(ent.w, ent.h) / 2 - 2;
-
-          const frame = Math.floor(Date.now() / 400) % 3;
-          const pulse = Math.sin(Date.now() / 300) * 0.5 + 0.5;
-
-          ctx.save();
-          ctx.translate(cx, cy);
-
-          // Rotate the entire entity to simulate spinning
-          ctx.rotate(Date.now() / 1000);
-
-          // 1. Das Zentrum: quadratischer Kern (tiefrot/schwarz)
-          const coreSize = r * 1.0;
-          ctx.fillStyle = "#110000";
-          ctx.fillRect(-coreSize / 2, -coreSize / 2, coreSize, coreSize);
-
-          // Hellrotes pulsierendes Licht
-          ctx.fillStyle = `rgba(255, 36, 0, ${0.3 + pulse * 0.7})`;
-          const lightSize = coreSize * 0.5;
-          ctx.fillRect(-lightSize / 2, -lightSize / 2, lightSize, lightSize);
-
-          // 2. Die Zähne (Fliessende / Smouthe Animation)
-          const numTeeth = 16;
-          const bladeColor = "#FF2400";
-          ctx.fillStyle = bladeColor;
-
-          const animPhase = Date.now() / 250;
-
-          for (let i = 0; i < numTeeth; i++) {
-            ctx.rotate((Math.PI * 2) / numTeeth);
-
-            const isMain = i % 2 === 0;
-            // Pulsierende Werte sanft mit Sinus interpolieren
-            const toothPulse = Math.sin(animPhase + (isMain ? 0 : Math.PI));
-            // Wert von 0 bis 1 für einfachere Berechnungen
-            const normalizedPulse = (toothPulse + 1) / 2;
-
-            const tipExt = isMain
-              ? r + 2 + toothPulse * 1.5
-              : coreSize / 2 + normalizedPulse * (r + 4 - coreSize / 2);
-
-            const toothHalfWidth = isMain
-              ? r * 0.15 + toothPulse * r * 0.05
-              : r * 0.12 * normalizedPulse;
-
-            if (tipExt > coreSize / 2) {
-              ctx.beginPath();
-              ctx.moveTo(coreSize / 2 - 1, -toothHalfWidth);
-              ctx.lineTo(tipExt, 0);
-              ctx.lineTo(coreSize / 2 - 1, toothHalfWidth);
-              ctx.fill();
-            }
-          }
-
-          ctx.restore();
-
-          if (isFake && isXrayActive) {
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
-          }
-        } else if (ent.type === "powerup_remover") {
-          // Semi-transparent
-          ctx.globalAlpha = alpha * 0.5;
-          ctx.fillRect(drawX, drawY, ent.w, ent.h);
-          ctx.globalAlpha = alpha;
-          // Draw X inside
-          ctx.strokeStyle = "rgba(0,0,0,0.5)";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(drawX, drawY);
-          ctx.lineTo(drawX + ent.w, drawY + ent.h);
-          ctx.moveTo(drawX + ent.w, drawY);
-          ctx.lineTo(drawX, drawY + ent.h);
-          ctx.stroke();
-        } else if (!skipDefaultFill) {
-          if (ent.type === "gravity_reverse" || ent.type === "gravity_zero" || (ent as any).type === "grav_up" || (ent as any).type === "grav_down") {
-            // Fill the area with the semi-transparent fillStyle
+          } else if ((ent.type as any) === "fan") {
+            skipDefaultFill = true;
+            // Draw metal box
+            ctx.fillStyle = "#4b5563";
             ctx.fillRect(drawX, drawY, ent.w, ent.h);
-            // Draw a solid border around the area
-            ctx.strokeStyle = (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") ? "#a855f7" : "#0ea5e9";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
-          } else if (ent.type === "block_dash") {
-            ctx.fillStyle = "rgba(245, 158, 11, 0.45)"; // Translucent Amber
-            ctx.fillRect(drawX, drawY, ent.w, ent.h);
-            ctx.strokeStyle = "#f59e0b"; // Solid Amber Outline
-            ctx.lineWidth = 2.5;
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            ctx.fillStyle = "#1f2937"; // Inner grate
+            ctx.fillRect(drawX + 4, drawY + 4, ent.w - 8, ent.h - 8);
 
-            // Draw clean thunderbolt icons centered inside block
-            ctx.save();
-            ctx.fillStyle = "#f59e0b";
-            ctx.font = '14px "Press Start 2P", monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText("⚡", drawX + ent.w / 2, drawY + ent.h / 2);
-            ctx.restore();
-          } else {
-            ctx.fillRect(drawX, drawY, ent.w, ent.h);
-          }
-
-          if (isFake && isXrayActive) {
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
-          }
-
-          if (isP1Cursor || isP2Cursor) {
-            ctx.strokeStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
-            const label = isP1Cursor ? "P1" : "P2";
-            ctx.fillStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
-            ctx.font = '8px "Press Start 2P"';
-            ctx.textAlign = "center";
-            ctx.fillText(label, drawX + ent.w / 2, drawY - 5);
-          }
-
-          const isHoveredP1 = (ent as any).isHoveredByModifierP1;
-          const isHoveredP2 = (ent as any).isHoveredByModifierP2;
-          if (isHoveredP1 || isHoveredP2) {
+            // Draw rotating fan blades
+            const bladesAngle = (Date.now() / 60) % (Math.PI * 2);
+            ctx.strokeStyle = "#9ca3af";
             ctx.lineWidth = 3;
-            ctx.strokeStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
-            // Draw animated dashed outline
-            const dashOffset = (Date.now() / 40) % 24;
-            ctx.setLineDash([6, 6]);
-            ctx.lineDashOffset = -dashOffset;
-            ctx.strokeRect(drawX - 2, drawY - 2, ent.w + 4, ent.h + 4);
-            ctx.setLineDash([]); // Reset immediately
-            
-            // Draw small "UPGRADE?" label above block
-            ctx.fillStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
-            ctx.font = '7px "Press Start 2P"';
-            ctx.textAlign = "center";
-            ctx.fillText("UPGRADE!", drawX + ent.w / 2, drawY - 9);
+            ctx.beginPath();
+            const cx = drawX + ent.w / 2;
+            const cy = drawY + ent.h / 2;
+            for (let b = 0; b < 4; b++) {
+              const angle = bladesAngle + (b * Math.PI) / 2;
+              ctx.moveTo(cx, cy);
+              ctx.lineTo(cx + Math.cos(angle) * 10, cy + Math.sin(angle) * 10);
+            }
+            ctx.stroke();
+
+            // Beautiful rising updraft waves
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+            ctx.lineWidth = 1.5;
+            const time = Date.now();
+            for (let lineX = 8; lineX < ent.w; lineX += 16) {
+              const lineOffset = (lineX * 17) % 100;
+              const animProgress = (time * 0.12 + lineOffset) % 180;
+              const lineY = drawY - animProgress;
+              if (lineY > drawY - 180) {
+                ctx.beginPath();
+                ctx.moveTo(drawX + lineX, lineY);
+                ctx.lineTo(
+                  drawX + lineX + Math.sin(time / 200 + lineX) * 3,
+                  lineY - 15,
+                );
+                ctx.stroke();
+              }
+            }
+          } else if ((ent.type as any) === "orbit") {
+            // Draw pivot anchor cable connects to the original baseX/baseY
+            const bx = (ent as any).baseX ?? ent.x;
+            const by = (ent as any).baseY ?? ent.y;
+            ctx.strokeStyle = "rgba(163, 163, 163, 0.5)"; // Dashed pivot cable
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(bx + ent.w / 2, by + ent.h / 2);
+            ctx.lineTo(drawX + ent.w / 2, drawY + ent.h / 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            // Draw base anchor peg
+            ctx.fillStyle = "#78716c";
+            ctx.beginPath();
+            ctx.arc(bx + ent.w / 2, by + ent.h / 2, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#06b6d4"; // Neon cyan fill color for the platform itself
+          } else if (
+            ent.type === "wall" ||
+            ent.type === "walkthrough_wall" ||
+            ent.type === "troll_wall"
+          ) {
+            ctx.fillStyle = COLORS.WALL;
+          } else if (ent.type === "hazard" || ent.type === "ghost_hazard") {
+            ctx.fillStyle = COLORS.HAZARD;
+          } else if (ent.type === "goal" || ent.type === "fake_goal") {
+            ctx.fillStyle = isGoalUnlocked ? COLORS.GOAL : COLORS.GOAL_LOCKED;
+          } else if (ent.type === "bounce") {
+            ctx.fillStyle = COLORS.BOUNCE;
+          } else if (ent.type === "coin") {
+            ctx.fillStyle = COLORS.COIN;
+          } else if (ent.type === "ice" || ent.type === "fake_ice") {
+            ctx.fillStyle = COLORS.ICE;
+          } else if (ent.type === "trampoline") {
+            ctx.fillStyle = COLORS.TRAMPOLINE;
+          } else if (ent.type === "slime" || ent.type === "fake_slime") {
+            ctx.fillStyle = COLORS.SLIME;
+          } else if (ent.type === "teleport") {
+            ctx.fillStyle = COLORS.TELEPORT;
+          } else if (ent.type === "powerup_build") {
+            ctx.fillStyle = COLORS.POWERUP_BUILD;
+          } else if (ent.type === "powerup_hook") {
+            ctx.fillStyle = COLORS.POWERUP_HOOK;
+          } else if (ent.type === "powerup_double_jump") {
+            ctx.fillStyle = COLORS.POWERUP_DJ;
+          } else if (ent.type === "powerup_triple_jump") {
+            ctx.fillStyle = "#ff00ff"; // Magenta for triple jump
+          } else if (ent.type === "powerup_slow_mo") {
+            ctx.fillStyle = COLORS.POWERUP_SLOW_MO;
+          } else if (ent.type === "powerup_xray") {
+            ctx.fillStyle = COLORS.POWERUP_XRAY;
+          } else if (ent.type === "powerup_ice_block") {
+            ctx.fillStyle = COLORS.ICE;
+          } else if (ent.type === "powerup_slime_block") {
+            ctx.fillStyle = COLORS.SLIME;
+          } else if (ent.type === "powerup_fireball") {
+            ctx.fillStyle = "#ff4500";
+          } else if (ent.type === "powerup_bomb") {
+            ctx.fillStyle = "#333333";
+          } else if (ent.type === "powerup_shield") {
+            ctx.fillStyle = "#ffd700"; // Gold
+          } else if (ent.type === "powerup_steal") {
+            ctx.fillStyle = "#8a2be2"; // Purple
+          } else if (ent.type === "powerup_slow") {
+            ctx.fillStyle = "#00ffff"; // Cyan
+          } else if (ent.type === "powerup_melee") {
+            ctx.fillStyle = "#ff0000"; // Red
+          } else if (ent.type === "powerup_shrink") {
+            ctx.fillStyle = "#10b981"; // Emerald
+          } else if (ent.type === "powerup_grow") {
+            ctx.fillStyle = "#ef4444"; // Red-500
+          } else if (ent.type === "powerup_dash") {
+            ctx.fillStyle = "#f59e0b"; // Amber
+          } else if (ent.type === "powerup_teleport") {
+            ctx.fillStyle = COLORS.TELEPORT;
+          } else if (ent.type === "block_dash") {
+            ctx.fillStyle = "#f59e0b";
+          } else if (ent.type === "block_shrink") {
+            ctx.fillStyle = "#10b981";
+          } else if (ent.type === "block_grow") {
+            ctx.fillStyle = "#ef4444";
+          } else if (ent.type === "block_gravity") {
+            ctx.fillStyle = "#8b5cf6";
+          } else if (
+            ent.type === "gravity_reverse" ||
+            (ent as any).type === "grav_up"
+          ) {
+            ctx.fillStyle = "rgba(168, 85, 247, 0.4)"; // Purple semi-transparent
+          } else if (
+            ent.type === "gravity_zero" ||
+            (ent as any).type === "grav_down"
+          ) {
+            ctx.fillStyle = "rgba(14, 165, 233, 0.4)"; // Blue semi-transparent
+          } else if (ent.type === "fragile" || ent.fragile) {
+            ctx.fillStyle = "#d6d3d1"; // Stone
+          } else if (
+            ent.type === "moving_platform_h" ||
+            ent.type === "moving_platform_v" ||
+            ent.movingH ||
+            ent.movingV
+          ) {
+            ctx.fillStyle = "#f97316"; // Orange
+          } else if (ent.type === "powerup_spawner") {
+            if (gameMode === "brawler") return; // Invisible in game
+            ctx.fillStyle = "#ff00ff";
+          } else if (ent.type === "checkpoint") {
+            // Check if active
+            const isActive =
+              currentRespawnPos.current.x === ent.x &&
+              currentRespawnPos.current.y === ent.y;
+            ctx.fillStyle = isActive ? "#00ff00" : COLORS.CHECKPOINT;
+          } else if (ent.type === "powerup_remover") {
+            ctx.fillStyle = COLORS.REMOVE_ABILITY;
+          } else {
+            ctx.fillStyle = "#fff";
           }
 
-          if (ent.type === "teleport") {
-            ctx.strokeStyle = "rgba(255,255,255,0.8)";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(drawX + 2, drawY + 2, ent.w - 4, ent.h - 4);
+          if (ent.type === "coin") {
+            if (players.current.length > 1 || gameMode === "vs" || isOnline) {
+              const coinId = ent.id || "0";
+              const collectors = players.current.filter(
+                (p) =>
+                  p &&
+                  p.collectedCoinIds &&
+                  p.collectedCoinIds.includes(coinId),
+              );
+              const radius = ent.w / 2;
+              const cx = drawX + radius;
+              const cy = drawY + ent.h / 2;
 
-            // Draw Order Number
-            const tpIndex = teleporters.indexOf(ent);
-            if (tpIndex !== -1) {
-              ctx.fillStyle = "white";
+              // Always draw the gold coin body as requested ("don't disappear")
+              ctx.beginPath();
+              ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+              ctx.fillStyle = COLORS.COIN;
+              ctx.fill();
+              ctx.strokeStyle = "#fff";
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              // If someone has collected it, draw colored indicators on top
+              if (collectors.length > 0) {
+                const angleSlice = (Math.PI * 2) / collectors.length;
+                collectors.forEach((p, i) => {
+                  ctx.beginPath();
+                  ctx.moveTo(cx, cy);
+                  ctx.arc(cx, cy, radius, i * angleSlice, (i + 1) * angleSlice);
+                  ctx.fillStyle = p.color;
+                  ctx.globalAlpha = 0.7;
+                  ctx.fill();
+                  ctx.globalAlpha = 1.0;
+                });
+
+                // Inner small gold circle to still look like a coin
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = COLORS.COIN;
+                ctx.fill();
+              }
+
+              // If the LOCAL player has collected it, ghost the whole coin for them
+              const hasLocalCollected = players.current
+                .find(
+                  (p) =>
+                    !isOnline || p.onlineId === onlineService.localPlayer?.id,
+                )
+                ?.collectedCoinIds.includes(coinId);
+              if (hasLocalCollected) {
+                ctx.fillStyle = "rgba(0,0,0,0.5)";
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius + 1, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else {
+              ctx.beginPath();
+              ctx.arc(
+                drawX + ent.w / 2,
+                drawY + ent.h / 2,
+                ent.w / 2,
+                0,
+                Math.PI * 2,
+              );
+              ctx.fill();
+              ctx.strokeStyle = "#fff";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+          } else if (ent.type === "hazard" || ent.type === "ghost_hazard") {
+            const cx = drawX + ent.w / 2;
+            const cy = drawY + ent.h / 2;
+            // Slightly reduced visual size to match tighter hitbox
+            const r = Math.min(ent.w, ent.h) / 2 - 2;
+
+            const frame = Math.floor(Date.now() / 400) % 3;
+            const pulse = Math.sin(Date.now() / 300) * 0.5 + 0.5;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Rotate the entire entity to simulate spinning
+            ctx.rotate(Date.now() / 1000);
+
+            // 1. Das Zentrum: quadratischer Kern (tiefrot/schwarz)
+            const coreSize = r * 1.0;
+            ctx.fillStyle = "#110000";
+            ctx.fillRect(-coreSize / 2, -coreSize / 2, coreSize, coreSize);
+
+            // Hellrotes pulsierendes Licht
+            ctx.fillStyle = `rgba(255, 36, 0, ${0.3 + pulse * 0.7})`;
+            const lightSize = coreSize * 0.5;
+            ctx.fillRect(-lightSize / 2, -lightSize / 2, lightSize, lightSize);
+
+            // 2. Die Zähne (Fliessende / Smouthe Animation)
+            const numTeeth = 16;
+            const bladeColor = "#FF2400";
+            ctx.fillStyle = bladeColor;
+
+            const animPhase = Date.now() / 250;
+
+            for (let i = 0; i < numTeeth; i++) {
+              ctx.rotate((Math.PI * 2) / numTeeth);
+
+              const isMain = i % 2 === 0;
+              // Pulsierende Werte sanft mit Sinus interpolieren
+              const toothPulse = Math.sin(animPhase + (isMain ? 0 : Math.PI));
+              // Wert von 0 bis 1 für einfachere Berechnungen
+              const normalizedPulse = (toothPulse + 1) / 2;
+
+              const tipExt = isMain
+                ? r + 2 + toothPulse * 1.5
+                : coreSize / 2 + normalizedPulse * (r + 4 - coreSize / 2);
+
+              const toothHalfWidth = isMain
+                ? r * 0.15 + toothPulse * r * 0.05
+                : r * 0.12 * normalizedPulse;
+
+              if (tipExt > coreSize / 2) {
+                ctx.beginPath();
+                ctx.moveTo(coreSize / 2 - 1, -toothHalfWidth);
+                ctx.lineTo(tipExt, 0);
+                ctx.lineTo(coreSize / 2 - 1, toothHalfWidth);
+                ctx.fill();
+              }
+            }
+
+            ctx.restore();
+
+            if (isFake && isXrayActive) {
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            }
+          } else if (ent.type === "powerup_remover") {
+            // Semi-transparent
+            ctx.globalAlpha = alpha * 0.5;
+            ctx.fillRect(drawX, drawY, ent.w, ent.h);
+            ctx.globalAlpha = alpha;
+            // Draw X inside
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(drawX, drawY);
+            ctx.lineTo(drawX + ent.w, drawY + ent.h);
+            ctx.moveTo(drawX + ent.w, drawY);
+            ctx.lineTo(drawX, drawY + ent.h);
+            ctx.stroke();
+          } else if (!skipDefaultFill) {
+            if (
+              ent.type === "gravity_reverse" ||
+              ent.type === "gravity_zero" ||
+              (ent as any).type === "grav_up" ||
+              (ent as any).type === "grav_down"
+            ) {
+              // Fill the area with the semi-transparent fillStyle
+              ctx.fillRect(drawX, drawY, ent.w, ent.h);
+              // Draw a solid border around the area
+              ctx.strokeStyle =
+                ent.type === "gravity_reverse" ||
+                (ent as any).type === "grav_up"
+                  ? "#a855f7"
+                  : "#0ea5e9";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            } else if (ent.type === "block_dash") {
+              ctx.fillStyle = "rgba(245, 158, 11, 0.45)"; // Translucent Amber
+              ctx.fillRect(drawX, drawY, ent.w, ent.h);
+              ctx.strokeStyle = "#f59e0b"; // Solid Amber Outline
+              ctx.lineWidth = 2.5;
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+
+              // Draw clean thunderbolt icons centered inside block
+              ctx.save();
+              ctx.fillStyle = "#f59e0b";
+              ctx.font = '14px "Press Start 2P", monospace';
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText("⚡", drawX + ent.w / 2, drawY + ent.h / 2);
+              ctx.restore();
+            } else {
+              ctx.fillRect(drawX, drawY, ent.w, ent.h);
+            }
+
+            if (isFake && isXrayActive) {
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            }
+
+            if (isP1Cursor || isP2Cursor) {
+              ctx.strokeStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
+              ctx.lineWidth = 4;
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+              const label = isP1Cursor ? "P1" : "P2";
+              ctx.fillStyle = isP1Cursor ? "#06b6d4" : "#f59e0b";
+              ctx.font = '8px "Press Start 2P"';
+              ctx.textAlign = "center";
+              ctx.fillText(label, drawX + ent.w / 2, drawY - 5);
+            }
+
+            const isHoveredP1 = (ent as any).isHoveredByModifierP1;
+            const isHoveredP2 = (ent as any).isHoveredByModifierP2;
+            if (isHoveredP1 || isHoveredP2) {
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
+              // Draw animated dashed outline
+              const dashOffset = (Date.now() / 40) % 24;
+              ctx.setLineDash([6, 6]);
+              ctx.lineDashOffset = -dashOffset;
+              ctx.strokeRect(drawX - 2, drawY - 2, ent.w + 4, ent.h + 4);
+              ctx.setLineDash([]); // Reset immediately
+
+              // Draw small "UPGRADE?" label above block
+              ctx.fillStyle = isHoveredP1 ? "#06b6d4" : "#f59e0b";
+              ctx.font = '7px "Press Start 2P"';
+              ctx.textAlign = "center";
+              ctx.fillText("UPGRADE!", drawX + ent.w / 2, drawY - 9);
+            }
+
+            if (ent.type === "teleport") {
+              ctx.strokeStyle = "rgba(255,255,255,0.8)";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(drawX + 2, drawY + 2, ent.w - 4, ent.h - 4);
+
+              // Draw Order Number
+              const tpIndex = teleporters.indexOf(ent);
+              if (tpIndex !== -1) {
+                ctx.fillStyle = "white";
+                ctx.font = '6px "Press Start 2P", monospace';
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(
+                  `${tpIndex + 1}`,
+                  drawX + ent.w / 2,
+                  drawY + ent.h / 2,
+                );
+                ctx.textAlign = "left"; // reset
+                ctx.textBaseline = "alphabetic"; // reset
+              }
+            }
+            if (ent.type === "checkpoint") {
+              // Draw simple visual marker (inner box)
+              ctx.strokeStyle = "rgba(0,0,0,0.5)";
+              ctx.lineWidth = 2;
+              ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+
+              // Draw "CP" text
+              ctx.fillStyle = "black";
               ctx.font = '6px "Press Start 2P", monospace';
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
-              ctx.fillText(
-                `${tpIndex + 1}`,
-                drawX + ent.w / 2,
-                drawY + ent.h / 2,
-              );
+              ctx.fillText("CP", drawX + ent.w / 2, drawY + ent.h / 2);
               ctx.textAlign = "left"; // reset
               ctx.textBaseline = "alphabetic"; // reset
             }
-          }
-          if (ent.type === "checkpoint") {
-            // Draw simple visual marker (inner box)
-            ctx.strokeStyle = "rgba(0,0,0,0.5)";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(drawX, drawY, ent.w, ent.h);
+            if (ent.type === "goal") {
+              const finishers =
+                gameMode === "vs"
+                  ? players.current.filter(
+                      (p) =>
+                        p &&
+                        p.collectedCoinIds &&
+                        p.collectedCoinIds.length === levelCoinIds.length,
+                    )
+                  : [];
 
-            // Draw "CP" text
-            ctx.fillStyle = "black";
-            ctx.font = '6px "Press Start 2P", monospace';
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("CP", drawX + ent.w / 2, drawY + ent.h / 2);
-            ctx.textAlign = "left"; // reset
-            ctx.textBaseline = "alphabetic"; // reset
-          }
-          if (ent.type === "goal") {
-            const finishers =
-              gameMode === "vs"
-                ? players.current.filter(
-                    (p) =>
-                      p &&
-                      p.collectedCoinIds &&
-                      p.collectedCoinIds.length === levelCoinIds.length,
-                  )
-                : [];
+              if (gameMode === "vs" && finishers.length > 0) {
+                const cx = drawX + ent.w / 2;
+                const cy = drawY + ent.h / 2;
+                const radius = Math.min(ent.w, ent.h) / 2;
 
-            if (gameMode === "vs" && finishers.length > 0) {
-              const cx = drawX + ent.w / 2;
-              const cy = drawY + ent.h / 2;
-              const radius = Math.min(ent.w, ent.h) / 2;
+                // Draw a nice subtle glow if the local player is a finisher
+                const localFinisher = finishers.find(
+                  (p) => p.playerIndex === 0,
+                );
+                if (localFinisher) {
+                  ctx.save();
+                  ctx.shadowColor = localFinisher.color;
+                  ctx.shadowBlur = 15;
+                  ctx.strokeStyle = "white";
+                  ctx.lineWidth = 3;
+                  ctx.strokeRect(drawX - 2, drawY - 2, ent.w + 4, ent.h + 4);
+                  ctx.restore();
+                }
 
-              // Draw a nice subtle glow if the local player is a finisher
-              const localFinisher = finishers.find((p) => p.playerIndex === 0);
-              if (localFinisher) {
-                ctx.save();
-                ctx.shadowColor = localFinisher.color;
-                ctx.shadowBlur = 15;
+                const totalPlayers = players.current.length;
+                const angleStep = (Math.PI * 2) / totalPlayers;
+
+                // Draw slices based on total players, coloring only those who finished
+                finishers.forEach((p) => {
+                  ctx.beginPath();
+                  ctx.moveTo(cx, cy);
+                  ctx.arc(
+                    cx,
+                    cy,
+                    radius,
+                    p.playerIndex * angleStep,
+                    (p.playerIndex + 1) * angleStep,
+                  );
+                  ctx.fillStyle = p.color;
+                  ctx.fill();
+                });
+
+                // Overlay a small white circle in middle for "core" goal look
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = "white";
+                ctx.fill();
+
                 ctx.strokeStyle = "white";
-                ctx.lineWidth = 3;
-                ctx.strokeRect(drawX - 2, drawY - 2, ent.w + 4, ent.h + 4);
-                ctx.restore();
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.stroke();
               }
 
-              const totalPlayers = players.current.length;
-              const angleStep = (Math.PI * 2) / totalPlayers;
+              const localHasGoal =
+                gameMode === "vs"
+                  ? finishers.some((p) => p.playerIndex === 0)
+                  : isGoalUnlocked;
 
-              // Draw slices based on total players, coloring only those who finished
-              finishers.forEach((p) => {
+              if (!localHasGoal) {
+                ctx.strokeStyle = "rgba(0,0,0,0.6)";
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.arc(
-                  cx,
-                  cy,
-                  radius,
-                  p.playerIndex * angleStep,
-                  (p.playerIndex + 1) * angleStep,
-                );
-                ctx.fillStyle = p.color;
-                ctx.fill();
-              });
-
-              // Overlay a small white circle in middle for "core" goal look
-              ctx.beginPath();
-              ctx.arc(cx, cy, radius * 0.35, 0, Math.PI * 2);
-              ctx.fillStyle = "white";
-              ctx.fill();
-
-              ctx.strokeStyle = "white";
+                ctx.moveTo(drawX, drawY);
+                ctx.lineTo(drawX + ent.w, drawY + ent.h);
+                ctx.moveTo(drawX + ent.w, drawY);
+                ctx.lineTo(drawX, drawY + ent.h);
+                ctx.stroke();
+              }
+            }
+            if (ent.type === "fragile" || ent.fragile) {
+              ctx.strokeStyle = "rgba(0,0,0,0.3)";
               ctx.lineWidth = 2;
               ctx.beginPath();
-              ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+              ctx.moveTo(drawX + 5, drawY + 5);
+              ctx.lineTo(drawX + ent.w - 5, drawY + ent.h - 5);
+              ctx.moveTo(drawX + ent.w - 5, drawY + 5);
+              ctx.lineTo(drawX + 5, drawY + ent.h - 5);
               ctx.stroke();
             }
-
-            const localHasGoal =
-              gameMode === "vs"
-                ? finishers.some((p) => p.playerIndex === 0)
-                : isGoalUnlocked;
-
-            if (!localHasGoal) {
-              ctx.strokeStyle = "rgba(0,0,0,0.6)";
-              ctx.lineWidth = 4;
+            if (
+              ent.type === "gravity_reverse" ||
+              (ent as any).type === "grav_up"
+            ) {
+              ctx.fillStyle = "rgba(255,255,255,0.7)";
               ctx.beginPath();
-              ctx.moveTo(drawX, drawY);
-              ctx.lineTo(drawX + ent.w, drawY + ent.h);
-              ctx.moveTo(drawX + ent.w, drawY);
-              ctx.lineTo(drawX, drawY + ent.h);
+              const centerX = drawX + ent.w / 2;
+              const centerY = drawY + ent.h / 2;
+              const size = 16;
+              ctx.moveTo(centerX, centerY + size / 2);
+              ctx.lineTo(centerX + size / 2, centerY - size / 2);
+              ctx.lineTo(centerX - size / 2, centerY - size / 2);
+              ctx.fill();
+            }
+            if (
+              ent.type === "gravity_zero" ||
+              (ent as any).type === "grav_down"
+            ) {
+              ctx.strokeStyle = "rgba(255,255,255,0.7)";
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              const centerX = drawX + ent.w / 2;
+              const centerY = drawY + ent.h / 2;
+              const radius = 6;
+              ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
               ctx.stroke();
             }
           }
-          if (ent.type === "fragile" || ent.fragile) {
-            ctx.strokeStyle = "rgba(0,0,0,0.3)";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(drawX + 5, drawY + 5);
-            ctx.lineTo(drawX + ent.w - 5, drawY + ent.h - 5);
-            ctx.moveTo(drawX + ent.w - 5, drawY + 5);
-            ctx.lineTo(drawX + 5, drawY + ent.h - 5);
-            ctx.stroke();
+
+          // Draw Powerups with special effects
+          if (
+            (ent.type.startsWith("powerup_") &&
+              ent.type !== "powerup_remover") ||
+            ent.type.startsWith("block_")
+          ) {
+            const time = Date.now() / 200;
+            const floatY =
+              gameMode === "brawler" ? Math.sin(time + ent.x) * 3 : 0;
+
+            ctx.save();
+            ctx.translate(drawX + ent.w / 2, drawY + ent.h / 2 + floatY);
+
+            // Glowing aura for the emoji
+            ctx.shadowColor = ctx.fillStyle as string;
+            ctx.shadowBlur = 15;
+
+            // Text/Icon - using a standard UI sans-serif font of elegant size so symbols fit beautifully
+            ctx.fillStyle = "white";
+            ctx.font =
+              "bold 18px 'Inter', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            let letter = "❓";
+            if (ent.type === "powerup_build") letter = "🧱";
+            if (ent.type === "powerup_hook") letter = "🪝";
+            if (ent.type === "powerup_double_jump") letter = "⇈";
+            if (ent.type === "powerup_triple_jump") letter = "🚀";
+            if (ent.type === "powerup_slow_mo") letter = "⏱️";
+            if (ent.type === "powerup_xray") letter = "👁️";
+            if (ent.type === "powerup_ice_block") letter = "🧊";
+            if (ent.type === "powerup_slime_block") letter = "🧪";
+            if (ent.type === "powerup_fireball") letter = "🔥";
+            if (ent.type === "powerup_teleport") letter = "🌀";
+            if (ent.type === "powerup_bomb") letter = "💣";
+            if (ent.type === "powerup_shield") letter = "🛡️";
+            if (ent.type === "powerup_steal") letter = "🧲";
+            if (ent.type === "powerup_slow") letter = "🐌";
+            if (ent.type === "powerup_melee") letter = "🥊";
+            if (ent.type === "powerup_shrink") letter = "🤏";
+            if (ent.type === "powerup_grow") letter = "🍄";
+            if (ent.type === "powerup_dash") letter = "⚡";
+            if (ent.type === "block_dash") letter = "⚡";
+            if (ent.type === "block_shrink") letter = "🤏";
+            if (ent.type === "block_grow") letter = "💪";
+            if (ent.type === "block_gravity") letter = "⇅";
+
+            ctx.fillText(letter, 0, 0);
+            ctx.restore();
           }
-          if (ent.type === "gravity_reverse" || (ent as any).type === "grav_up") {
-            ctx.fillStyle = "rgba(255,255,255,0.7)";
-            ctx.beginPath();
-            const centerX = drawX + ent.w / 2;
-            const centerY = drawY + ent.h / 2;
-            const size = 16;
-            ctx.moveTo(centerX, centerY + size / 2);
-            ctx.lineTo(centerX + size / 2, centerY - size / 2);
-            ctx.lineTo(centerX - size / 2, centerY - size / 2);
-            ctx.fill();
-          }
-          if (ent.type === "gravity_zero" || (ent as any).type === "grav_down") {
-            ctx.strokeStyle = "rgba(255,255,255,0.7)";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            const centerX = drawX + ent.w / 2;
-            const centerY = drawY + ent.h / 2;
-            const radius = 6;
-            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-        }
-
-        // Draw Powerups with special effects
-        if (
-          (ent.type.startsWith("powerup_") && ent.type !== "powerup_remover") ||
-          ent.type.startsWith("block_")
-        ) {
-          const time = Date.now() / 200;
-          const floatY =
-            gameMode === "brawler" ? Math.sin(time + ent.x) * 3 : 0;
-
-          ctx.save();
-          ctx.translate(drawX + ent.w / 2, drawY + ent.h / 2 + floatY);
-
-          // Glowing aura for the emoji
-          ctx.shadowColor = ctx.fillStyle as string;
-          ctx.shadowBlur = 15;
-
-          // Text/Icon - using a standard UI sans-serif font of elegant size so symbols fit beautifully
-          ctx.fillStyle = "white";
-          ctx.font = "bold 18px 'Inter', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-
-          let letter = "❓";
-          if (ent.type === "powerup_build") letter = "🧱";
-          if (ent.type === "powerup_hook") letter = "🪝";
-          if (ent.type === "powerup_double_jump") letter = "⇈";
-          if (ent.type === "powerup_triple_jump") letter = "🚀";
-          if (ent.type === "powerup_slow_mo") letter = "⏱️";
-          if (ent.type === "powerup_xray") letter = "👁️";
-          if (ent.type === "powerup_ice_block") letter = "🧊";
-          if (ent.type === "powerup_slime_block") letter = "🧪";
-          if (ent.type === "powerup_fireball") letter = "🔥";
-          if (ent.type === "powerup_teleport") letter = "🌀";
-          if (ent.type === "powerup_bomb") letter = "💣";
-          if (ent.type === "powerup_shield") letter = "🛡️";
-          if (ent.type === "powerup_steal") letter = "🧲";
-          if (ent.type === "powerup_slow") letter = "🐌";
-          if (ent.type === "powerup_melee") letter = "🥊";
-          if (ent.type === "powerup_shrink") letter = "🤏";
-          if (ent.type === "powerup_grow") letter = "🍄";
-          if (ent.type === "powerup_dash") letter = "⚡";
-          if (ent.type === "block_dash") letter = "⚡";
-          if (ent.type === "block_shrink") letter = "🤏";
-          if (ent.type === "block_grow") letter = "💪";
-          if (ent.type === "block_gravity") letter = "⇅";
-
-          ctx.fillText(letter, 0, 0);
-          ctx.restore();
-        }
-        ctx.globalAlpha = 1.0;
-      });
+          ctx.globalAlpha = 1.0;
+        });
 
       // Draw Projectiles
       drawProjectiles(ctx, projectiles.current);
@@ -6783,7 +7108,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             } else if (p.trailType === "matrix_trail") {
               ctx.fillStyle = "#00ff00";
               ctx.font = `8px monospace`;
-              ctx.fillText(String.fromCharCode(0x30A0 + Math.random() * 96), pos.x + pos.w / 2 - sizeW/2, pos.y + pos.h / 2 + sizeH/2);
+              ctx.fillText(
+                String.fromCharCode(0x30a0 + Math.random() * 96),
+                pos.x + pos.w / 2 - sizeW / 2,
+                pos.y + pos.h / 2 + sizeH / 2,
+              );
             } else {
               ctx.fillRect(
                 pos.x + (pos.w - sizeW) / 2,
@@ -7185,20 +7514,29 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         // --- Draw Chat Bubble (Online Multiplayer) ---
         if (isOnline && p.onlineId) {
           const now = Date.now();
-          const recentMsgs = onlineService.messages.filter((m) => m.senderId === p.onlineId && m.type !== 'system' && now - m.timestamp < 5000);
+          const recentMsgs = onlineService.messages.filter(
+            (m) =>
+              m.senderId === p.onlineId &&
+              m.type !== "system" &&
+              now - m.timestamp < 5000,
+          );
           if (recentMsgs.length > 0) {
             const recentMsg = recentMsgs[recentMsgs.length - 1]; // latest
             ctx.save();
             ctx.globalAlpha = 1.0;
             ctx.font = '8px "Press Start 2P", monospace';
             const textWidth = ctx.measureText(recentMsg.text).width;
-            const bubblePx = Math.round(p.pos.x) + (p.w / 2);
-            
+            const bubblePx = Math.round(p.pos.x) + p.w / 2;
+
             // Calculate height overhead depending on name rendering
             const showNames = gameMode === "vs" || gameMode === "brawler";
-            const actualNameOffset = gameMode !== "brawler" && (p.inventory || p.oneTimeBuild) ? 22 : 8;
-            const bubblePy = Math.round(p.pos.y) - (showNames ? actualNameOffset + 15 : 25);
-            
+            const actualNameOffset =
+              gameMode !== "brawler" && (p.inventory || p.oneTimeBuild)
+                ? 22
+                : 8;
+            const bubblePy =
+              Math.round(p.pos.y) - (showNames ? actualNameOffset + 15 : 25);
+
             const padX = 6;
             const padY = 6;
             const bubbleW = textWidth + padX * 2;
@@ -7318,7 +7656,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
         const hudT = TRANSLATIONS[lang];
         const totalCoinsAtLevel =
-          gameMode === "vs" || gameMode === "story" || gameMode === "random_run" || geometryDashMode
+          gameMode === "vs" ||
+          gameMode === "story" ||
+          gameMode === "random_run" ||
+          geometryDashMode
             ? levelRef.current.entities.filter((e) => e.type === "coin").length
             : 0;
 
@@ -7361,7 +7702,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           if (
             totalCoinsAtLevel > 0 &&
-            (gameMode === "vs" || gameMode === "story" || gameMode === "random_run" || geometryDashMode)
+            (gameMode === "vs" ||
+              gameMode === "story" ||
+              gameMode === "random_run" ||
+              geometryDashMode)
           ) {
             ctx.fillStyle =
               p.collectedCoinIds.length === totalCoinsAtLevel
@@ -7377,7 +7721,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
           // Death counter
           ctx.fillStyle = "#ef4444"; // red-500
-          const displayDeaths = geometryDashMode && p.isLocal ? levelDeaths : (p.deaths || 0);
+          const displayDeaths =
+            geometryDashMode && p.isLocal ? levelDeaths : p.deaths || 0;
           ctx.fillText(`${hudT.deaths}: ${displayDeaths}`, startX, nextY);
           ctx.restore();
 
@@ -7395,48 +7740,100 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               if (p.inventory) {
                 if (p.inventory === "powerup_build") puName = hudT.puBuild;
                 else if (p.inventory === "powerup_hook") puName = hudT.puHook;
-                else if (p.inventory === "powerup_slow_mo") puName = hudT.puSlowMo;
+                else if (p.inventory === "powerup_slow_mo")
+                  puName = hudT.puSlowMo;
                 else if (p.inventory === "powerup_xray") puName = hudT.puXray;
-                else if (p.inventory === "powerup_ice_block") puName = hudT.puIce;
+                else if (p.inventory === "powerup_ice_block")
+                  puName = hudT.puIce;
                 else if (p.inventory === "powerup_slime_block")
                   puName = hudT.puSlime;
                 else if (p.inventory === "powerup_fireball")
                   puName = hudT.puFireball;
                 else if (p.inventory === "powerup_bomb") puName = hudT.puBomb;
-                else if (p.inventory === "powerup_shield") puName = hudT.puShield;
+                else if (p.inventory === "powerup_shield")
+                  puName = hudT.puShield;
                 else if (p.inventory === "powerup_steal") puName = hudT.puSteal;
                 else if (p.inventory === "powerup_slow") puName = hudT.puSlow;
                 else if (p.inventory === "powerup_melee") puName = hudT.puMelee;
-                else if (p.inventory === "powerup_shrink") puName = hudT.puShrink;
+                else if (p.inventory === "powerup_shrink")
+                  puName = hudT.puShrink;
                 else if (p.inventory === "powerup_grow") puName = hudT.puGrow;
                 else if (p.inventory === "powerup_dash") puName = hudT.puDash;
                 else if (p.inventory === "powerup_teleport")
                   puName = hudT.puTeleport;
                 else if (p.inventory === "powerup_triple_jump")
                   puName = hudT.puTripleJump;
-                else if (p.inventory === "powerup_titan") puName = lang === "de" ? "⭐ TITAN-KOLOSS" : "⭐ TITAN BEAST";
-                else if (p.inventory === "powerup_blizzard") puName = lang === "de" ? "⭐ BLIZZARD-STURM" : "⭐ BLIZZARD STORM";
-                else if (p.inventory === "powerup_thunder_shield") puName = lang === "de" ? "⭐ BLITZSCHILD" : "⭐ THUNDER SHIELD";
-                else if (p.inventory === "powerup_nuke_bomb") puName = lang === "de" ? "⭐ NUKE-BOMBE" : "⭐ NUKE CLUSTER BOMB";
-                else if (p.inventory === "powerup_meteor_rain") puName = lang === "de" ? "⭐ METEORSTURM" : "⭐ METEOR SHOWER";
-                else if (p.inventory === "powerup_golden_sword") puName = lang === "de" ? "⭐ SEELENFRESSER" : "⭐ EXCALIBUR BLOCK";
-                else if (p.inventory === "powerup_teleport_dash") puName = lang === "de" ? "⭐ WARP-SPRINT" : "⭐ WARP DASH";
-                else if (p.inventory === "powerup_teleport_all") puName = lang === "de" ? "⭐ WELTEN-SWAP" : "⭐ WORMHOLE SWAP";
-                else if (p.inventory === "powerup_gravity_boots") puName = lang === "de" ? "⭐ SCHWERKRAFT-STIEFEL" : "⭐ GRAVITY BOOTS";
-                else if (p.inventory === "powerup_black_hole") puName = lang === "de" ? "⭐ SCHWARZES LOCH" : "⭐ BLACK HOLE";
-                else if (p.inventory === "powerup_glacier") puName = lang === "de" ? "⭐ GLETSCHER-WALL" : "⭐ GLACIER WALL";
-                else if (p.inventory === "powerup_trampoline") puName = lang === "de" ? "⭐ MEGA-TRAMPOLIN" : "⭐ MEGA TRAMPOLINE";
-                else if (p.inventory === "powerup_fortress") puName = lang === "de" ? "⭐ FESTUNGS-WALL" : "⭐ FORTRESS BLOCK";
-                else if (p.inventory === "powerup_voltage_hook") puName = lang === "de" ? "⭐ ELEKTRO-GREIFER" : "⭐ VOLTAGE GRAPPLE";
-                else if (p.inventory === "powerup_nano_spy") puName = lang === "de" ? "⭐ NANOSPION" : "⭐ NANO SPY";
-                else if (p.inventory === "powerup_quantum_shift") puName = lang === "de" ? "⭐ QUANTEN-SHIFT" : "⭐ QUANTUM SHIFT";
-                else if (p.inventory === "powerup_fire_shield") puName = lang === "de" ? "⭐ INFERNOSCHILD" : "⭐ HELLFIRE SHIELD";
-                else if (p.inventory === "powerup_lodestar") puName = lang === "de" ? "⭐ LEUCHTSPURSAG-DASH" : "⭐ LODESTAR DASH";
-                else if (p.inventory === "powerup_frost_mourne") puName = lang === "de" ? "⭐ FROSTMOURNE-KLINGE" : "⭐ FROST MOURNE CORE";
-                else if (p.inventory === "powerup_sticky_bomb") puName = lang === "de" ? "⭐ SCHLEIMBOMBE" : "⭐ STICKY SLIME BOMB";
-                else if (p.inventory === "powerup_angel_wings") puName = lang === "de" ? "⭐ ENGELSFLÜGEL" : "⭐ ANGEL WINGS FLY";
-                else if (p.inventory === "powerup_trickster") puName = lang === "de" ? "⭐ TRICKSTER-SWAP" : "⭐ TRICKSTER SWAP";
-                else if (p.inventory === "powerup_chaos_orb") puName = lang === "de" ? "⭐ CHAOS-ORB" : "⭐ CHAOS ORB PROJ";
+                else if (p.inventory === "powerup_titan")
+                  puName = lang === "de" ? "⭐ TITAN-KOLOSS" : "⭐ TITAN BEAST";
+                else if (p.inventory === "powerup_blizzard")
+                  puName =
+                    lang === "de" ? "⭐ BLIZZARD-STURM" : "⭐ BLIZZARD STORM";
+                else if (p.inventory === "powerup_thunder_shield")
+                  puName =
+                    lang === "de" ? "⭐ BLITZSCHILD" : "⭐ THUNDER SHIELD";
+                else if (p.inventory === "powerup_nuke_bomb")
+                  puName =
+                    lang === "de" ? "⭐ NUKE-BOMBE" : "⭐ NUKE CLUSTER BOMB";
+                else if (p.inventory === "powerup_meteor_rain")
+                  puName =
+                    lang === "de" ? "⭐ METEORSTURM" : "⭐ METEOR SHOWER";
+                else if (p.inventory === "powerup_golden_sword")
+                  puName =
+                    lang === "de" ? "⭐ SEELENFRESSER" : "⭐ EXCALIBUR BLOCK";
+                else if (p.inventory === "powerup_teleport_dash")
+                  puName = lang === "de" ? "⭐ WARP-SPRINT" : "⭐ WARP DASH";
+                else if (p.inventory === "powerup_teleport_all")
+                  puName =
+                    lang === "de" ? "⭐ WELTEN-SWAP" : "⭐ WORMHOLE SWAP";
+                else if (p.inventory === "powerup_gravity_boots")
+                  puName =
+                    lang === "de"
+                      ? "⭐ SCHWERKRAFT-STIEFEL"
+                      : "⭐ GRAVITY BOOTS";
+                else if (p.inventory === "powerup_black_hole")
+                  puName =
+                    lang === "de" ? "⭐ SCHWARZES LOCH" : "⭐ BLACK HOLE";
+                else if (p.inventory === "powerup_glacier")
+                  puName =
+                    lang === "de" ? "⭐ GLETSCHER-WALL" : "⭐ GLACIER WALL";
+                else if (p.inventory === "powerup_trampoline")
+                  puName =
+                    lang === "de" ? "⭐ MEGA-TRAMPOLIN" : "⭐ MEGA TRAMPOLINE";
+                else if (p.inventory === "powerup_fortress")
+                  puName =
+                    lang === "de" ? "⭐ FESTUNGS-WALL" : "⭐ FORTRESS BLOCK";
+                else if (p.inventory === "powerup_voltage_hook")
+                  puName =
+                    lang === "de" ? "⭐ ELEKTRO-GREIFER" : "⭐ VOLTAGE GRAPPLE";
+                else if (p.inventory === "powerup_nano_spy")
+                  puName = lang === "de" ? "⭐ NANOSPION" : "⭐ NANO SPY";
+                else if (p.inventory === "powerup_quantum_shift")
+                  puName =
+                    lang === "de" ? "⭐ QUANTEN-SHIFT" : "⭐ QUANTUM SHIFT";
+                else if (p.inventory === "powerup_fire_shield")
+                  puName =
+                    lang === "de" ? "⭐ INFERNOSCHILD" : "⭐ HELLFIRE SHIELD";
+                else if (p.inventory === "powerup_lodestar")
+                  puName =
+                    lang === "de"
+                      ? "⭐ LEUCHTSPURSAG-DASH"
+                      : "⭐ LODESTAR DASH";
+                else if (p.inventory === "powerup_frost_mourne")
+                  puName =
+                    lang === "de"
+                      ? "⭐ FROSTMOURNE-KLINGE"
+                      : "⭐ FROST MOURNE CORE";
+                else if (p.inventory === "powerup_sticky_bomb")
+                  puName =
+                    lang === "de" ? "⭐ SCHLEIMBOMBE" : "⭐ STICKY SLIME BOMB";
+                else if (p.inventory === "powerup_angel_wings")
+                  puName =
+                    lang === "de" ? "⭐ ENGELSFLÜGEL" : "⭐ ANGEL WINGS FLY";
+                else if (p.inventory === "powerup_trickster")
+                  puName =
+                    lang === "de" ? "⭐ TRICKSTER-SWAP" : "⭐ TRICKSTER SWAP";
+                else if (p.inventory === "powerup_chaos_orb")
+                  puName = lang === "de" ? "⭐ CHAOS-ORB" : "⭐ CHAOS ORB PROJ";
               } else {
                 if (p.oneTimeBuild) puName = hudT.puBuild;
                 else if (p.oneTimeHook) puName = hudT.puHook;
@@ -7510,8 +7907,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       if (pZoom !== 1.0) {
         ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2);
         ctx.scale(pZoom, pZoom);
-        const cx = (cameraRef.current.x + cameraVel.current.x * useCamAlpha) + GAME_WIDTH / 2;
-        const cy = (cameraRef.current.y + cameraVel.current.y * useCamAlpha) + GAME_HEIGHT / 2;
+        const cx =
+          cameraRef.current.x +
+          cameraVel.current.x * useCamAlpha +
+          GAME_WIDTH / 2;
+        const cy =
+          cameraRef.current.y +
+          cameraVel.current.y * useCamAlpha +
+          GAME_HEIGHT / 2;
         ctx.translate(-cx, -cy);
       } else {
         ctx.translate(finalTranslateX, finalTranslateY);
@@ -7785,11 +8188,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       animationFrameId = requestAnimationFrame(loop);
       let frameTime = timestamp - lastTime;
       lastTime = timestamp;
-      
+
       if (geometryDashMode) {
         frameTime *= gdSpeedMode;
       }
-      
+
       accumulator += frameTime;
       if (accumulator > 200) accumulator = 200;
       while (accumulator >= PHYSICS_STEP) {
@@ -7812,8 +8215,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         }
         accumulator -= PHYSICS_STEP;
       }
-      
-      if (fpsCap > 0 && timestamp - lastDrawTime.current < (1000 / fpsCap) - 1.5) {
+
+      if (
+        fpsCap > 0 &&
+        timestamp - lastDrawTime.current < 1000 / fpsCap - 1.5
+      ) {
         return;
       }
       lastDrawTime.current = timestamp;

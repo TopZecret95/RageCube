@@ -133,7 +133,12 @@ const BUILD_BATTLE_POSSIBLE_ITEMS = [
     icon: "⚡",
     args: { w: 30, h: 30 },
   },
-  { type: "block_dash", label: "DASH BLOCK", icon: "💨", args: { w: 30, h: 30 } },
+  {
+    type: "block_dash",
+    label: "DASH BLOCK",
+    icon: "💨",
+    args: { w: 30, h: 30 },
+  },
   // Neue Blöcke / Erweiterung:
   { type: "fan", label: "VENTILATOR", icon: "🌬️", args: { w: 60, h: 30 } },
   {
@@ -1637,31 +1642,37 @@ const getGlueSnappedPosition = (
       const cursorCenterY = py + h / 2;
       const blockCenterY = bestBlock.y + bh / 2;
       const snapToTop = cursorCenterY < blockCenterY;
-      
+
       finalY = snapToTop ? bestBlock.y - h : bestBlock.y + bh;
-      
+
       // Align X relative to the block starting coordinate in increments of 30px
       const relX = px - bestBlock.x;
       const steps = Math.round(relX / 30);
       finalX = bestBlock.x + steps * 30;
-      
+
       // Keep within the bounds of the block
-      finalX = Math.max(bestBlock.x - w + 30, Math.min(finalX, bestBlock.x + bw - 30));
+      finalX = Math.max(
+        bestBlock.x - w + 30,
+        Math.min(finalX, bestBlock.x + bw - 30),
+      );
     } else {
       // Vertical glue: snap to left or right edge of block
       const cursorCenterX = px + w / 2;
       const blockCenterX = bestBlock.x + bw / 2;
       const snapToLeft = cursorCenterX < blockCenterX;
-      
+
       finalX = snapToLeft ? bestBlock.x - w : bestBlock.x + bw;
-      
+
       // Align Y relative to the block starting coordinate in increments of 30px
       const relY = py - bestBlock.y;
       const steps = Math.round(relY / 30);
       finalY = bestBlock.y + steps * 30;
-      
+
       // Keep within the bounds of the block
-      finalY = Math.max(bestBlock.y - h + 30, Math.min(finalY, bestBlock.y + bh - 30));
+      finalY = Math.max(
+        bestBlock.y - h + 30,
+        Math.min(finalY, bestBlock.y + bh - 30),
+      );
     }
 
     return { finalX, finalY, success: true };
@@ -1708,9 +1719,9 @@ const getBlockSnappedToGluePosition = (
       const cursorCenterY = py + h / 2;
       const blockCenterY = bestGlue.y + bh / 2;
       const snapToTop = cursorCenterY < blockCenterY;
-      
+
       finalY = snapToTop ? bestGlue.y - h : bestGlue.y + bh;
-      
+
       // Align X to the closest 30px step relative to the glue
       const relX = px - bestGlue.x;
       const steps = Math.round(relX / 30);
@@ -1720,9 +1731,9 @@ const getBlockSnappedToGluePosition = (
       const cursorCenterX = px + w / 2;
       const blockCenterX = bestGlue.x + bw / 2;
       const snapToLeft = cursorCenterX < blockCenterX;
-      
+
       finalX = snapToLeft ? bestGlue.x - w : bestGlue.x + bw;
-      
+
       // Align Y to the closest 30px step relative to the glue
       const relY = py - bestGlue.y;
       const steps = Math.round(relY / 30);
@@ -1795,7 +1806,12 @@ const getBombSnappedPosition = (px: number, py: number, allBlocks: any[]) => {
     }
 
     if (bestInsideBlock) {
-      return { snapX: bestInsideX, snapY: bestInsideY, target: bestInsideBlock, found: true };
+      return {
+        snapX: bestInsideX,
+        snapY: bestInsideY,
+        target: bestInsideBlock,
+        found: true,
+      };
     }
   }
 
@@ -2339,28 +2355,46 @@ const App: React.FC = () => {
   // --- BUILD-BATTLE EFFECTS ---
   // --- ONLINE BUILD BATTLE SYNC (HOST -> CLIENT) ---
   useEffect(() => {
-    if (onlineService.isHost && onlineService.lobbyCode && gameState.status.includes('build_battle')) {
-      onlineService.sendEvent('bb_sync', {
-         phase: buildBattlePhase,
-         timer: buildBattlePhaseTimer,
-         selection: buildBattleSelection,
-         confirmed: buildBattleConfirmed,
-         cursors: buildBattleCursors,
-         items: buildBattleItems,
-         placed: buildBattlePlacedEntities,
-         placedThisRound: buildBattlePlacedThisRound,
-         round: buildBattleRound,
-         scores: buildBattleScores,
-         rotation: buildBattleRotation,
-         votes: buildBattleVotes,
-         voteSelection: buildBattleVoteSelection,
-         voteTimer: buildBattleVoteTimer,
+    if (
+      onlineService.isHost &&
+      onlineService.lobbyCode &&
+      gameState.status.includes("build_battle")
+    ) {
+      onlineService.sendEvent("bb_sync", {
+        phase: buildBattlePhase,
+        timer: buildBattlePhaseTimer,
+        selection: buildBattleSelection,
+        confirmed: buildBattleConfirmed,
+        cursors: buildBattleCursors,
+        items: buildBattleItems,
+        placed: buildBattlePlacedEntities,
+        placedThisRound: buildBattlePlacedThisRound,
+        round: buildBattleRound,
+        scores: buildBattleScores,
+        rotation: buildBattleRotation,
+        votes: buildBattleVotes,
+        voteSelection: buildBattleVoteSelection,
+        voteTimer: buildBattleVoteTimer,
       });
     }
   }, [
     gameState.status,
-    buildBattlePhase, buildBattlePhaseTimer, buildBattleSelection, buildBattleConfirmed, buildBattleCursors, buildBattleItems, buildBattlePlacedEntities, buildBattlePlacedThisRound, buildBattleRound, buildBattleScores, buildBattleRotation, buildBattleVotes, buildBattleVoteSelection, buildBattleVoteTimer,
-    onlineService.isHost, onlineService.lobbyCode
+    buildBattlePhase,
+    buildBattlePhaseTimer,
+    buildBattleSelection,
+    buildBattleConfirmed,
+    buildBattleCursors,
+    buildBattleItems,
+    buildBattlePlacedEntities,
+    buildBattlePlacedThisRound,
+    buildBattleRound,
+    buildBattleScores,
+    buildBattleRotation,
+    buildBattleVotes,
+    buildBattleVoteSelection,
+    buildBattleVoteTimer,
+    onlineService.isHost,
+    onlineService.lobbyCode,
   ]);
 
   useEffect(() => {
@@ -2505,17 +2539,28 @@ const App: React.FC = () => {
       const start = level.start;
       const startP2 = level.startP2;
       const goal = level.entities?.find((e: any) => e.type === "goal");
-      
+
       const checkUnder = (targetX: number, targetY: number) => {
-        const platforms = level.entities?.filter((e: any) => e.type !== "goal" && e.y >= targetY - 10 && e.x <= targetX + 15 && e.x + e.w >= targetX - 15) || [];
+        const platforms =
+          level.entities?.filter(
+            (e: any) =>
+              e.type !== "goal" &&
+              e.y >= targetY - 10 &&
+              e.x <= targetX + 15 &&
+              e.x + e.w >= targetX - 15,
+          ) || [];
         const plat = platforms.sort((a: any, b: any) => a.y - b.y)[0];
-        return plat && Math.abs(plat.x - ent.x) < 0.1 && Math.abs(plat.y - ent.y) < 0.1;
+        return (
+          plat &&
+          Math.abs(plat.x - ent.x) < 0.1 &&
+          Math.abs(plat.y - ent.y) < 0.1
+        );
       };
 
       if (start && checkUnder(start.x, start.y)) return true;
       if (startP2 && checkUnder(startP2.x, startP2.y)) return true;
       if (goal && checkUnder(goal.x, goal.y + (goal.h || 60))) return true;
-      
+
       return false;
     };
 
@@ -2677,7 +2722,9 @@ const App: React.FC = () => {
       if (snapResult.found) {
         const ent = snapResult.target;
         // Check if it exists in battle placed entities
-        const pIdx = buildBattlePlacedEntities.findIndex((e) => e.id === ent.id);
+        const pIdx = buildBattlePlacedEntities.findIndex(
+          (e) => e.id === ent.id,
+        );
         if (pIdx !== -1) {
           setBuildBattlePlacedEntities((prev) => {
             const cloned = [...prev];
@@ -2706,7 +2753,9 @@ const App: React.FC = () => {
         );
         if (lIdx !== undefined && lIdx !== -1) {
           if (isProtectedLevelBlock(level.entities![lIdx])) {
-            showToast(`${player}: Start/Ziel-Block kann nicht zerstört werden!`);
+            showToast(
+              `${player}: Start/Ziel-Block kann nicht zerstört werden!`,
+            );
             return false;
           }
           setLevel((prev) => {
@@ -2737,13 +2786,34 @@ const App: React.FC = () => {
       if (onlineService.lobbyCode && !onlineService.isHost) {
         let sendCode = e.code;
         let sendKey = e.key;
-        if (e.code === "KeyW") { sendCode = "ArrowUp"; sendKey = "ArrowUp"; }
-        if (e.code === "KeyS") { sendCode = "ArrowDown"; sendKey = "ArrowDown"; }
-        if (e.code === "KeyA") { sendCode = "ArrowLeft"; sendKey = "ArrowLeft"; }
-        if (e.code === "KeyD") { sendCode = "ArrowRight"; sendKey = "ArrowRight"; }
-        if (e.code === "Space" || e.code === "KeyQ") { sendCode = "Enter"; sendKey = "Enter"; }
-        if (e.code === "KeyE") { sendCode = "ShiftRight"; sendKey = "Shift"; }
-        onlineService.sendEvent('bb_remote_key', { code: sendCode, key: sendKey });
+        if (e.code === "KeyW") {
+          sendCode = "ArrowUp";
+          sendKey = "ArrowUp";
+        }
+        if (e.code === "KeyS") {
+          sendCode = "ArrowDown";
+          sendKey = "ArrowDown";
+        }
+        if (e.code === "KeyA") {
+          sendCode = "ArrowLeft";
+          sendKey = "ArrowLeft";
+        }
+        if (e.code === "KeyD") {
+          sendCode = "ArrowRight";
+          sendKey = "ArrowRight";
+        }
+        if (e.code === "Space" || e.code === "KeyQ") {
+          sendCode = "Enter";
+          sendKey = "Enter";
+        }
+        if (e.code === "KeyE") {
+          sendCode = "ControlRight";
+          sendKey = "Control";
+        }
+        onlineService.sendEvent("bb_remote_key", {
+          code: sendCode,
+          key: sendKey,
+        });
         return;
       }
       if (buildBattleIntroCountdown > 0) return;
@@ -2904,8 +2974,12 @@ const App: React.FC = () => {
                   const allBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                    ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                    ...(buildBattlePlacedThisRound.P1
+                      ? [buildBattlePlacedThisRound.P1]
+                      : []),
+                    ...(buildBattlePlacedThisRound.P2
+                      ? [buildBattlePlacedThisRound.P2]
+                      : []),
                   ];
                   const snap = getGlueSnappedPosition(px, py, w, h, allBlocks);
                   if (!snap.success) {
@@ -2920,10 +2994,20 @@ const App: React.FC = () => {
                   const bookkeepingBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                    ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                    ...(buildBattlePlacedThisRound.P1
+                      ? [buildBattlePlacedThisRound.P1]
+                      : []),
+                    ...(buildBattlePlacedThisRound.P2
+                      ? [buildBattlePlacedThisRound.P2]
+                      : []),
                   ];
-                  const snap = getBlockSnappedToGluePosition(px, py, w, h, bookkeepingBlocks);
+                  const snap = getBlockSnappedToGluePosition(
+                    px,
+                    py,
+                    w,
+                    h,
+                    bookkeepingBlocks,
+                  );
                   if (snap.success) {
                     finalX = snap.finalX;
                     finalY = snap.finalY;
@@ -3045,8 +3129,12 @@ const App: React.FC = () => {
                   const allBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                    ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                    ...(buildBattlePlacedThisRound.P1
+                      ? [buildBattlePlacedThisRound.P1]
+                      : []),
+                    ...(buildBattlePlacedThisRound.P2
+                      ? [buildBattlePlacedThisRound.P2]
+                      : []),
                   ];
                   const snap = getGlueSnappedPosition(px, py, w, h, allBlocks);
                   if (!snap.success) {
@@ -3061,10 +3149,20 @@ const App: React.FC = () => {
                   const bookkeepingBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                    ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                    ...(buildBattlePlacedThisRound.P1
+                      ? [buildBattlePlacedThisRound.P1]
+                      : []),
+                    ...(buildBattlePlacedThisRound.P2
+                      ? [buildBattlePlacedThisRound.P2]
+                      : []),
                   ];
-                  const snap = getBlockSnappedToGluePosition(px, py, w, h, bookkeepingBlocks);
+                  const snap = getBlockSnappedToGluePosition(
+                    px,
+                    py,
+                    w,
+                    h,
+                    bookkeepingBlocks,
+                  );
                   if (snap.success) {
                     finalX = snap.finalX;
                     finalY = snap.finalY;
@@ -3206,8 +3304,18 @@ const App: React.FC = () => {
           }));
           if (onlineService.lobbyCode && onlineService.isHost) {
             onlineService.broadcastLobbyState(
-              undefined, undefined, undefined, undefined, undefined,
-              "build_battle_playing", undefined, undefined, undefined, undefined, undefined, undefined
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              "build_battle_playing",
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
             );
           }
           showToast(`Start Runde ${buildBattleRound + 1}!`);
@@ -3262,6 +3370,7 @@ const App: React.FC = () => {
       return;
 
     if (buildBattleVoteTimer <= 0) {
+      if (onlineService.lobbyCode && !onlineService.isHost) return;
       // Determine winner map
       const votes: string[] = [];
       if (buildBattleVotes.P1) votes.push(buildBattleVotes.P1);
@@ -3321,6 +3430,17 @@ const App: React.FC = () => {
         deaths: 0,
         blocksPlaced: 0,
       }));
+
+      if (onlineService.lobbyCode && onlineService.isHost) {
+        onlineService.broadcastLobbyState(
+          "build_battle",
+          selectedLevel,
+          undefined,
+          undefined,
+          undefined,
+          "build_battle_playing",
+        );
+      }
 
       showToast(
         lang === "de"
@@ -4586,559 +4706,584 @@ const App: React.FC = () => {
     }
   };
 
-  const handleKeyboardNavigation = useCallback((e: KeyboardEvent) => {
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement
-    ) {
-      if (e.code === "Escape" && showInGameChat) {
-         setShowInGameChat(false);
+  const handleKeyboardNavigation = useCallback(
+    (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        if (e.code === "Escape" && showInGameChat) {
+          setShowInGameChat(false);
+        }
+        return;
       }
-      return;
-    }
 
-    if ((e.code === "KeyT" || e.code === "Enter") && onlineService.lobbyCode && (stateRef.current.gameState.status.includes("playing") || stateRef.current.gameState.status.includes("setup"))) {
-       e.preventDefault();
-       setShowInGameChat(true);
-       return;
-    }
-
-    const st = stateRef.current; // Read from Ref
-    if (st.isTransitioning) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    const status = st.gameState.status;
-
-    // Secret Cheat Code Detection
-    if (e.key && e.key.length === 1) {
-      setCheatBuffer((prev) => {
-        const next = (prev + e.key.toUpperCase()).slice(-16);
-        let h = 5381;
-        for (let i = 0; i < next.length; i++) {
-          h = (h << 5) + h + next.charCodeAt(i);
-        }
-        if (h >>> 0 === 1621615750) {
-          st.unlockEverything();
-          return "";
-        }
-        return next;
-      });
-    }
-
-    if (onlineService.lobbyCode && onlineService.currentVote) {
-      if (e.key === "+" || e.key === "1") {
+      if (
+        (e.code === "KeyT" || e.code === "Enter") &&
+        onlineService.lobbyCode &&
+        (stateRef.current.gameState.status.includes("playing") ||
+          stateRef.current.gameState.status.includes("setup"))
+      ) {
         e.preventDefault();
-        onlineService.castVote("yes");
+        setShowInGameChat(true);
+        return;
       }
-      if (e.key === "-" || e.key === "2") {
+
+      const st = stateRef.current; // Read from Ref
+      if (st.isTransitioning) {
         e.preventDefault();
-        onlineService.castVote("no");
+        e.stopPropagation();
+        return;
       }
-    }
+      const status = st.gameState.status;
 
-    if (status === "editor") return;
-    if (st.showJoinPrompt) return;
+      // Secret Cheat Code Detection
+      if (e.key && e.key.length === 1) {
+        setCheatBuffer((prev) => {
+          const next = (prev + e.key.toUpperCase()).slice(-16);
+          let h = 5381;
+          for (let i = 0; i < next.length; i++) {
+            h = (h << 5) + h + next.charCodeAt(i);
+          }
+          if (h >>> 0 === 1621615750) {
+            st.unlockEverything();
+            return "";
+          }
+          return next;
+        });
+      }
 
-    if (st.showDeleteConfirm) {
-      if (e.code === "ArrowUp" || e.code === "KeyW") setMenuSelection(0);
-      if (e.code === "ArrowDown" || e.code === "KeyS") setMenuSelection(1);
-      if (e.code === "Enter") {
-        if (st.menuSelection === 0) {
-          setShowDeleteConfirm(null);
-        } else {
-          handleDeleteLevel(st.showDeleteConfirm);
-          setShowDeleteConfirm(null);
+      if (onlineService.lobbyCode && onlineService.currentVote) {
+        if (e.key === "+" || e.key === "1") {
+          e.preventDefault();
+          onlineService.castVote("yes");
+        }
+        if (e.key === "-" || e.key === "2") {
+          e.preventDefault();
+          onlineService.castVote("no");
         }
       }
-      if (e.code === "Escape") {
-        setShowDeleteConfirm(null);
+
+      if (status === "editor") return;
+      if (st.showJoinPrompt) return;
+
+      if (st.showDeleteConfirm) {
+        if (e.code === "ArrowUp" || e.code === "KeyW") setMenuSelection(0);
+        if (e.code === "ArrowDown" || e.code === "KeyS") setMenuSelection(1);
+        if (e.code === "Enter") {
+          if (st.menuSelection === 0) {
+            setShowDeleteConfirm(null);
+          } else {
+            handleDeleteLevel(st.showDeleteConfirm);
+            setShowDeleteConfirm(null);
+          }
+        }
+        if (e.code === "Escape") {
+          setShowDeleteConfirm(null);
+        }
+        return;
       }
-      return;
-    }
-    if (
-      [
-        "playing",
-        "random_run",
-        "tutorial",
-        "testing",
-        "brawler_testing",
-        "vs_playing",
-        "brawler_playing",
-        "build_battle_playing",
-      ].includes(status)
-    ) {
-      if (e.code === "Escape") {
-        if (status === "testing" || status === "brawler_testing") {
-          if (onlineService.lobbyCode) {
-            if (onlineService.isHost) {
+      if (
+        [
+          "playing",
+          "random_run",
+          "tutorial",
+          "testing",
+          "brawler_testing",
+          "vs_playing",
+          "brawler_playing",
+          "build_battle_playing",
+        ].includes(status)
+      ) {
+        if (e.code === "Escape") {
+          if (status === "testing" || status === "brawler_testing") {
+            if (onlineService.lobbyCode) {
+              if (onlineService.isHost) {
+                setGameState((p) => ({
+                  ...p,
+                  status: "editor",
+                  collectedCoins: [],
+                }));
+                onlineService.broadcastLobbyState(
+                  "editor",
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  "editor",
+                );
+              }
+            } else {
               setGameState((p) => ({
                 ...p,
                 status: "editor",
                 collectedCoins: [],
-              }));
-              onlineService.broadcastLobbyState(
-                "editor",
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                "editor",
-              );
+              })); // Clear coins on exit test
             }
+          } else if (
+            status === "vs_playing" ||
+            status === "brawler_playing" ||
+            status === "build_battle_playing"
+          ) {
+            setGameState((p) => ({
+              ...p,
+              status: "paused",
+              previousStatus: status,
+            }));
           } else {
             setGameState((p) => ({
               ...p,
-              status: "editor",
-              collectedCoins: [],
-            })); // Clear coins on exit test
+              status: "paused",
+              previousStatus: status,
+            }));
           }
-        } else if (
-          status === "vs_playing" ||
-          status === "brawler_playing" ||
-          status === "build_battle_playing"
+        }
+        return;
+      }
+
+      const navUp = () => setMenuSelection((prev) => Math.max(0, prev - 1));
+      const navDown = (max: number) =>
+        setMenuSelection((prev) => Math.min(max, prev + 1));
+      const sel = st.menuSelection;
+
+      if (status === "multiplayer_menu") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
+        if (e.code === "Enter" || e.code === "Space") {
+          switch (sel) {
+            case 0: // Local
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "local_multiplayer_menu" }));
+              break;
+            case 1: // Online
+              setMenuSelection(1);
+              setGameState((p) => ({ ...p, status: "online_menu" }));
+              break;
+            case 2: // Back
+              setMenuSelection(1); // Set hover back to "Multiplayer" (index 1) in main menu
+              setGameState((p) => ({ ...p, status: "menu" }));
+              break;
+          }
+        }
+        if (e.code === "Escape") {
+          setMenuSelection(1);
+          setGameState((p) => ({ ...p, status: "menu" }));
+        }
+        return;
+      }
+
+      if (status === "local_multiplayer_menu") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(3);
+        if (e.code === "Enter" || e.code === "Space") {
+          switch (sel) {
+            case 0: // VS
+              setLevelSource("builtin");
+              setHighscoreLevelIndex(0);
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "vs_setup" }));
+              break;
+            case 1: // Brawler
+              setLevelSource("builtin");
+              setHighscoreLevelIndex(0);
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "brawler_setup" }));
+              break;
+            case 2: // Build Battle Local
+              setLevelSource("builtin");
+              setSelectedLevels([BUILD_BATTLE_LEVELS[0]]);
+              setLevel(BUILD_BATTLE_LEVELS[0]);
+              setHighscoreLevelIndex(0);
+              setMenuSelection(0);
+              setGameState((p) => ({
+                ...p,
+                status: "build_battle_setup",
+                onlineMode: undefined,
+              }));
+              break;
+            case 3: // Back
+              setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
+              setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+              break;
+          }
+        }
+        if (e.code === "Escape") {
+          setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
+          setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+        }
+        return;
+      }
+
+      if (status === "menu") {
+        if (e.code === "ArrowRight" || e.code === "KeyD") {
+          if (sel % 2 === 0 && sel < 8) {
+            setMenuSelection(sel + 1);
+          }
+        }
+        if (e.code === "ArrowLeft" || e.code === "KeyA") {
+          if (sel % 2 !== 0 && sel < 8) {
+            setMenuSelection(sel - 1);
+          }
+        }
+        if (e.code === "ArrowDown" || e.code === "KeyS") {
+          if (sel === 6 || sel === 7) {
+            setMenuSelection(8);
+          } else if (sel === 8) {
+            // bottom row, do nothing on down
+          } else if (sel + 2 <= 7) {
+            setMenuSelection(sel + 2);
+          }
+        }
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          if (sel === 8) {
+            setMenuSelection(6); // Default to Editor
+          } else if (sel - 2 >= 0) {
+            setMenuSelection(sel - 2);
+          }
+        }
+
+        if (e.code === "Enter" || e.code === "Space") {
+          switch (sel) {
+            case 0:
+              setGameState((p) => ({ ...p, status: "difficulty_select" }));
+              break; // Story
+            case 1: // Unified Multiplayer Menu
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+              break;
+            case 2:
+              setGameState((p) => ({ ...p, status: "custom_level_select" }));
+              break; // Custom Levels
+            case 3: // Highscores
+              setLevelSource("builtin");
+              setHighscoreLevelIndex(0);
+              setGameState((p) => ({ ...p, status: "highscores" }));
+              break;
+            case 4: // Random Run
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "random_run_setup" }));
+              break;
+            case 5: // Achievements
+              setGameState((p) => ({ ...p, status: "achievements" }));
+              break;
+            case 6: // Editor
+              setGameState((p) => ({ ...p, status: "editor_type_select" }));
+              break;
+            case 7: // Shop
+              setMenuSelection(0);
+              setGameState((p) => ({ ...p, status: "shop" }));
+              break;
+            case 8: // Settings
+              setGameState((p) => ({
+                ...p,
+                status: "settings",
+                previousStatus: "menu",
+              }));
+              break;
+          }
+        }
+      } else if (status === "customizing") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(10);
+
+        if (
+          e.code === "ArrowRight" ||
+          e.code === "ArrowLeft" ||
+          e.code === "KeyD" ||
+          e.code === "KeyA"
         ) {
+          const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
+          const dir = e.code === "ArrowRight" || e.code === "KeyD" ? 1 : -1;
+
+          if (sel === 0) updateColorRGB(1, "color", "r", delta);
+          if (sel === 1) updateColorRGB(1, "color", "g", delta);
+          if (sel === 2) updateColorRGB(1, "color", "b", delta);
+
+          if (sel === 3) rotateOption(1, "trail", dir);
+
+          if (sel === 4) updateColorRGB(1, "trailColor", "r", delta);
+          if (sel === 5) updateColorRGB(1, "trailColor", "g", delta);
+          if (sel === 6) updateColorRGB(1, "trailColor", "b", delta);
+
+          if (sel === 7) rotateOption(1, "eyes", dir);
+          if (sel === 8) rotateOption(1, "accessory", dir);
+        }
+
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 9)
+            setGameState((p) => ({ ...p, status: p.previousStatus || "menu" }));
+          if (sel === 10) {
+            setMenuSelection(0);
+            setGameState((p) => ({
+              ...p,
+              status:
+                p.previousStatus === "online_menu"
+                  ? "online_menu"
+                  : "difficulty_select",
+            }));
+          }
+          // Cycling via enter
+          if (sel === 3) rotateOption(1, "trail", 1);
+          if (sel === 7) rotateOption(1, "eyes", 1);
+          if (sel === 8) rotateOption(1, "accessory", 1);
+        }
+        if (e.code === "Escape")
+          setGameState((p) => ({ ...p, status: p.previousStatus || "menu" }));
+      } else if (status === "difficulty_select") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(4);
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 0) startStoryGame(INITIAL_LEVELS);
+          if (sel === 1) startStoryGame(ADVANCED_LEVELS);
+          if (sel === 2) startStoryGame(EXPERT_LEVELS);
+          if (sel === 3) startStoryGame(GOD_LEVELS);
+          if (sel === 4)
+            setGameState((p) => ({
+              ...p,
+              status: p.previousStatus || "menu",
+              previousStatus: undefined,
+            }));
+        }
+        if (e.code === "Escape")
           setGameState((p) => ({
             ...p,
-            status: "paused",
-            previousStatus: status,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
           }));
-        } else {
-          setGameState((p) => ({ ...p, status: "paused", previousStatus: status }));
+      } else if (status === "random_run_setup") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
+        if (
+          e.code === "ArrowLeft" ||
+          e.code === "ArrowRight" ||
+          e.code === "KeyA" ||
+          e.code === "KeyD"
+        ) {
+          if (sel === 0) {
+            setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
+          }
         }
-      }
-      return;
-    }
-
-    const navUp = () => setMenuSelection((prev) => Math.max(0, prev - 1));
-    const navDown = (max: number) =>
-      setMenuSelection((prev) => Math.min(max, prev + 1));
-    const sel = st.menuSelection;
-
-    if (status === "multiplayer_menu") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
-      if (e.code === "Enter" || e.code === "Space") {
-        switch (sel) {
-          case 0: // Local
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "local_multiplayer_menu" }));
-            break;
-          case 1: // Online
-            setMenuSelection(1);
-            setGameState((p) => ({ ...p, status: "online_menu" }));
-            break;
-          case 2: // Back
-            setMenuSelection(1); // Set hover back to "Multiplayer" (index 1) in main menu
-            setGameState((p) => ({ ...p, status: "menu" }));
-            break;
-        }
-      }
-      if (e.code === "Escape") {
-        setMenuSelection(1);
-        setGameState((p) => ({ ...p, status: "menu" }));
-      }
-      return;
-    }
-
-    if (status === "local_multiplayer_menu") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(3);
-      if (e.code === "Enter" || e.code === "Space") {
-        switch (sel) {
-          case 0: // VS
-            setLevelSource("builtin");
-            setHighscoreLevelIndex(0);
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "vs_setup" }));
-            break;
-          case 1: // Brawler
-            setLevelSource("builtin");
-            setHighscoreLevelIndex(0);
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "brawler_setup" }));
-            break;
-          case 2: // Build Battle Local
-            setLevelSource("builtin");
-            setSelectedLevels([BUILD_BATTLE_LEVELS[0]]);
-            setLevel(BUILD_BATTLE_LEVELS[0]);
-            setHighscoreLevelIndex(0);
-            setMenuSelection(0);
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 0) {
+            setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
+          }
+          if (sel === 1) startRandomRun();
+          if (sel === 2)
             setGameState((p) => ({
               ...p,
-              status: "build_battle_setup",
-              onlineMode: undefined,
+              status: p.previousStatus || "menu",
+              previousStatus: undefined,
             }));
-            break;
-          case 3: // Back
-            setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
-            setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
-            break;
         }
-      }
-      if (e.code === "Escape") {
-        setMenuSelection(0); // Set hover back to "Local Multiplayer" (index 0) in multiplayer_menu
-        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
-      }
-      return;
-    }
+        if (e.code === "Escape")
+          setGameState((p) => ({
+            ...p,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
+          }));
+      } else if (status === "vs_setup" || status === "brawler_setup") {
+        // VS Setup Logic
+        // 0-5 (P1), 6-11 (P2), 12 (Level Menu), 14 (Play), 15 (Back)
+        const maxSel = 15;
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          setMenuSelection((prev) => {
+            let next = prev > 0 ? prev - 1 : maxSel;
+            if (status === "brawler_setup" && next === 13) next = 12;
+            return next;
+          });
+        }
+        if (e.code === "ArrowDown" || e.code === "KeyS") {
+          setMenuSelection((prev) => {
+            let next = prev < maxSel ? prev + 1 : 0;
+            if (status === "brawler_setup" && next === 13) next = 14;
+            return next;
+          });
+        }
 
-    if (status === "menu") {
-      if (e.code === "ArrowRight" || e.code === "KeyD") {
-        if (sel % 2 === 0 && sel < 8) {
-          setMenuSelection(sel + 1);
-        }
-      }
-      if (e.code === "ArrowLeft" || e.code === "KeyA") {
-        if (sel % 2 !== 0 && sel < 8) {
-          setMenuSelection(sel - 1);
-        }
-      }
-      if (e.code === "ArrowDown" || e.code === "KeyS") {
-        if (sel === 6 || sel === 7) {
-          setMenuSelection(8);
-        } else if (sel === 8) {
-          // bottom row, do nothing on down
-        } else if (sel + 2 <= 7) {
-          setMenuSelection(sel + 2);
-        }
-      }
-      if (e.code === "ArrowUp" || e.code === "KeyW") {
-        if (sel === 8) {
-          setMenuSelection(6); // Default to Editor
-        } else if (sel - 2 >= 0) {
-          setMenuSelection(sel - 2);
-        }
-      }
-
-      if (e.code === "Enter" || e.code === "Space") {
-        switch (sel) {
-          case 0:
-            setGameState((p) => ({ ...p, status: "difficulty_select" }));
-            break; // Story
-          case 1: // Unified Multiplayer Menu
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
-            break;
-          case 2:
-            setGameState((p) => ({ ...p, status: "custom_level_select" }));
-            break; // Custom Levels
-          case 3: // Highscores
-            setLevelSource("builtin");
-            setHighscoreLevelIndex(0);
-            setGameState((p) => ({ ...p, status: "highscores" }));
-            break;
-          case 4: // Random Run
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "random_run_setup" }));
-            break;
-          case 5: // Achievements
-            setGameState((p) => ({ ...p, status: "achievements" }));
-            break;
-          case 6: // Editor
-            setGameState((p) => ({ ...p, status: "editor_type_select" }));
-            break;
-          case 7: // Shop
-            setMenuSelection(0);
-            setGameState((p) => ({ ...p, status: "shop" }));
-            break;
-          case 8: // Settings
-            setGameState((p) => ({
-              ...p,
-              status: "settings",
-              previousStatus: "menu",
-            }));
-            break;
-        }
-      }
-    } else if (status === "customizing") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(10);
-
-      if (
-        e.code === "ArrowRight" ||
-        e.code === "ArrowLeft" ||
-        e.code === "KeyD" ||
-        e.code === "KeyA"
-      ) {
         const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
         const dir = e.code === "ArrowRight" || e.code === "KeyD" ? 1 : -1;
 
-        if (sel === 0) updateColorRGB(1, "color", "r", delta);
-        if (sel === 1) updateColorRGB(1, "color", "g", delta);
-        if (sel === 2) updateColorRGB(1, "color", "b", delta);
+        if (
+          e.code === "ArrowLeft" ||
+          e.code === "ArrowRight" ||
+          e.code === "KeyD" ||
+          e.code === "KeyA"
+        ) {
+          // P1 Config
+          if (sel === 0) updateColorRGB(1, "color", "r", delta);
+          if (sel === 1) updateColorRGB(1, "color", "g", delta);
+          if (sel === 2) updateColorRGB(1, "color", "b", delta);
+          if (sel === 3) rotateOption(1, "eyes", dir);
+          if (sel === 4) rotateOption(1, "accessory", dir);
+          if (sel === 5) rotateOption(1, "trail", dir);
 
-        if (sel === 3) rotateOption(1, "trail", dir);
-
-        if (sel === 4) updateColorRGB(1, "trailColor", "r", delta);
-        if (sel === 5) updateColorRGB(1, "trailColor", "g", delta);
-        if (sel === 6) updateColorRGB(1, "trailColor", "b", delta);
-
-        if (sel === 7) rotateOption(1, "eyes", dir);
-        if (sel === 8) rotateOption(1, "accessory", dir);
-      }
-
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 9)
-          setGameState((p) => ({ ...p, status: p.previousStatus || "menu" }));
-        if (sel === 10) {
-          setMenuSelection(0);
-          setGameState((p) => ({
-            ...p,
-            status:
-              p.previousStatus === "online_menu"
-                ? "online_menu"
-                : "difficulty_select",
-          }));
+          // P2 Config
+          if (sel === 6) updateColorRGB(2, "color", "r", delta);
+          if (sel === 7) updateColorRGB(2, "color", "g", delta);
+          if (sel === 8) updateColorRGB(2, "color", "b", delta);
+          if (sel === 9) rotateOption(2, "eyes", dir);
+          if (sel === 10) rotateOption(2, "accessory", dir);
+          if (sel === 11) rotateOption(2, "trail", dir);
         }
-        // Cycling via enter
-        if (sel === 3) rotateOption(1, "trail", 1);
-        if (sel === 7) rotateOption(1, "eyes", 1);
-        if (sel === 8) rotateOption(1, "accessory", 1);
-      }
-      if (e.code === "Escape")
-        setGameState((p) => ({ ...p, status: p.previousStatus || "menu" }));
-    } else if (status === "difficulty_select") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(4);
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 0) startStoryGame(INITIAL_LEVELS);
-        if (sel === 1) startStoryGame(ADVANCED_LEVELS);
-        if (sel === 2) startStoryGame(EXPERT_LEVELS);
-        if (sel === 3) startStoryGame(GOD_LEVELS);
-        if (sel === 4)
-          setGameState((p) => ({
-            ...p,
-            status: p.previousStatus || "menu",
-            previousStatus: undefined,
-          }));
-      }
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-    } else if (status === "random_run_setup") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(2);
-      if (
-        e.code === "ArrowLeft" ||
-        e.code === "ArrowRight" ||
-        e.code === "KeyA" ||
-        e.code === "KeyD"
-      ) {
-        if (sel === 0) {
-          setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
+
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 12) setShowLevelMenu(true);
+          if (sel === 13 && status === "vs_setup")
+            setGameState((p) => ({
+              ...p,
+              collisionEnabled: !p.collisionEnabled,
+            }));
+          if (sel === 15) setGameState((p) => ({ ...p, status: "menu" }));
         }
-      }
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 0) {
-          setSettings((p) => ({ ...p, showGhost: !p.showGhost }));
-        }
-        if (sel === 1) startRandomRun();
-        if (sel === 2)
-          setGameState((p) => ({
-            ...p,
-            status: p.previousStatus || "menu",
-            previousStatus: undefined,
-          }));
-      }
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-    } else if (status === "vs_setup" || status === "brawler_setup") {
-      // VS Setup Logic
-      // 0-5 (P1), 6-11 (P2), 12 (Level Menu), 14 (Play), 15 (Back)
-      const maxSel = 15;
-      if (e.code === "ArrowUp" || e.code === "KeyW") {
-        setMenuSelection((prev) => {
-          let next = prev > 0 ? prev - 1 : maxSel;
-          if (status === "brawler_setup" && next === 13) next = 12;
-          return next;
-        });
-      }
-      if (e.code === "ArrowDown" || e.code === "KeyS") {
-        setMenuSelection((prev) => {
-          let next = prev < maxSel ? prev + 1 : 0;
-          if (status === "brawler_setup" && next === 13) next = 14;
-          return next;
-        });
-      }
 
-      const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
-      const dir = e.code === "ArrowRight" || e.code === "KeyD" ? 1 : -1;
-
-      if (
-        e.code === "ArrowLeft" ||
-        e.code === "ArrowRight" ||
-        e.code === "KeyD" ||
-        e.code === "KeyA"
-      ) {
-        // P1 Config
-        if (sel === 0) updateColorRGB(1, "color", "r", delta);
-        if (sel === 1) updateColorRGB(1, "color", "g", delta);
-        if (sel === 2) updateColorRGB(1, "color", "b", delta);
-        if (sel === 3) rotateOption(1, "eyes", dir);
-        if (sel === 4) rotateOption(1, "accessory", dir);
-        if (sel === 5) rotateOption(1, "trail", dir);
-
-        // P2 Config
-        if (sel === 6) updateColorRGB(2, "color", "r", delta);
-        if (sel === 7) updateColorRGB(2, "color", "g", delta);
-        if (sel === 8) updateColorRGB(2, "color", "b", delta);
-        if (sel === 9) rotateOption(2, "eyes", dir);
-        if (sel === 10) rotateOption(2, "accessory", dir);
-        if (sel === 11) rotateOption(2, "trail", dir);
-      }
-
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 12) setShowLevelMenu(true);
-        if (sel === 13 && status === "vs_setup")
+        if (
+          (e.code === "ArrowLeft" || e.code === "ArrowRight") &&
+          sel === 13 &&
+          status === "vs_setup"
+        ) {
           setGameState((p) => ({
             ...p,
             collisionEnabled: !p.collisionEnabled,
           }));
-        if (sel === 15) setGameState((p) => ({ ...p, status: "menu" }));
-      }
+        }
 
-      if (
-        (e.code === "ArrowLeft" || e.code === "ArrowRight") &&
-        sel === 13 &&
-        status === "vs_setup"
-      ) {
-        setGameState((p) => ({ ...p, collisionEnabled: !p.collisionEnabled }));
-      }
+        if (sel === 14 && (e.code === "Enter" || e.code === "Space")) {
+          let currentList =
+            st.levelSource === "builtin"
+              ? status === "brawler_setup"
+                ? BRAWLER_LEVELS
+                : INITIAL_LEVELS
+              : st.customLevels;
+          if (status === "vs_setup") currentList = filterVSLevels(currentList);
+          if (status === "brawler_setup")
+            currentList = filterBrawlerLevels(currentList);
+          if (currentList.length > 0) {
+            const idx = Math.min(
+              Math.max(0, st.highscoreLevelIndex),
+              Math.max(0, currentList.length - 1),
+            );
+            setLevel(currentList[idx]);
+            setGameState((p) => ({
+              ...p,
+              status:
+                status === "brawler_setup"
+                  ? "brawler_powerup_setup"
+                  : "vs_playing",
+              levelDeaths: 0,
+              levelTime: 0,
+              collectedCoins: [],
+              deaths: 0,
+              blocksPlaced: 0,
+            }));
+            if (status !== "brawler_setup") {
+              setRespawnTrigger(0);
+              checkAchievements({ mode: "vs" });
+            } else {
+              setMenuSelection(0);
+            }
+          }
+        }
 
-      if (sel === 14 && (e.code === "Enter" || e.code === "Space")) {
-        let currentList =
-          st.levelSource === "builtin"
-            ? status === "brawler_setup"
-              ? BRAWLER_LEVELS
-              : INITIAL_LEVELS
-            : st.customLevels;
-        if (status === "vs_setup") currentList = filterVSLevels(currentList);
-        if (status === "brawler_setup")
-          currentList = filterBrawlerLevels(currentList);
-        if (currentList.length > 0) {
-          const idx = Math.min(
-            Math.max(0, st.highscoreLevelIndex),
-            Math.max(0, currentList.length - 1),
-          );
-          setLevel(currentList[idx]);
+        if (e.code === "Escape")
           setGameState((p) => ({
             ...p,
-            status:
-              status === "brawler_setup"
-                ? "brawler_powerup_setup"
-                : "vs_playing",
-            levelDeaths: 0,
-            levelTime: 0,
-            collectedCoins: [],
-            deaths: 0,
-            blocksPlaced: 0,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
           }));
-          if (status !== "brawler_setup") {
-            setRespawnTrigger(0);
-            checkAchievements({ mode: "vs" });
-          } else {
-            setMenuSelection(0);
+      } else if (status === "brawler_powerup_setup") {
+        const powerupKeys = Object.keys(st.brawlerPowerups);
+        const maxSel = powerupKeys.length + 1; // 0 to length-1 are powerups, length is PLAY button, length+1 is BACK button
+
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(maxSel);
+
+        if (
+          e.code === "ArrowLeft" ||
+          e.code === "ArrowRight" ||
+          e.code === "KeyA" ||
+          e.code === "KeyD"
+        ) {
+          if (sel < powerupKeys.length) {
+            if (st.gameState.onlineMode && !onlineService.isHost) return;
+            const key = powerupKeys[sel];
+            const delta =
+              e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
+            setBrawlerPowerups((prev) => {
+              const newPowerups = {
+                ...prev,
+                [key]: Math.max(0, Math.min(100, prev[key] + delta)),
+              };
+              if (st.gameState.onlineMode && onlineService.isHost) {
+                onlineService.broadcastLobbyState(
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  newPowerups,
+                );
+              }
+              return newPowerups;
+            });
           }
         }
-      }
 
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-    } else if (status === "brawler_powerup_setup") {
-      const powerupKeys = Object.keys(st.brawlerPowerups);
-      const maxSel = powerupKeys.length + 1; // 0 to length-1 are powerups, length is PLAY button, length+1 is BACK button
-
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(maxSel);
-
-      if (
-        e.code === "ArrowLeft" ||
-        e.code === "ArrowRight" ||
-        e.code === "KeyA" ||
-        e.code === "KeyD"
-      ) {
-        if (sel < powerupKeys.length) {
-          if (st.gameState.onlineMode && !onlineService.isHost) return;
-          const key = powerupKeys[sel];
-          const delta = e.code === "ArrowRight" || e.code === "KeyD" ? 10 : -10;
-          setBrawlerPowerups((prev) => {
-            const newPowerups = {
-              ...prev,
-              [key]: Math.max(0, Math.min(100, prev[key] + delta)),
-            };
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel < powerupKeys.length) {
+            if (st.gameState.onlineMode && !onlineService.isHost) return;
+            const key = powerupKeys[sel];
+            setBrawlerPowerups((prev) => {
+              const newPowerups = { ...prev, [key]: prev[key] > 0 ? 0 : 100 };
+              if (st.gameState.onlineMode && onlineService.isHost) {
+                onlineService.broadcastLobbyState(
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  newPowerups,
+                );
+              }
+              return newPowerups;
+            });
+          } else if (sel === powerupKeys.length) {
+            if (st.gameState.onlineMode && !onlineService.isHost) return;
             if (st.gameState.onlineMode && onlineService.isHost) {
-              onlineService.broadcastLobbyState(
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                newPowerups,
-              );
+              if (onlineService.lobbyCode) {
+                onlineService.broadcastLobbyState(
+                  "brawler",
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  "playing",
+                );
+              }
+            } else if (!st.gameState.onlineMode) {
+              setGameState((p) => ({ ...p, status: "brawler_playing" }));
+              setRespawnTrigger(0);
+              checkAchievements({ mode: "vs" });
             }
-            return newPowerups;
-          });
-        }
-      }
-
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel < powerupKeys.length) {
-          if (st.gameState.onlineMode && !onlineService.isHost) return;
-          const key = powerupKeys[sel];
-          setBrawlerPowerups((prev) => {
-            const newPowerups = { ...prev, [key]: prev[key] > 0 ? 0 : 100 };
-            if (st.gameState.onlineMode && onlineService.isHost) {
-              onlineService.broadcastLobbyState(
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                newPowerups,
-              );
-            }
-            return newPowerups;
-          });
-        } else if (sel === powerupKeys.length) {
-          if (st.gameState.onlineMode && !onlineService.isHost) return;
-          if (st.gameState.onlineMode && onlineService.isHost) {
-            if (onlineService.lobbyCode) {
-              onlineService.broadcastLobbyState(
-                "brawler",
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                "playing",
-              );
-            }
-          } else if (!st.gameState.onlineMode) {
-            setGameState((p) => ({ ...p, status: "brawler_playing" }));
-            setRespawnTrigger(0);
-            checkAchievements({ mode: "vs" });
+          } else if (sel === powerupKeys.length + 1) {
+            setGameState((p) => ({
+              ...p,
+              status:
+                p.previousStatus === "online_lobby"
+                  ? "online_lobby"
+                  : "brawler_setup",
+            }));
           }
-        } else if (sel === powerupKeys.length + 1) {
+        }
+
+        if (e.code === "Escape")
           setGameState((p) => ({
             ...p,
             status:
@@ -5146,1020 +5291,1081 @@ const App: React.FC = () => {
                 ? "online_lobby"
                 : "brawler_setup",
           }));
+      } else if (status === "build_battle_vote") {
+        if (onlineService.lobbyCode && !onlineService.isHost) {
+          let sendCode = e.code;
+          let sendKey = e.key;
+          if (e.code === "KeyW") {
+            sendCode = "ArrowUp";
+            sendKey = "ArrowUp";
+          }
+          if (e.code === "KeyS") {
+            sendCode = "ArrowDown";
+            sendKey = "ArrowDown";
+          }
+          if (e.code === "KeyA") {
+            sendCode = "ArrowLeft";
+            sendKey = "ArrowLeft";
+          }
+          if (e.code === "KeyD") {
+            sendCode = "ArrowRight";
+            sendKey = "ArrowRight";
+          }
+          if (e.code === "Space" || e.code === "KeyQ") {
+            sendCode = "Enter";
+            sendKey = "Enter";
+          }
+          onlineService.sendEvent("bb_remote_key", {
+            code: sendCode,
+            key: sendKey,
+          });
+          return;
         }
-      }
+        const totalLevels = BUILD_BATTLE_LEVELS.length;
+        const key = e.key.toLowerCase();
+        const code = e.code;
 
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status:
-            p.previousStatus === "online_lobby"
-              ? "online_lobby"
-              : "brawler_setup",
-        }));
-    } else if (status === "build_battle_vote") {
-      if (onlineService.lobbyCode && !onlineService.isHost) {
-        let sendCode = e.code;
-        let sendKey = e.key;
-        if (e.code === "KeyW") { sendCode = "ArrowUp"; sendKey = "ArrowUp"; }
-        if (e.code === "KeyS") { sendCode = "ArrowDown"; sendKey = "ArrowDown"; }
-        if (e.code === "KeyA") { sendCode = "ArrowLeft"; sendKey = "ArrowLeft"; }
-        if (e.code === "KeyD") { sendCode = "ArrowRight"; sendKey = "ArrowRight"; }
-        if (e.code === "Space" || e.code === "KeyQ") { sendCode = "Enter"; sendKey = "Enter"; }
-        onlineService.sendEvent('bb_remote_key', { code: sendCode, key: sendKey });
-        return;
-      }
-      const totalLevels = BUILD_BATTLE_LEVELS.length;
-      const key = e.key.toLowerCase();
-      const code = e.code;
+        if (
+          [
+            "keyw",
+            "keya",
+            "keys",
+            "keyd",
+            "arrowup",
+            "arrowleft",
+            "arrowdown",
+            "arrowright",
+            "space",
+            "enter",
+            "shiftright",
+            "keyq",
+          ].includes(code.toLowerCase()) ||
+          [
+            "w",
+            "a",
+            "s",
+            "d",
+            "q",
+            " ",
+            "arrowup",
+            "arrowdown",
+            "arrowleft",
+            "arrowright",
+            "enter",
+          ].includes(key)
+        ) {
+          e.preventDefault();
+        }
 
-      if (
-        [
-          "keyw",
-          "keya",
-          "keys",
-          "keyd",
-          "arrowup",
-          "arrowleft",
-          "arrowdown",
-          "arrowright",
-          "space",
-          "enter",
-          "shiftright",
-          "keyq",
-        ].includes(code.toLowerCase()) ||
-        [
-          "w",
-          "a",
-          "s",
-          "d",
-          "q",
-          " ",
-          "arrowup",
-          "arrowdown",
-          "arrowleft",
-          "arrowright",
-          "enter",
-        ].includes(key)
-      ) {
-        e.preventDefault();
-      }
+        if (!st.buildBattleVotes.P1) {
+          if (
+            code === "KeyW" ||
+            code === "KeyA" ||
+            key === "w" ||
+            key === "a"
+          ) {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              P1: (p.P1 - 1 + totalLevels) % totalLevels,
+            }));
+          }
+          if (
+            code === "KeyS" ||
+            code === "KeyD" ||
+            key === "s" ||
+            key === "d"
+          ) {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              P1: (p.P1 + 1) % totalLevels,
+            }));
+          }
+          if (
+            code === "Space" ||
+            key === " " ||
+            code === "KeyQ" ||
+            key === "q"
+          ) {
+            setBuildBattleVoteSelection((p) => {
+              const lvl = BUILD_BATTLE_LEVELS[p.P1];
+              if (lvl) {
+                setBuildBattleVotes((prev) => ({ ...prev, P1: lvl.id }));
+                audio.playCoin && audio.playCoin();
+              }
+              return p;
+            });
+          }
+        } else {
+          if (
+            code === "Space" ||
+            key === " " ||
+            code === "KeyQ" ||
+            key === "q"
+          ) {
+            setBuildBattleVotes((prev) => ({ ...prev, P1: null }));
+            audio.playDie && audio.playDie();
+          }
+        }
 
-      if (!st.buildBattleVotes.P1) {
-        if (code === "KeyW" || code === "KeyA" || key === "w" || key === "a") {
-          setBuildBattleVoteSelection((p) => ({
+        if (!st.buildBattleVotes.P2) {
+          if (
+            code === "ArrowUp" ||
+            code === "ArrowLeft" ||
+            key === "arrowup" ||
+            key === "arrowleft"
+          ) {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              P2: (p.P2 - 1 + totalLevels) % totalLevels,
+            }));
+          }
+          if (
+            code === "ArrowDown" ||
+            code === "ArrowRight" ||
+            key === "arrowdown" ||
+            key === "arrowright"
+          ) {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              P2: (p.P2 + 1) % totalLevels,
+            }));
+          }
+          if (
+            code === "Enter" ||
+            key === "enter" ||
+            code === "ShiftRight" ||
+            key === "shift"
+          ) {
+            setBuildBattleVoteSelection((p) => {
+              const lvl = BUILD_BATTLE_LEVELS[p.P2];
+              if (lvl) {
+                setBuildBattleVotes((prev) => ({ ...prev, P2: lvl.id }));
+                audio.playCoin && audio.playCoin();
+              }
+              return p;
+            });
+          }
+        } else {
+          if (
+            code === "Enter" ||
+            key === "enter" ||
+            code === "ShiftRight" ||
+            key === "shift"
+          ) {
+            setBuildBattleVotes((prev) => ({ ...prev, P2: null }));
+            audio.playDie && audio.playDie();
+          }
+        }
+      } else if (status === "highscores") {
+        const ls = st.levelSource;
+        const currentList = ls === "builtin" ? INITIAL_LEVELS : st.customLevels;
+
+        if (
+          e.code === "ArrowUp" ||
+          e.code === "ArrowDown" ||
+          e.code === "KeyW" ||
+          e.code === "KeyS"
+        ) {
+          if (st.customLevels.length > 0) {
+            const newSource = ls === "builtin" ? "custom" : "builtin";
+            setLevelSource(newSource);
+            setHighscoreLevelIndex(0);
+          }
+        }
+
+        if (e.code === "ArrowLeft" || e.code === "KeyA")
+          setHighscoreLevelIndex((p) => Math.max(0, p - 1));
+        if (e.code === "ArrowRight" || e.code === "KeyD")
+          setHighscoreLevelIndex((p) =>
+            Math.min(currentList.length - 1, p + 1),
+          );
+
+        if (e.code === "Escape")
+          setGameState((p) => ({
             ...p,
-            P1: (p.P1 - 1 + totalLevels) % totalLevels,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
           }));
-        }
-        if (code === "KeyS" || code === "KeyD" || key === "s" || key === "d") {
-          setBuildBattleVoteSelection((p) => ({
-            ...p,
-            P1: (p.P1 + 1) % totalLevels,
-          }));
-        }
-        if (code === "Space" || key === " " || code === "KeyQ" || key === "q") {
-          setBuildBattleVoteSelection((p) => {
-            const lvl = BUILD_BATTLE_LEVELS[p.P1];
-            if (lvl) {
-              setBuildBattleVotes((prev) => ({ ...prev, P1: lvl.id }));
-              audio.playCoin && audio.playCoin();
-            }
-            return p;
+      } else if (status === "paused") {
+        if (
+          e.code === "KeyR" &&
+          gameState.previousStatus !== "build_battle_playing"
+        ) {
+          handleRetry();
+          return;
+        } // Quick Retry (disabled for build battle)
+
+        const buttons: any[] = [];
+        buttons.push({
+          action: () =>
+            setGameState((p) => ({
+              ...p,
+              status:
+                p.previousStatus ||
+                (p.customLevelsQueue ? "random_run" : "playing"),
+            })),
+        });
+
+        const isBuildBattle =
+          gameState.previousStatus === "build_battle_playing";
+
+        if (isBuildBattle && !onlineService.lobbyCode) {
+          buttons.push({
+            action: () => {
+              setGameState((p) => ({
+                ...p,
+                status: p.previousStatus || "playing",
+              }));
+              setBuildBattleSurrenders((prev) => ({ ...prev, P1: true }));
+            },
+          });
+          buttons.push({
+            action: () => {
+              setGameState((p) => ({
+                ...p,
+                status: p.previousStatus || "playing",
+              }));
+              setBuildBattleSurrenders((prev) => ({ ...prev, P2: true }));
+            },
           });
         }
-      } else {
-        if (code === "Space" || key === " " || code === "KeyQ" || key === "q") {
-          setBuildBattleVotes((prev) => ({ ...prev, P1: null }));
-          audio.playDie && audio.playDie();
-        }
-      }
 
-      if (!st.buildBattleVotes.P2) {
-        if (
-          code === "ArrowUp" ||
-          code === "ArrowLeft" ||
-          key === "arrowup" ||
-          key === "arrowleft"
-        ) {
-          setBuildBattleVoteSelection((p) => ({
-            ...p,
-            P2: (p.P2 - 1 + totalLevels) % totalLevels,
-          }));
+        if (!isBuildBattle) {
+          // Skip Level Button (Local VS/Brawler with queue)
+          if (
+            (!onlineService.lobbyCode || onlineService.isHost) &&
+            gameState.customLevelsQueue &&
+            gameState.currentLevelIndex < gameState.customLevelsQueue.length - 1
+          ) {
+            buttons.push({ action: handleNextLevel });
+          }
+
+          // Retry Level Button (Always in Local VS/Brawler, or if authorized/STORY)
+          if (
+            !(
+              gameState.previousStatus === "vs_playing" ||
+              gameState.previousStatus === "brawler_playing"
+            ) ||
+            !onlineService.lobbyCode
+          ) {
+            buttons.push({ action: handleRetry });
+          }
         }
-        if (
-          code === "ArrowDown" ||
-          code === "ArrowRight" ||
-          key === "arrowdown" ||
-          key === "arrowright"
+
+        if (onlineService.lobbyCode) {
+          buttons.push({
+            action: () => {
+              onlineService.sendEvent("give_up", { name: playerName });
+              setGameState((p) => ({
+                ...p,
+                status: p.previousStatus || "playing",
+              }));
+              if (isBuildBattle) {
+                setBuildBattleSurrenders((prev) => ({
+                  ...prev,
+                  [playerName]: true,
+                }));
+              } else {
+                handleWin("GAVE UP");
+              }
+            },
+          });
+          if (isBuildBattle && onlineService.isHost) {
+            buttons.push({
+              action: () => {
+                onlineService.sendEvent("force_end_round", {
+                  name: playerName,
+                });
+                setGameState((p) => ({
+                  ...p,
+                  status: p.previousStatus || "playing",
+                }));
+                handleWin("EVERYONE_FINISHED");
+              },
+            });
+          }
+          buttons.push({
+            action: () => {
+              if (onlineService.isHost) {
+                onlineService.returnToLobby();
+              } else {
+                setGameState((p) => ({ ...p, status: "online_lobby" }));
+              }
+            },
+          });
+        } else if (
+          gameState.previousStatus === "vs_playing" ||
+          gameState.previousStatus === "brawler_playing" ||
+          gameState.previousStatus === "build_battle_playing" ||
+          gameState.previousStatus === "playing" ||
+          gameState.previousStatus === "random_run"
         ) {
-          setBuildBattleVoteSelection((p) => ({
-            ...p,
-            P2: (p.P2 + 1) % totalLevels,
-          }));
-        }
-        if (
-          code === "Enter" ||
-          key === "enter" ||
-          code === "ShiftRight" ||
-          key === "shift"
-        ) {
-          setBuildBattleVoteSelection((p) => {
-            const lvl = BUILD_BATTLE_LEVELS[p.P2];
-            if (lvl) {
-              setBuildBattleVotes((prev) => ({ ...prev, P2: lvl.id }));
-              audio.playCoin && audio.playCoin();
-            }
-            return p;
+          buttons.push({
+            action: () => {
+              setGameState((p) => {
+                let nextStatus: GameState["status"] = "menu";
+                if (p.previousStatus === "brawler_playing")
+                  nextStatus = "brawler_setup";
+                else if (p.previousStatus === "vs_playing")
+                  nextStatus = "vs_setup";
+                else if (p.previousStatus === "build_battle_playing")
+                  nextStatus = "build_battle_setup";
+                else if (
+                  p.previousStatus === "playing" ||
+                  p.previousStatus === "random_run"
+                )
+                  nextStatus = "difficulty_select";
+
+                return {
+                  ...p,
+                  status: nextStatus,
+                };
+              });
+            },
           });
         }
-      } else {
-        if (
-          code === "Enter" ||
-          key === "enter" ||
-          code === "ShiftRight" ||
-          key === "shift"
-        ) {
-          setBuildBattleVotes((prev) => ({ ...prev, P2: null }));
-          audio.playDie && audio.playDie();
+
+        if (!isBuildBattle) {
+          // Settings Button
+          buttons.push({
+            action: () => {
+              setGameState((p) => ({
+                ...p,
+                status: "settings",
+                previousStatus: "paused",
+              }));
+              setMenuSelection(0);
+            },
+          });
         }
-      }
-    } else if (status === "highscores") {
-      const ls = st.levelSource;
-      const currentList = ls === "builtin" ? INITIAL_LEVELS : st.customLevels;
 
-      if (
-        e.code === "ArrowUp" ||
-        e.code === "ArrowDown" ||
-        e.code === "KeyW" ||
-        e.code === "KeyS"
-      ) {
-        if (st.customLevels.length > 0) {
-          const newSource = ls === "builtin" ? "custom" : "builtin";
-          setLevelSource(newSource);
-          setHighscoreLevelIndex(0);
+        buttons.push({
+          action: () => {
+            if (onlineService.lobbyCode) {
+              if (onlineService.isHost) {
+                onlineService.closeLobby();
+              } else {
+                onlineService.disconnect();
+              }
+            }
+            setGameState((p) => ({ ...p, status: "menu" }));
+          },
+        });
+
+        const buttonsCount = buttons.length;
+
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS")
+          navDown(buttonsCount - 1);
+        if (e.code === "Enter" || e.code === "Space") {
+          if (buttons[sel]) buttons[sel].action();
         }
-      }
-
-      if (e.code === "ArrowLeft" || e.code === "KeyA")
-        setHighscoreLevelIndex((p) => Math.max(0, p - 1));
-      if (e.code === "ArrowRight" || e.code === "KeyD")
-        setHighscoreLevelIndex((p) => Math.min(currentList.length - 1, p + 1));
-
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-    } else if (status === "paused") {
-      if (e.code === "KeyR" && gameState.previousStatus !== "build_battle_playing") {
-        handleRetry();
-        return;
-      } // Quick Retry (disabled for build battle)
-
-      const buttons: any[] = [];
-      buttons.push({
-        action: () =>
+        if (e.code === "Escape")
           setGameState((p) => ({
             ...p,
             status:
               p.previousStatus ||
               (p.customLevelsQueue ? "random_run" : "playing"),
-          })),
-      });
-
-      const isBuildBattle = gameState.previousStatus === "build_battle_playing";
-
-      if (isBuildBattle && !onlineService.lobbyCode) {
-        buttons.push({
-          action: () => {
-            setGameState((p) => ({ ...p, status: p.previousStatus || "playing" }));
-            setBuildBattleSurrenders((prev) => ({ ...prev, P1: true }));
-          },
-        });
-        buttons.push({
-          action: () => {
-            setGameState((p) => ({ ...p, status: p.previousStatus || "playing" }));
-            setBuildBattleSurrenders((prev) => ({ ...prev, P2: true }));
-          },
-        });
-      }
-
-      if (!isBuildBattle) {
-        // Skip Level Button (Local VS/Brawler with queue)
+          }));
+      } else if (status === "settings") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(13);
         if (
-          (!onlineService.lobbyCode || onlineService.isHost) &&
-          gameState.customLevelsQueue &&
-          gameState.currentLevelIndex < gameState.customLevelsQueue.length - 1
+          e.code === "ArrowLeft" ||
+          e.code === "ArrowRight" ||
+          e.code === "KeyA" ||
+          e.code === "KeyD"
         ) {
-          buttons.push({ action: handleNextLevel });
-        }
-
-        // Retry Level Button (Always in Local VS/Brawler, or if authorized/STORY)
-        if (
-          !(
-            gameState.previousStatus === "vs_playing" ||
-            gameState.previousStatus === "brawler_playing"
-          ) ||
-          !onlineService.lobbyCode
-        ) {
-          buttons.push({ action: handleRetry });
-        }
-      }
-
-      if (onlineService.lobbyCode) {
-        buttons.push({
-          action: () => {
-            onlineService.sendEvent("give_up", { name: playerName });
-            setGameState((p) => ({
+          const diff =
+            e.code === "ArrowRight" || e.code === "KeyD" ? 0.1 : -0.1;
+          if (sel === 2)
+            setSettings((p) => ({
               ...p,
-              status: p.previousStatus || "playing",
+              sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)),
             }));
-            if (isBuildBattle) {
-              setBuildBattleSurrenders((prev) => ({ ...prev, [playerName]: true }));
-            } else {
-              handleWin("GAVE UP");
-            }
-          },
-        });
-        if (isBuildBattle && onlineService.isHost) {
-          buttons.push({
-            action: () => {
-              onlineService.sendEvent("force_end_round", { name: playerName });
-              setGameState((p) => ({
-                ...p,
-                status: p.previousStatus || "playing",
-              }));
-              handleWin("EVERYONE_FINISHED");
-            },
-          });
-        }
-        buttons.push({
-          action: () => {
-            if (onlineService.isHost) {
-              onlineService.returnToLobby();
-            } else {
-              setGameState((p) => ({ ...p, status: "online_lobby" }));
-            }
-          },
-        });
-      } else if (
-        gameState.previousStatus === "vs_playing" ||
-        gameState.previousStatus === "brawler_playing" ||
-        gameState.previousStatus === "build_battle_playing" ||
-        gameState.previousStatus === "playing" ||
-        gameState.previousStatus === "random_run"
-      ) {
-        buttons.push({
-          action: () => {
-            setGameState((p) => {
-              let nextStatus: GameState["status"] = "menu";
-              if (p.previousStatus === "brawler_playing")
-                nextStatus = "brawler_setup";
-              else if (p.previousStatus === "vs_playing")
-                nextStatus = "vs_setup";
-              else if (p.previousStatus === "build_battle_playing")
-                nextStatus = "build_battle_setup";
-              else if (
-                p.previousStatus === "playing" ||
-                p.previousStatus === "random_run"
-              )
-                nextStatus = "difficulty_select";
-
-              return {
-                ...p,
-                status: nextStatus,
-              };
+          if (sel === 3)
+            setSettings((p) => ({
+              ...p,
+              deathVolume: Math.min(
+                1,
+                Math.max(0, (p.deathVolume ?? 0.5) + diff),
+              ),
+            }));
+          if (sel === 4)
+            setSettings((p) => ({
+              ...p,
+              opponentOpacity: Math.min(
+                1,
+                Math.max(0, (p.opponentOpacity ?? 0.5) + diff),
+              ),
+            }));
+          if (sel === 5) {
+            setSettings((p) => {
+              const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
+              let nextIndex =
+                e.code === "ArrowRight" || e.code === "KeyD"
+                  ? currentIndex + 1
+                  : currentIndex - 1;
+              if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
+              if (nextIndex < 0) nextIndex = FPS_OPTIONS.length - 1;
+              return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
             });
-          },
-        });
-      }
-
-      if (!isBuildBattle) {
-        // Settings Button
-        buttons.push({
-          action: () => {
+          }
+          if (sel === 6) {
+            setSettings((p) => {
+              const currentScale = p.uiScale || 1;
+              const currentIndex =
+                UI_SCALE_OPTIONS.indexOf(currentScale) !== -1
+                  ? UI_SCALE_OPTIONS.indexOf(currentScale)
+                  : 2;
+              let nextIndex =
+                e.code === "ArrowRight" || e.code === "KeyD"
+                  ? currentIndex + 1
+                  : currentIndex - 1;
+              if (nextIndex >= UI_SCALE_OPTIONS.length)
+                nextIndex = UI_SCALE_OPTIONS.length - 1;
+              if (nextIndex < 0) nextIndex = 0;
+              return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
+            });
+          }
+          if (sel === 7) {
+            setSettings((p) => {
+              const currentScale = p.resolutionScale || 1080;
+              const currentIndex =
+                RESOLUTION_OPTIONS.indexOf(currentScale) !== -1
+                  ? RESOLUTION_OPTIONS.indexOf(currentScale)
+                  : 1;
+              let nextIndex =
+                e.code === "ArrowRight" || e.code === "KeyD"
+                  ? currentIndex + 1
+                  : currentIndex - 1;
+              if (nextIndex >= RESOLUTION_OPTIONS.length)
+                nextIndex = RESOLUTION_OPTIONS.length - 1;
+              if (nextIndex < 0) nextIndex = 0;
+              return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
+            });
+          }
+          if (sel === 8) {
+            setSettings((p) => ({
+              ...p,
+              screenShake: Math.min(
+                1,
+                Math.max(0, (p.screenShake ?? 1) + diff),
+              ),
+            }));
+          }
+        }
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 1) {
+            setGameState((p) => ({ ...p, status: "keybindings" }));
+            setMenuSelection(0);
+          }
+          if (sel === 9) {
+            setSettings((p) => ({
+              ...p,
+              invertXOnGravityReverse: !p.invertXOnGravityReverse,
+            }));
+          }
+          if (sel === 10) {
+            setSettings((p) => ({
+              ...p,
+              invertYOnGravityReverse: !p.invertYOnGravityReverse,
+            }));
+          }
+          if (sel === 11) {
+            triggerImport();
+          }
+          if (sel === 12) {
+            handleExportSave();
+          }
+          if (sel === 13) {
             setGameState((p) => ({
               ...p,
-              status: "settings",
-              previousStatus: "paused",
+              status: p.previousStatus || "menu",
+              previousStatus: undefined,
             }));
-            setMenuSelection(0);
-          },
-        });
-      }
+          }
+        }
+        if (e.code === "Escape")
+          setGameState((p) => ({
+            ...p,
+            status: p.previousStatus || "menu",
+            previousStatus: undefined,
+          }));
+      } else if (status === "keybindings") {
+        if (st.editingKey) {
+          e.preventDefault();
+          if (e.code === "Escape") {
+            setEditingKey(null);
+            return;
+          }
+          const { player, action } = st.editingKey;
+          const key = player === 1 ? "keybindingsP1" : "keybindingsP2";
+          setSettings((p) => {
+            const currentBindings =
+              p[key] ||
+              (player === 1
+                ? {
+                    up: ["ArrowUp"],
+                    down: ["ArrowDown"],
+                    left: ["ArrowLeft"],
+                    right: ["ArrowRight"],
+                    action: [
+                      "ControlRight",
+                      "ControlLeft",
+                      "Numpad0",
+                      "Digit0",
+                    ],
+                    dash: ["ShiftRight"],
+                  }
+                : {
+                    up: ["KeyW"],
+                    down: ["KeyS"],
+                    left: ["KeyA"],
+                    right: ["KeyD"],
+                    action: ["KeyQ"],
+                    dash: ["ShiftLeft"],
+                  });
 
-      buttons.push({
-        action: () => {
-          if (onlineService.lobbyCode) {
-            if (onlineService.isHost) {
-              onlineService.closeLobby();
-            } else {
-              onlineService.disconnect();
+            const existing = currentBindings[action] || [];
+            // If it's Player 1 and action is up, we always append "Space" as a secondary jump key
+            const newBindings =
+              player === 1 && action === "up" && e.code !== "Space"
+                ? [e.code, "Space"]
+                : [e.code];
+
+            return {
+              ...p,
+              [key]: {
+                ...currentBindings,
+                [action]: newBindings,
+              },
+            };
+          });
+          setEditingKey(null);
+          return;
+        }
+
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(12); // 6 actions * 2 players + back button
+
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 12) {
+            setGameState((p) => ({ ...p, status: "settings" }));
+            setMenuSelection(2);
+          } else {
+            const numActions = 6;
+            const player = sel < numActions ? 1 : 2;
+            const actionIndex = sel < numActions ? sel : sel - numActions;
+            const actions: (keyof Keybindings)[] = [
+              "up",
+              "down",
+              "left",
+              "right",
+              "action",
+              "dash",
+            ];
+            if (actions[actionIndex]) {
+              setEditingKey({ player, action: actions[actionIndex] });
             }
           }
+        }
+        if (e.code === "Escape") {
+          setGameState((p) => ({ ...p, status: "settings" }));
+          setMenuSelection(2);
+        }
+      } else if (status === "online_menu") {
+        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+        if (e.code === "ArrowDown" || e.code === "KeyS") navDown(5);
+        if (e.code === "Enter" || e.code === "Space") {
+          if (sel === 0) {
+            setGameState((p) => ({
+              ...p,
+              status: "customizing",
+              previousStatus: "online_menu",
+            }));
+          } else if (sel === 1) {
+            // Create Brawler Lobby
+            createOnlineLobby("brawler");
+          } else if (sel === 2) {
+            // Create VS Lobby
+            createOnlineLobby("vs");
+          } else if (sel === 3) {
+            // Create Build-Battle Lobby
+            createOnlineLobby("build_battle");
+          } else if (sel === 4) {
+            // Join Lobby
+            setShowJoinPrompt(true);
+          } else if (sel === 5) {
+            setMenuSelection(1); // Set hover to "Online Multiplayer"
+            setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+          }
+        }
+        if (e.code === "Escape") {
+          setMenuSelection(1); // Set hover to "Online Multiplayer"
+          setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
+        }
+      } else if (status === "online_lobby") {
+        if (e.code === "Escape") {
+          const isEditor = st.gameState.onlineMode === "editor";
+          onlineService.disconnect();
+          setGameState((p) => ({
+            ...p,
+            status: isEditor ? "editor_type_select" : "online_menu",
+            previousStatus: undefined,
+          }));
+          return;
+        }
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          if (st.gameState.isHost && sel === 0) {
+            const sources: any[] =
+              st.gameState.onlineMode === "brawler"
+                ? ["brawler", "custom"]
+                : ["beginner", "advanced", "expert", "god", "custom"];
+            const currentIdx = sources.indexOf(st.levelSource);
+            let nextIdx = currentIdx - 1;
+            if (nextIdx < 0) nextIdx = sources.length - 1;
+            const newSource = sources[nextIdx];
+
+            setLevelSource(newSource);
+            setHighscoreLevelIndex(0);
+
+            const getList = (src: string) => {
+              if (src === "beginner") return INITIAL_LEVELS;
+              if (src === "advanced") return ADVANCED_LEVELS;
+              if (src === "expert") return EXPERT_LEVELS;
+              if (src === "god") return GOD_LEVELS;
+              if (src === "brawler") return BRAWLER_LEVELS;
+              return st.customLevels;
+            };
+
+            const list = getList(newSource);
+            if (list.length > 0) {
+              setLevel(list[0]);
+              onlineService.broadcastLobbyState(
+                st.gameState.onlineMode!,
+                list[0],
+                undefined,
+                brawlerTeamMode,
+                brawlerHazardMode,
+              );
+            }
+          } else {
+            const max = st.gameState.isHost ? 5 : 2;
+            setMenuSelection((prev) => (prev === 0 ? max : prev - 1));
+          }
+        }
+        if (e.code === "ArrowDown" || e.code === "KeyS") {
+          if (st.gameState.isHost && sel === 0) {
+            const sources: any[] =
+              st.gameState.onlineMode === "brawler"
+                ? ["brawler", "custom"]
+                : ["beginner", "advanced", "expert", "god", "custom"];
+            const currentIdx = sources.indexOf(st.levelSource);
+            let nextIdx = currentIdx + 1;
+            if (nextIdx >= sources.length) nextIdx = 0;
+            const newSource = sources[nextIdx];
+
+            setLevelSource(newSource);
+            setHighscoreLevelIndex(0);
+
+            const getList = (src: string) => {
+              if (src === "beginner") return INITIAL_LEVELS;
+              if (src === "advanced") return ADVANCED_LEVELS;
+              if (src === "expert") return EXPERT_LEVELS;
+              if (src === "god") return GOD_LEVELS;
+              if (src === "brawler") return BRAWLER_LEVELS;
+              return st.customLevels;
+            };
+
+            const list = getList(newSource);
+            if (list.length > 0) {
+              setLevel(list[0]);
+              onlineService.broadcastLobbyState(
+                st.gameState.onlineMode!,
+                list[0],
+                undefined,
+                brawlerTeamMode,
+                brawlerHazardMode,
+              );
+            }
+          } else {
+            const max = st.gameState.isHost ? 5 : 2;
+            setMenuSelection((prev) => (prev === max ? 0 : prev + 1));
+          }
+        }
+        if (st.gameState.isHost && sel === 0) {
+          if (e.code === "ArrowLeft" || e.code === "KeyA") {
+            const getList = (src: string) => {
+              if (src === "beginner") return INITIAL_LEVELS;
+              if (src === "advanced") return ADVANCED_LEVELS;
+              if (src === "expert") return EXPERT_LEVELS;
+              if (src === "god") return GOD_LEVELS;
+              if (src === "brawler") return BRAWLER_LEVELS;
+              return st.customLevels;
+            };
+            const list = getList(st.levelSource);
+            const newIdx = Math.max(0, st.highscoreLevelIndex - 1);
+            setHighscoreLevelIndex(newIdx);
+            setLevel(list[newIdx]);
+            onlineService.broadcastLobbyState(
+              st.gameState.onlineMode!,
+              list[newIdx],
+              undefined,
+              brawlerTeamMode,
+              brawlerHazardMode,
+            );
+          }
+          if (e.code === "ArrowRight" || e.code === "KeyD") {
+            const getList = (src: string) => {
+              if (src === "beginner") return INITIAL_LEVELS;
+              if (src === "advanced") return ADVANCED_LEVELS;
+              if (src === "expert") return EXPERT_LEVELS;
+              if (src === "god") return GOD_LEVELS;
+              if (src === "brawler") return BRAWLER_LEVELS;
+              return st.customLevels;
+            };
+            const list = getList(st.levelSource);
+            const newIdx = Math.min(
+              list.length - 1,
+              st.highscoreLevelIndex + 1,
+            );
+            setHighscoreLevelIndex(newIdx);
+            setLevel(list[newIdx]);
+            onlineService.broadcastLobbyState(
+              st.gameState.onlineMode!,
+              list[newIdx],
+              undefined,
+              brawlerTeamMode,
+              brawlerHazardMode,
+            );
+          }
+        }
+        if (e.code === "Enter" || e.code === "Space") {
+          if (st.gameState.isHost) {
+            if (sel === 1) {
+              setShowLevelMenu(true);
+            } else if (sel === 2) {
+              if (onlinePlayers.length < 2) {
+                setOnlineError("Need at least 2 players!");
+                setTimeout(() => setOnlineError(""), 2000);
+              } else if (onlinePlayers.every((p) => p.ready)) {
+                onlineService.startGame();
+              } else {
+                setOnlineError("Not all players are ready!");
+                setTimeout(() => setOnlineError(""), 2000);
+              }
+            } else if (sel === 3) {
+              setGameState((p) => ({
+                ...p,
+                status: "customizing",
+                previousStatus: "online_lobby",
+              }));
+            } else if (sel === 4) {
+              if (st.gameState.onlineMode === "brawler") {
+                setGameState((p) => ({
+                  ...p,
+                  status: "brawler_powerup_setup",
+                  previousStatus: "online_lobby",
+                }));
+              } else if (st.gameState.onlineMode === "vs") {
+                const newValue = !st.gameState.collisionEnabled;
+                setGameState((p) => ({ ...p, collisionEnabled: newValue }));
+                onlineService.broadcastLobbyState(
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  newValue,
+                );
+              }
+            } else if (sel === 5) {
+              const isEditor = st.gameState.onlineMode === "editor";
+              onlineService.closeLobby();
+              setGameState((p) => ({
+                ...p,
+                status: isEditor ? "editor_type_select" : "online_menu",
+              }));
+            }
+          } else {
+            if (sel === 0) {
+              const localP = onlinePlayers.find(
+                (p) => p.id === onlineService.localPlayer?.id,
+              );
+              if (localP) onlineService.setReady(!localP.ready);
+            } else if (sel === 1) {
+              setGameState((p) => ({
+                ...p,
+                status: "customizing",
+                previousStatus: "online_lobby",
+              }));
+            } else if (sel === 2) {
+              const isEditor = st.gameState.onlineMode === "editor";
+              onlineService.disconnect();
+              setGameState((p) => ({
+                ...p,
+                status: isEditor ? "editor_type_select" : "online_menu",
+              }));
+            }
+          }
+        }
+      } else if (status === "custom_level_select") {
+        const sortedLevels = st.sortedCustomLevels;
+        if (sortedLevels.length > 0) {
+          if (e.code === "ArrowUp" || e.code === "KeyW")
+            setMenuSelection((prev) => Math.max(0, prev - 1));
+          if (e.code === "ArrowDown" || e.code === "KeyS")
+            setMenuSelection((prev) =>
+              Math.min(sortedLevels.length - 1, prev + 1),
+            );
+
+          if (e.code === "Enter") {
+            const selected = sortedLevels[sel];
+            if (selected.isVerified !== false) {
+              // Only play if not draft
+              playSingleCustomLevelHook(selected);
+            }
+          }
+          if (e.code === "Delete") {
+            setShowDeleteConfirm(sortedLevels[sel].id);
+            setMenuSelection(0);
+          }
+          if (e.code === "KeyE") handleEditLevel(sortedLevels[sel]);
+        }
+
+        if (e.code === "Escape")
           setGameState((p) => ({ ...p, status: "menu" }));
-        },
-      });
-
-      const buttonsCount = buttons.length;
-
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS")
-        navDown(buttonsCount - 1);
-      if (e.code === "Enter" || e.code === "Space") {
-        if (buttons[sel]) buttons[sel].action();
-      }
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status:
-            p.previousStatus ||
-            (p.customLevelsQueue ? "random_run" : "playing"),
-        }));
-    } else if (status === "settings") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(13);
-      if (
-        e.code === "ArrowLeft" ||
-        e.code === "ArrowRight" ||
-        e.code === "KeyA" ||
-        e.code === "KeyD"
+      } else if (
+        status === "won" ||
+        status === "vs_won" ||
+        status === "brawler_won"
       ) {
-        const diff = e.code === "ArrowRight" || e.code === "KeyD" ? 0.1 : -0.1;
-        if (sel === 2)
-          setSettings((p) => ({
-            ...p,
-            sfxVolume: Math.min(1, Math.max(0, p.sfxVolume + diff)),
-          }));
-        if (sel === 3)
-          setSettings((p) => ({
-            ...p,
-            deathVolume: Math.min(
-              1,
-              Math.max(0, (p.deathVolume ?? 0.5) + diff),
-            ),
-          }));
-        if (sel === 4)
-          setSettings((p) => ({
-            ...p,
-            opponentOpacity: Math.min(
-              1,
-              Math.max(0, (p.opponentOpacity ?? 0.5) + diff),
-            ),
-          }));
-        if (sel === 5) {
-          setSettings((p) => {
-            const currentIndex = FPS_OPTIONS.indexOf(p.fpsCap);
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
-            if (nextIndex >= FPS_OPTIONS.length) nextIndex = 0;
-            if (nextIndex < 0) nextIndex = FPS_OPTIONS.length - 1;
-            return { ...p, fpsCap: FPS_OPTIONS[nextIndex] };
-          });
+        if (e.code === "Escape") {
+          if (onlineService.lobbyCode) {
+            setGameState((p) => ({ ...p, status: "online_lobby" }));
+          } else {
+            setGameState((p) => ({ ...p, status: "menu" }));
+          }
         }
-        if (sel === 6) {
-          setSettings((p) => {
-            const currentScale = p.uiScale || 1;
-            const currentIndex =
-              UI_SCALE_OPTIONS.indexOf(currentScale) !== -1
-                ? UI_SCALE_OPTIONS.indexOf(currentScale)
-                : 2;
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
-            if (nextIndex >= UI_SCALE_OPTIONS.length)
-              nextIndex = UI_SCALE_OPTIONS.length - 1;
-            if (nextIndex < 0) nextIndex = 0;
-            return { ...p, uiScale: UI_SCALE_OPTIONS[nextIndex] };
-          });
+
+        const isVS = status === "vs_won" || status === "brawler_won";
+        const queue = st.gameState.customLevelsQueue;
+        const hasNext =
+          queue && st.gameState.currentLevelIndex < queue.length - 1;
+
+        if (isVS) {
+          if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+          if (e.code === "ArrowDown" || e.code === "KeyS") {
+            let maxItems = 1;
+            if (hasNext)
+              maxItems = 2; // Next, Lobby, Menu
+            else if (!onlineService.lobbyCode) maxItems = 2; // Play Again, Lobby, Menu
+            navDown(maxItems);
+          }
+          if (e.code === "Enter" || e.code === "Space") {
+            if (hasNext) {
+              if (sel === 0) handleNextLevel();
+              else if (sel === 1) {
+                if (onlineService.lobbyCode && onlineService.isHost) {
+                  onlineService.returnToLobby();
+                } else {
+                  setGameState((p) => ({
+                    ...p,
+                    status: onlineService.lobbyCode
+                      ? "online_lobby"
+                      : p.status === "brawler_won"
+                        ? "brawler_setup"
+                        : "vs_setup",
+                  }));
+                }
+              } else if (sel === 2) {
+                if (onlineService.lobbyCode) onlineService.disconnect();
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
+            } else if (onlineService.lobbyCode) {
+              // Online mode without next queue
+              if (sel === 0) {
+                if (onlineService.isHost) onlineService.returnToLobby();
+              } else if (sel === 1) {
+                onlineService.disconnect();
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
+            } else {
+              // Local mode without next queue
+              if (sel === 0) {
+                handleRetry();
+              } else if (sel === 1) {
+                setGameState((p) => ({
+                  ...p,
+                  status:
+                    p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
+                }));
+              } else if (sel === 2) {
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
+            }
+          }
+        } else {
+          const isLastLevel =
+            !st.gameState.geometryDashMode &&
+            ((st.gameState.customLevelsQueue &&
+              st.gameState.currentLevelIndex >=
+                st.gameState.customLevelsQueue.length - 1) ||
+              (!st.gameState.customLevelsQueue &&
+                st.gameState.currentLevelIndex >=
+                  st.selectedDifficultySet.length - 1));
+
+          if (!isLastLevel) {
+            if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
+            if (e.code === "ArrowDown" || e.code === "KeyS") navDown(1);
+
+            if (e.code === "Enter" || e.code === "Space") {
+              if (sel === 0) {
+                const nextIdx = st.gameState.currentLevelIndex + 1;
+                const collection =
+                  st.gameState.customLevelsQueue || st.selectedDifficultySet;
+
+                if (nextIdx < collection.length) {
+                  setLevel(collection[nextIdx]);
+                  processedCoins.current.clear();
+
+                  // Clear state for next run
+                  setOnlineResults([]);
+                  setOnlineFinishTimer(null);
+                  setCurrentVote(null);
+
+                  setGameState((prev) => ({
+                    ...prev,
+                    status: prev.customLevelsQueue ? "random_run" : "playing",
+                    currentLevelIndex: nextIdx,
+                    levelTime: 0,
+                    levelDeaths: 0,
+                    blocksPlaced: 0,
+                    collectedCoins: [],
+                    score: prev.score,
+                    levelStartScore: prev.score,
+                  }));
+
+                  // Keep respawn logic tight for GD mode as handleNextLevel does
+                  setRespawnTrigger((p) => p + 1);
+                } else {
+                  setGameState((prev) => ({
+                    ...prev,
+                    status: "menu",
+                    geometryDashMode: false,
+                  }));
+                }
+              } else if (sel === 1) {
+                setGameState((prev) => ({
+                  ...prev,
+                  status: prev.geometryDashMode ? "geometry_dash_menu" : "menu",
+                  geometryDashMode: false,
+                }));
+              }
+            }
+          } else {
+            if (e.code === "Enter" || e.code === "Space") {
+              if (sel === 0 && st.playerName.length > 0) saveHighscore();
+            }
+          }
         }
-        if (sel === 7) {
-          setSettings((p) => {
-            const currentScale = p.resolutionScale || 1080;
-            const currentIndex =
-              RESOLUTION_OPTIONS.indexOf(currentScale) !== -1
-                ? RESOLUTION_OPTIONS.indexOf(currentScale)
-                : 1;
-            let nextIndex =
-              e.code === "ArrowRight" || e.code === "KeyD"
-                ? currentIndex + 1
-                : currentIndex - 1;
-            if (nextIndex >= RESOLUTION_OPTIONS.length)
-              nextIndex = RESOLUTION_OPTIONS.length - 1;
-            if (nextIndex < 0) nextIndex = 0;
-            return { ...p, resolutionScale: RESOLUTION_OPTIONS[nextIndex] };
-          });
-        }
-        if (sel === 8) {
-          setSettings((p) => ({
-            ...p,
-            screenShake: Math.min(1, Math.max(0, (p.screenShake ?? 1) + diff)),
-          }));
-        }
-      }
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 1) {
-          setGameState((p) => ({ ...p, status: "keybindings" }));
-          setMenuSelection(0);
-        }
-        if (sel === 9) {
-          setSettings((p) => ({
-            ...p,
-            invertXOnGravityReverse: !p.invertXOnGravityReverse,
-          }));
-        }
-        if (sel === 10) {
-          setSettings((p) => ({
-            ...p,
-            invertYOnGravityReverse: !p.invertYOnGravityReverse,
-          }));
-        }
-        if (sel === 11) {
-          triggerImport();
-        }
-        if (sel === 12) {
-          handleExportSave();
-        }
-        if (sel === 13) {
+      } else if (status === "achievements") {
+        if (e.code === "Escape") {
           setGameState((p) => ({
             ...p,
             status: p.previousStatus || "menu",
             previousStatus: undefined,
           }));
         }
-      }
-      if (e.code === "Escape")
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-    } else if (status === "keybindings") {
-      if (st.editingKey) {
-        e.preventDefault();
-        if (e.code === "Escape") {
-          setEditingKey(null);
-          return;
-        }
-        const { player, action } = st.editingKey;
-        const key = player === 1 ? "keybindingsP1" : "keybindingsP2";
-        setSettings((p) => {
-          const currentBindings =
-            p[key] ||
-            (player === 1
-              ? {
-                  up: ["ArrowUp"],
-                  down: ["ArrowDown"],
-                  left: ["ArrowLeft"],
-                  right: ["ArrowRight"],
-                  action: ["ControlRight", "ControlLeft", "Numpad0", "Digit0"],
-                  dash: ["ShiftRight"],
-                }
-              : {
-                  up: ["KeyW"],
-                  down: ["KeyS"],
-                  left: ["KeyA"],
-                  right: ["KeyD"],
-                  action: ["KeyQ"],
-                  dash: ["ShiftLeft"],
-                });
+      } else if (status === "online_summary") {
+        const isHost = onlineService.isHost;
+        const isOnline = !!onlineService.lobbyCode;
+        const hasNext =
+          st.gameState.customLevelsQueue &&
+          st.gameState.currentLevelIndex <
+            st.gameState.customLevelsQueue.length - 1;
 
-          const existing = currentBindings[action] || [];
-          // If it's Player 1 and action is up, we always append "Space" as a secondary jump key
-          const newBindings =
-            player === 1 && action === "up" && e.code !== "Space"
-              ? [e.code, "Space"]
-              : [e.code];
-
-          return {
-            ...p,
-            [key]: {
-              ...currentBindings,
-              [action]: newBindings,
-            },
-          };
-        });
-        setEditingKey(null);
-        return;
-      }
-
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(12); // 6 actions * 2 players + back button
-
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 12) {
-          setGameState((p) => ({ ...p, status: "settings" }));
-          setMenuSelection(2);
-        } else {
-          const numActions = 6;
-          const player = sel < numActions ? 1 : 2;
-          const actionIndex = sel < numActions ? sel : sel - numActions;
-          const actions: (keyof Keybindings)[] = [
-            "up",
-            "down",
-            "left",
-            "right",
-            "action",
-            "dash",
-          ];
-          if (actions[actionIndex]) {
-            setEditingKey({ player, action: actions[actionIndex] });
-          }
-        }
-      }
-      if (e.code === "Escape") {
-        setGameState((p) => ({ ...p, status: "settings" }));
-        setMenuSelection(2);
-      }
-    } else if (status === "online_menu") {
-      if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-      if (e.code === "ArrowDown" || e.code === "KeyS") navDown(5);
-      if (e.code === "Enter" || e.code === "Space") {
-        if (sel === 0) {
-          setGameState((p) => ({
-            ...p,
-            status: "customizing",
-            previousStatus: "online_menu",
-          }));
-        } else if (sel === 1) {
-          // Create Brawler Lobby
-          createOnlineLobby("brawler");
-        } else if (sel === 2) {
-          // Create VS Lobby
-          createOnlineLobby("vs");
-        } else if (sel === 3) {
-          // Create Build-Battle Lobby
-          createOnlineLobby("build_battle");
-        } else if (sel === 4) {
-          // Join Lobby
-          setShowJoinPrompt(true);
-        } else if (sel === 5) {
-          setMenuSelection(1); // Set hover to "Online Multiplayer"
-          setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
-        }
-      }
-      if (e.code === "Escape") {
-        setMenuSelection(1); // Set hover to "Online Multiplayer"
-        setGameState((p) => ({ ...p, status: "multiplayer_menu" }));
-      }
-    } else if (status === "online_lobby") {
-      if (e.code === "Escape") {
-        const isEditor = st.gameState.onlineMode === "editor";
-        onlineService.disconnect();
-        setGameState((p) => ({
-          ...p,
-          status: isEditor ? "editor_type_select" : "online_menu",
-          previousStatus: undefined,
-        }));
-        return;
-      }
-      if (e.code === "ArrowUp" || e.code === "KeyW") {
-        if (st.gameState.isHost && sel === 0) {
-          const sources: any[] =
-            st.gameState.onlineMode === "brawler"
-              ? ["brawler", "custom"]
-              : ["beginner", "advanced", "expert", "god", "custom"];
-          const currentIdx = sources.indexOf(st.levelSource);
-          let nextIdx = currentIdx - 1;
-          if (nextIdx < 0) nextIdx = sources.length - 1;
-          const newSource = sources[nextIdx];
-
-          setLevelSource(newSource);
-          setHighscoreLevelIndex(0);
-
-          const getList = (src: string) => {
-            if (src === "beginner") return INITIAL_LEVELS;
-            if (src === "advanced") return ADVANCED_LEVELS;
-            if (src === "expert") return EXPERT_LEVELS;
-            if (src === "god") return GOD_LEVELS;
-            if (src === "brawler") return BRAWLER_LEVELS;
-            return st.customLevels;
-          };
-
-          const list = getList(newSource);
-          if (list.length > 0) {
-            setLevel(list[0]);
-            onlineService.broadcastLobbyState(
-              st.gameState.onlineMode!,
-              list[0],
-              undefined,
-              brawlerTeamMode,
-              brawlerHazardMode,
-            );
-          }
-        } else {
-          const max = st.gameState.isHost ? 5 : 2;
-          setMenuSelection((prev) => (prev === 0 ? max : prev - 1));
-        }
-      }
-      if (e.code === "ArrowDown" || e.code === "KeyS") {
-        if (st.gameState.isHost && sel === 0) {
-          const sources: any[] =
-            st.gameState.onlineMode === "brawler"
-              ? ["brawler", "custom"]
-              : ["beginner", "advanced", "expert", "god", "custom"];
-          const currentIdx = sources.indexOf(st.levelSource);
-          let nextIdx = currentIdx + 1;
-          if (nextIdx >= sources.length) nextIdx = 0;
-          const newSource = sources[nextIdx];
-
-          setLevelSource(newSource);
-          setHighscoreLevelIndex(0);
-
-          const getList = (src: string) => {
-            if (src === "beginner") return INITIAL_LEVELS;
-            if (src === "advanced") return ADVANCED_LEVELS;
-            if (src === "expert") return EXPERT_LEVELS;
-            if (src === "god") return GOD_LEVELS;
-            if (src === "brawler") return BRAWLER_LEVELS;
-            return st.customLevels;
-          };
-
-          const list = getList(newSource);
-          if (list.length > 0) {
-            setLevel(list[0]);
-            onlineService.broadcastLobbyState(
-              st.gameState.onlineMode!,
-              list[0],
-              undefined,
-              brawlerTeamMode,
-              brawlerHazardMode,
-            );
-          }
-        } else {
-          const max = st.gameState.isHost ? 5 : 2;
-          setMenuSelection((prev) => (prev === max ? 0 : prev + 1));
-        }
-      }
-      if (st.gameState.isHost && sel === 0) {
-        if (e.code === "ArrowLeft" || e.code === "KeyA") {
-          const getList = (src: string) => {
-            if (src === "beginner") return INITIAL_LEVELS;
-            if (src === "advanced") return ADVANCED_LEVELS;
-            if (src === "expert") return EXPERT_LEVELS;
-            if (src === "god") return GOD_LEVELS;
-            if (src === "brawler") return BRAWLER_LEVELS;
-            return st.customLevels;
-          };
-          const list = getList(st.levelSource);
-          const newIdx = Math.max(0, st.highscoreLevelIndex - 1);
-          setHighscoreLevelIndex(newIdx);
-          setLevel(list[newIdx]);
-          onlineService.broadcastLobbyState(
-            st.gameState.onlineMode!,
-            list[newIdx],
-            undefined,
-            brawlerTeamMode,
-            brawlerHazardMode,
-          );
-        }
-        if (e.code === "ArrowRight" || e.code === "KeyD") {
-          const getList = (src: string) => {
-            if (src === "beginner") return INITIAL_LEVELS;
-            if (src === "advanced") return ADVANCED_LEVELS;
-            if (src === "expert") return EXPERT_LEVELS;
-            if (src === "god") return GOD_LEVELS;
-            if (src === "brawler") return BRAWLER_LEVELS;
-            return st.customLevels;
-          };
-          const list = getList(st.levelSource);
-          const newIdx = Math.min(list.length - 1, st.highscoreLevelIndex + 1);
-          setHighscoreLevelIndex(newIdx);
-          setLevel(list[newIdx]);
-          onlineService.broadcastLobbyState(
-            st.gameState.onlineMode!,
-            list[newIdx],
-            undefined,
-            brawlerTeamMode,
-            brawlerHazardMode,
-          );
-        }
-      }
-      if (e.code === "Enter" || e.code === "Space") {
-        if (st.gameState.isHost) {
-          if (sel === 1) {
-            setShowLevelMenu(true);
-          } else if (sel === 2) {
-            if (onlinePlayers.length < 2) {
-              setOnlineError("Need at least 2 players!");
-              setTimeout(() => setOnlineError(""), 2000);
-            } else if (onlinePlayers.every((p) => p.ready)) {
-              onlineService.startGame();
-            } else {
-              setOnlineError("Not all players are ready!");
-              setTimeout(() => setOnlineError(""), 2000);
-            }
-          } else if (sel === 3) {
-            setGameState((p) => ({
-              ...p,
-              status: "customizing",
-              previousStatus: "online_lobby",
-            }));
-          } else if (sel === 4) {
-            if (st.gameState.onlineMode === "brawler") {
-              setGameState((p) => ({
-                ...p,
-                status: "brawler_powerup_setup",
-                previousStatus: "online_lobby",
-              }));
-            } else if (st.gameState.onlineMode === "vs") {
-              const newValue = !st.gameState.collisionEnabled;
-              setGameState((p) => ({ ...p, collisionEnabled: newValue }));
-              onlineService.broadcastLobbyState(
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                newValue,
-              );
-            }
-          } else if (sel === 5) {
-            const isEditor = st.gameState.onlineMode === "editor";
-            onlineService.closeLobby();
-            setGameState((p) => ({
-              ...p,
-              status: isEditor ? "editor_type_select" : "online_menu",
-            }));
-          }
-        } else {
-          if (sel === 0) {
-            const localP = onlinePlayers.find(
-              (p) => p.id === onlineService.localPlayer?.id,
-            );
-            if (localP) onlineService.setReady(!localP.ready);
-          } else if (sel === 1) {
-            setGameState((p) => ({
-              ...p,
-              status: "customizing",
-              previousStatus: "online_lobby",
-            }));
-          } else if (sel === 2) {
-            const isEditor = st.gameState.onlineMode === "editor";
-            onlineService.disconnect();
-            setGameState((p) => ({
-              ...p,
-              status: isEditor ? "editor_type_select" : "online_menu",
-            }));
-          }
-        }
-      }
-    } else if (status === "custom_level_select") {
-      const sortedLevels = st.sortedCustomLevels;
-      if (sortedLevels.length > 0) {
-        if (e.code === "ArrowUp" || e.code === "KeyW")
-          setMenuSelection((prev) => Math.max(0, prev - 1));
-        if (e.code === "ArrowDown" || e.code === "KeyS")
-          setMenuSelection((prev) =>
-            Math.min(sortedLevels.length - 1, prev + 1),
-          );
-
-        if (e.code === "Enter") {
-          const selected = sortedLevels[sel];
-          if (selected.isVerified !== false) {
-            // Only play if not draft
-            playSingleCustomLevelHook(selected);
-          }
-        }
-        if (e.code === "Delete") {
-          setShowDeleteConfirm(sortedLevels[sel].id);
-          setMenuSelection(0);
-        }
-        if (e.code === "KeyE") handleEditLevel(sortedLevels[sel]);
-      }
-
-      if (e.code === "Escape") setGameState((p) => ({ ...p, status: "menu" }));
-    } else if (
-      status === "won" ||
-      status === "vs_won" ||
-      status === "brawler_won"
-    ) {
-      if (e.code === "Escape") {
-        if (onlineService.lobbyCode) {
-          setGameState((p) => ({ ...p, status: "online_lobby" }));
-        } else {
-          setGameState((p) => ({ ...p, status: "menu" }));
-        }
-      }
-
-      const isVS = status === "vs_won" || status === "brawler_won";
-      const queue = st.gameState.customLevelsQueue;
-      const hasNext =
-        queue && st.gameState.currentLevelIndex < queue.length - 1;
-
-      if (isVS) {
-        if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-        if (e.code === "ArrowDown" || e.code === "KeyS") {
-          let maxItems = 1;
-          if (hasNext)
-            maxItems = 2; // Next, Lobby, Menu
-          else if (!onlineService.lobbyCode) maxItems = 2; // Play Again, Lobby, Menu
-          navDown(maxItems);
-        }
-        if (e.code === "Enter" || e.code === "Space") {
-          if (hasNext) {
-            if (sel === 0) handleNextLevel();
-            else if (sel === 1) {
-              if (onlineService.lobbyCode && onlineService.isHost) {
-                onlineService.returnToLobby();
-              } else {
-                setGameState((p) => ({
-                  ...p,
-                  status: onlineService.lobbyCode
-                    ? "online_lobby"
-                    : p.status === "brawler_won"
-                      ? "brawler_setup"
-                      : "vs_setup",
-                }));
-              }
-            } else if (sel === 2) {
-              if (onlineService.lobbyCode) onlineService.disconnect();
-              setGameState((p) => ({ ...p, status: "menu" }));
-            }
-          } else if (onlineService.lobbyCode) {
-            // Online mode without next queue
-            if (sel === 0) {
-              if (onlineService.isHost) onlineService.returnToLobby();
-            } else if (sel === 1) {
-              onlineService.disconnect();
-              setGameState((p) => ({ ...p, status: "menu" }));
-            }
-          } else {
-            // Local mode without next queue
-            if (sel === 0) {
-              handleRetry();
-            } else if (sel === 1) {
-              setGameState((p) => ({
-                ...p,
-                status:
-                  p.status === "brawler_won" ? "brawler_setup" : "vs_setup",
-              }));
-            } else if (sel === 2) {
-              setGameState((p) => ({ ...p, status: "menu" }));
-            }
-          }
-        }
-      } else {
-        const isLastLevel =
-          !st.gameState.geometryDashMode &&
-          ((st.gameState.customLevelsQueue &&
-            st.gameState.currentLevelIndex >=
-              st.gameState.customLevelsQueue.length - 1) ||
-            (!st.gameState.customLevelsQueue &&
-              st.gameState.currentLevelIndex >=
-                st.selectedDifficultySet.length - 1));
-
-        if (!isLastLevel) {
-          if (e.code === "ArrowUp" || e.code === "KeyW") navUp();
-          if (e.code === "ArrowDown" || e.code === "KeyS") navDown(1);
-
-          if (e.code === "Enter" || e.code === "Space") {
-            if (sel === 0) {
-              const nextIdx = st.gameState.currentLevelIndex + 1;
-              const collection =
-                st.gameState.customLevelsQueue || st.selectedDifficultySet;
-
-              if (nextIdx < collection.length) {
-                setLevel(collection[nextIdx]);
-                processedCoins.current.clear();
-
-                // Clear state for next run
-                setOnlineResults([]);
-                setOnlineFinishTimer(null);
-                setCurrentVote(null);
-
-                setGameState((prev) => ({
-                  ...prev,
-                  status: prev.customLevelsQueue ? "random_run" : "playing",
-                  currentLevelIndex: nextIdx,
-                  levelTime: 0,
-                  levelDeaths: 0,
-                  blocksPlaced: 0,
-                  collectedCoins: [],
-                  score: prev.score,
-                  levelStartScore: prev.score,
-                }));
-
-                // Keep respawn logic tight for GD mode as handleNextLevel does
-                setRespawnTrigger((p) => p + 1);
-              } else {
-                setGameState((prev) => ({
-                  ...prev,
-                  status: "menu",
-                  geometryDashMode: false,
-                }));
-              }
-            } else if (sel === 1) {
-              setGameState((prev) => ({
-                ...prev,
-                status: prev.geometryDashMode ? "geometry_dash_menu" : "menu",
-                geometryDashMode: false,
-              }));
-            }
-          }
-        } else {
-          if (e.code === "Enter" || e.code === "Space") {
-            if (sel === 0 && st.playerName.length > 0) saveHighscore();
-          }
-        }
-      }
-    } else if (status === "achievements") {
-      if (e.code === "Escape") {
-        setGameState((p) => ({
-          ...p,
-          status: p.previousStatus || "menu",
-          previousStatus: undefined,
-        }));
-      }
-    } else if (status === "online_summary") {
-      const isHost = onlineService.isHost;
-      const isOnline = !!onlineService.lobbyCode;
-      const hasNext =
-        st.gameState.customLevelsQueue &&
-        st.gameState.currentLevelIndex <
-          st.gameState.customLevelsQueue.length - 1;
-
-      let maxItems = 1;
-      if (isOnline) {
-        if (isHost) {
-          maxItems = hasNext ? 3 : 2; // Next (if any), Repeat, Lobby, Menu
-        } else {
-          maxItems = 2; // Waiting, Lobby, Menu (3 buttons = index 0,1,2 so maxItems 2)
-        }
-      } else {
-        // Local mode
-        maxItems = hasNext ? 2 : 2; // Next, Mode Selection, Menu OR Play Again, Mode Selection, Menu
-      }
-
-      if (e.code === "ArrowUp" || e.code === "KeyW") {
-        setMenuSelection((prev) => (prev <= 0 ? maxItems : prev - 1));
-      }
-      if (e.code === "ArrowDown" || e.code === "KeyS") {
-        setMenuSelection((prev) => (prev >= maxItems ? 0 : prev + 1));
-      }
-      if (e.code === "Enter" || e.code === "Space") {
+        let maxItems = 1;
         if (isOnline) {
           if (isHost) {
-            if (hasNext) {
-              if (sel === 0) onlineService.initiateVote("next");
-              else if (sel === 1) onlineService.initiateVote("repeat");
-              else if (sel === 2) onlineService.returnToLobby();
-              else if (sel === 3) {
-                onlineService.disconnect();
-                setGameState((p) => ({ ...p, status: "menu" }));
-              }
-            } else {
-              if (sel === 0) onlineService.initiateVote("repeat");
-              else if (sel === 1) onlineService.returnToLobby();
-              else if (sel === 2) {
-                onlineService.disconnect();
-                setGameState((p) => ({ ...p, status: "menu" }));
-              }
-            }
+            maxItems = hasNext ? 3 : 2; // Next (if any), Repeat, Lobby, Menu
           } else {
-            if (sel === 1) {
-              setGameState((p) => ({ ...p, status: "online_lobby" }));
-            } else if (sel === 2) {
-              onlineService.disconnect();
-              setGameState((p) => ({ ...p, status: "menu" }));
-            }
+            maxItems = 2; // Waiting, Lobby, Menu (3 buttons = index 0,1,2 so maxItems 2)
           }
         } else {
           // Local mode
-          if (hasNext) {
-            if (sel === 0) handleNextLevel();
-            else if (sel === 1)
-              setGameState((p) => ({
-                ...p,
-                status:
-                  p.previousStatus === "brawler_playing"
-                    ? "brawler_setup"
-                    : "vs_setup",
-              }));
-            else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
+          maxItems = hasNext ? 2 : 2; // Next, Mode Selection, Menu OR Play Again, Mode Selection, Menu
+        }
+
+        if (e.code === "ArrowUp" || e.code === "KeyW") {
+          setMenuSelection((prev) => (prev <= 0 ? maxItems : prev - 1));
+        }
+        if (e.code === "ArrowDown" || e.code === "KeyS") {
+          setMenuSelection((prev) => (prev >= maxItems ? 0 : prev + 1));
+        }
+        if (e.code === "Enter" || e.code === "Space") {
+          if (isOnline) {
+            if (isHost) {
+              if (hasNext) {
+                if (sel === 0) onlineService.initiateVote("next");
+                else if (sel === 1) onlineService.initiateVote("repeat");
+                else if (sel === 2) onlineService.returnToLobby();
+                else if (sel === 3) {
+                  onlineService.disconnect();
+                  setGameState((p) => ({ ...p, status: "menu" }));
+                }
+              } else {
+                if (sel === 0) onlineService.initiateVote("repeat");
+                else if (sel === 1) onlineService.returnToLobby();
+                else if (sel === 2) {
+                  onlineService.disconnect();
+                  setGameState((p) => ({ ...p, status: "menu" }));
+                }
+              }
+            } else {
+              if (sel === 1) {
+                setGameState((p) => ({ ...p, status: "online_lobby" }));
+              } else if (sel === 2) {
+                onlineService.disconnect();
+                setGameState((p) => ({ ...p, status: "menu" }));
+              }
+            }
           } else {
-            if (sel === 0) handleRetry();
-            else if (sel === 1)
-              setGameState((p) => ({
-                ...p,
-                status:
-                  p.previousStatus === "brawler_playing"
-                    ? "brawler_setup"
-                    : "vs_setup",
-              }));
-            else if (sel === 2) setGameState((p) => ({ ...p, status: "menu" }));
+            // Local mode
+            if (hasNext) {
+              if (sel === 0) handleNextLevel();
+              else if (sel === 1)
+                setGameState((p) => ({
+                  ...p,
+                  status:
+                    p.previousStatus === "brawler_playing"
+                      ? "brawler_setup"
+                      : "vs_setup",
+                }));
+              else if (sel === 2)
+                setGameState((p) => ({ ...p, status: "menu" }));
+            } else {
+              if (sel === 0) handleRetry();
+              else if (sel === 1)
+                setGameState((p) => ({
+                  ...p,
+                  status:
+                    p.previousStatus === "brawler_playing"
+                      ? "brawler_setup"
+                      : "vs_setup",
+                }));
+              else if (sel === 2)
+                setGameState((p) => ({ ...p, status: "menu" }));
+            }
           }
         }
       }
-    }
-  }, [showInGameChat]); // Dependency array updated
+    },
+    [showInGameChat],
+  ); // Dependency array updated
 
   useEffect(() => {
     // Prevent gaming mouse thumb buttons (Back/Forward) from leaving the game
@@ -6245,7 +6451,7 @@ const App: React.FC = () => {
       setLevel(initialLevel);
       setGameState((p) => ({
         ...p,
-        status: "online_lobby",
+        status: mode === "build_battle" ? "build_battle_setup" : "online_lobby",
         lobbyCode: code,
         isHost: true,
         onlineMode: mode,
@@ -6260,6 +6466,7 @@ const App: React.FC = () => {
         [],
         brawlerTeamMode,
         brawlerHazardMode,
+        mode === "build_battle" ? "build_battle_setup" : "lobby",
       );
       setSelectedLevels([]);
     } catch (err: any) {
@@ -6448,14 +6655,24 @@ const App: React.FC = () => {
         setEditorVerified(false);
       }
 
+      if (gameMode === "build_battle") {
+        setBuildBattleVotes({ P1: null, P2: null });
+        setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+        setBuildBattleVoteTimer(null);
+        setBuildBattleScores({ P1: 0, P2: 0 });
+        setBuildBattleRound(1);
+      }
+
       setGameState((p) => ({
         ...p,
         status:
           gameMode === "editor"
             ? "editor"
-            : gameMode === "brawler"
-              ? "brawler_playing"
-              : "vs_playing",
+            : gameMode === "build_battle"
+              ? "build_battle_vote"
+              : gameMode === "brawler"
+                ? "brawler_playing"
+                : "vs_playing",
         levelTime: 0,
         levelDeaths: 0,
         collectedCoins: [],
@@ -6518,6 +6735,16 @@ const App: React.FC = () => {
           previousStatus: p.status,
         }));
         setOnlineFinishTimer(null);
+      } else if (
+        status === "build_battle_setup" ||
+        status === "build_battle_vote" ||
+        status === "build_battle_playing" ||
+        status === "build_battle_won"
+      ) {
+        setGameState((p) => ({
+          ...p,
+          status: status as Status,
+        }));
       } else if (status === "closed") {
         const isEditor = stateRef.current.gameState.onlineMode === "editor";
         setGameState((p) => ({
@@ -6570,7 +6797,9 @@ const App: React.FC = () => {
 
     onlineService.onAppEvent = (id, event, data) => {
       if (event === "bb_remote_key" && onlineService.isHost) {
-        window.dispatchEvent(new KeyboardEvent("keydown", { code: data.code, key: data.key }));
+        window.dispatchEvent(
+          new KeyboardEvent("keydown", { code: data.code, key: data.key }),
+        );
       }
       if (event === "bb_sync" && !onlineService.isHost) {
         setBuildBattlePhase(data.phase);
@@ -7132,8 +7361,16 @@ const App: React.FC = () => {
             status: "build_battle_won",
             winner: "NIEMAND (ZEIT ABGELAUFEN)",
           }));
-        } else if (winnerName.startsWith("AUFGEBEN") || winnerName === "GAVE UP") {
-          const who = winnerName === "AUFGEBEN_P1" ? "Spieler 1" : winnerName === "AUFGEBEN_P2" ? "Spieler 2" : "Ein Spieler";
+        } else if (
+          winnerName.startsWith("AUFGEBEN") ||
+          winnerName === "GAVE UP"
+        ) {
+          const who =
+            winnerName === "AUFGEBEN_P1"
+              ? "Spieler 1"
+              : winnerName === "AUFGEBEN_P2"
+                ? "Spieler 2"
+                : "Ein Spieler";
           showToast(`${who} hat aufgegeben! Keine Punkte.`);
           setGameState((p) => ({
             ...p,
@@ -7173,8 +7410,18 @@ const App: React.FC = () => {
         }
         if (onlineService.lobbyCode && onlineService.isHost) {
           onlineService.broadcastLobbyState(
-            undefined, undefined, undefined, undefined, undefined,
-            "build_battle_won", undefined, undefined, undefined, undefined, undefined, undefined
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            "build_battle_won",
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
           );
         }
         return;
@@ -7828,8 +8075,12 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
               const snap = getBombSnappedPosition(pX, pY, allBlocks);
               pX = snap.snapX;
@@ -7839,8 +8090,12 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
               const snap = getGlueSnappedPosition(pX, pY, w, h, allBlocks);
               pX = snap.finalX;
@@ -7849,10 +8104,20 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
-              const snap = getBlockSnappedToGluePosition(pX, pY, w, h, allBlocks);
+              const snap = getBlockSnappedToGluePosition(
+                pX,
+                pY,
+                w,
+                h,
+                allBlocks,
+              );
               if (snap.success) {
                 pX = snap.finalX;
                 pY = snap.finalY;
@@ -7889,8 +8154,12 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
               const snap = getBombSnappedPosition(pX, pY, allBlocks);
               pX = snap.snapX;
@@ -7900,8 +8169,12 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
               const snap = getGlueSnappedPosition(pX, pY, w, h, allBlocks);
               pX = snap.finalX;
@@ -7910,10 +8183,20 @@ const App: React.FC = () => {
               const allBlocks = [
                 ...(level.entities || []),
                 ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1 ? [buildBattlePlacedThisRound.P1] : []),
-                ...(buildBattlePlacedThisRound.P2 ? [buildBattlePlacedThisRound.P2] : []),
+                ...(buildBattlePlacedThisRound.P1
+                  ? [buildBattlePlacedThisRound.P1]
+                  : []),
+                ...(buildBattlePlacedThisRound.P2
+                  ? [buildBattlePlacedThisRound.P2]
+                  : []),
               ];
-              const snap = getBlockSnappedToGluePosition(pX, pY, w, h, allBlocks);
+              const snap = getBlockSnappedToGluePosition(
+                pX,
+                pY,
+                w,
+                h,
+                allBlocks,
+              );
               if (snap.success) {
                 pX = snap.finalX;
                 pY = snap.finalY;
@@ -8858,8 +9141,12 @@ const App: React.FC = () => {
                         if (e.key === "Enter") {
                           if (inGameChatText.trim()) {
                             onlineService.sendChatMessage(inGameChatText);
-                            const newCount = (gameState.chatMessagesSent || 0) + 1;
-                            setGameState((p) => ({ ...p, chatMessagesSent: newCount }));
+                            const newCount =
+                              (gameState.chatMessagesSent || 0) + 1;
+                            setGameState((p) => ({
+                              ...p,
+                              chatMessagesSent: newCount,
+                            }));
                             checkAchievements({ chatMessagesSent: newCount });
                             setInGameChatText("");
                           }
@@ -8935,8 +9222,13 @@ const App: React.FC = () => {
                         <span className="text-green-400 font-arcade text-lg tracking-wider">
                           ZEIT
                         </span>
-                        <span className={`font-arcade text-3xl ${buildBattlePhaseTimer <= 30 ? "text-red-500 animate-pulse" : "text-white"}`}>
-                          {Math.floor(buildBattlePhaseTimer / 60)}:{(buildBattlePhaseTimer % 60).toString().padStart(2, "0")}
+                        <span
+                          className={`font-arcade text-3xl ${buildBattlePhaseTimer <= 30 ? "text-red-500 animate-pulse" : "text-white"}`}
+                        >
+                          {Math.floor(buildBattlePhaseTimer / 60)}:
+                          {(buildBattlePhaseTimer % 60)
+                            .toString()
+                            .padStart(2, "0")}
                         </span>
                       </div>
                     )}
@@ -10498,6 +10790,19 @@ const App: React.FC = () => {
                                   ...p,
                                   status: "build_battle_vote",
                                 }));
+                                if (
+                                  onlineService.lobbyCode &&
+                                  onlineService.isHost
+                                ) {
+                                  onlineService.broadcastLobbyState(
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    undefined,
+                                    "build_battle_vote",
+                                  );
+                                }
                               } else {
                                 setGameState((p) => ({
                                   ...p,
@@ -13044,7 +13349,8 @@ const App: React.FC = () => {
                             })),
                         });
 
-                        const isBuildBattle = gameState.previousStatus === "build_battle_playing";
+                        const isBuildBattle =
+                          gameState.previousStatus === "build_battle_playing";
 
                         if (isBuildBattle && !onlineService.lobbyCode) {
                           buttons.push({
@@ -13055,7 +13361,10 @@ const App: React.FC = () => {
                                 ...p,
                                 status: p.previousStatus || "playing",
                               }));
-                              setBuildBattleSurrenders((prev) => ({ ...prev, P1: true }));
+                              setBuildBattleSurrenders((prev) => ({
+                                ...prev,
+                                P1: true,
+                              }));
                             },
                           });
                           buttons.push({
@@ -13066,14 +13375,18 @@ const App: React.FC = () => {
                                 ...p,
                                 status: p.previousStatus || "playing",
                               }));
-                              setBuildBattleSurrenders((prev) => ({ ...prev, P2: true }));
+                              setBuildBattleSurrenders((prev) => ({
+                                ...prev,
+                                P2: true,
+                              }));
                             },
                           });
                         }
 
                         if (!isBuildBattle) {
                           if (
-                            (!onlineService.lobbyCode || onlineService.isHost) &&
+                            (!onlineService.lobbyCode ||
+                              onlineService.isHost) &&
                             gameState.customLevelsQueue &&
                             gameState.customLevelsQueue.length > 1
                           ) {
@@ -13148,7 +13461,10 @@ const App: React.FC = () => {
                                 status: p.previousStatus || "playing",
                               }));
                               if (isBuildBattle) {
-                                setBuildBattleSurrenders((prev) => ({ ...prev, [playerName]: true }));
+                                setBuildBattleSurrenders((prev) => ({
+                                  ...prev,
+                                  [playerName]: true,
+                                }));
                               } else {
                                 // Locally we treat it as finished with poor stats
                                 handleWin("GAVE UP");
@@ -13540,7 +13856,10 @@ const App: React.FC = () => {
                       className="bg-neutral-950 p-8 border-2 border-yellow-500 rounded-3xl flex flex-col items-center w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.25)]"
                     >
                       <div className="text-5xl mb-4 animate-bounce">
-                        {gameState.winner && gameState.winner.includes("NIEMAND") ? "🏳️" : "👑"}
+                        {gameState.winner &&
+                        gameState.winner.includes("NIEMAND")
+                          ? "🏳️"
+                          : "👑"}
                       </div>
 
                       <h2 className="text-2xl text-yellow-400 font-extrabold font-arcade mb-2 text-center uppercase tracking-wider">
@@ -13596,7 +13915,9 @@ const App: React.FC = () => {
                               <span>🏆 Rundensieg (+1 Pkt):</span>
                               <span className="font-bold">
                                 {lastBuildBattleRoundStats.winner &&
-                                !lastBuildBattleRoundStats.winner.startsWith("NIEMAND") &&
+                                !lastBuildBattleRoundStats.winner.startsWith(
+                                  "NIEMAND",
+                                ) &&
                                 lastBuildBattleRoundStats.winner !==
                                   "EVERYONE_FINISHED" ? (
                                   <span
@@ -13612,7 +13933,9 @@ const App: React.FC = () => {
                                     {lastBuildBattleRoundStats.winner}
                                   </span>
                                 ) : (
-                                  <span className="text-gray-500">{lastBuildBattleRoundStats.winner}</span>
+                                  <span className="text-gray-500">
+                                    {lastBuildBattleRoundStats.winner}
+                                  </span>
                                 )}
                               </span>
                             </div>
@@ -13714,7 +14037,11 @@ const App: React.FC = () => {
                               {matchWinner ? (
                                 <button
                                   onClick={() => {
-                                    if (onlineService.lobbyCode && !onlineService.isHost) return;
+                                    if (
+                                      onlineService.lobbyCode &&
+                                      !onlineService.isHost
+                                    )
+                                      return;
                                     setBuildBattleScores({ P1: 0, P2: 0 });
                                     setBuildBattleRound(1);
                                     setBuildBattleVotes({ P1: null, P2: null });
@@ -13727,8 +14054,24 @@ const App: React.FC = () => {
                                       ...p,
                                       status: "build_battle_vote",
                                     }));
-                                    if (onlineService.lobbyCode && onlineService.isHost) {
-                                      onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_vote", undefined, undefined, undefined, undefined, undefined, undefined);
+                                    if (
+                                      onlineService.lobbyCode &&
+                                      onlineService.isHost
+                                    ) {
+                                      onlineService.broadcastLobbyState(
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        "build_battle_vote",
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                      );
                                     }
                                     showToast(
                                       "Neues Match & Abstimmung gestartet!",
@@ -13742,7 +14085,11 @@ const App: React.FC = () => {
                                 <div
                                   className="relative overflow-hidden w-full bg-neutral-900 rounded-xl border-2 border-yellow-500/50 flex flex-col justify-center cursor-pointer mb-2"
                                   onClick={() => {
-                                    if (onlineService.lobbyCode && !onlineService.isHost) return;
+                                    if (
+                                      onlineService.lobbyCode &&
+                                      !onlineService.isHost
+                                    )
+                                      return;
                                     const newItems = get8UniqueBuildBattleItems(
                                       buildBattleAllowedItems,
                                     );
@@ -13774,8 +14121,24 @@ const App: React.FC = () => {
                                       ...p,
                                       status: "build_battle_playing",
                                     }));
-                                    if (onlineService.lobbyCode && onlineService.isHost) {
-                                      onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_playing", undefined, undefined, undefined, undefined, undefined, undefined);
+                                    if (
+                                      onlineService.lobbyCode &&
+                                      onlineService.isHost
+                                    ) {
+                                      onlineService.broadcastLobbyState(
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        "build_battle_playing",
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                        undefined,
+                                      );
                                     }
                                     showToast(
                                       `Start Runde ${buildBattleRound + 1}!`,
@@ -13801,13 +14164,33 @@ const App: React.FC = () => {
 
                               <button
                                 onClick={() => {
-                                  if (onlineService.lobbyCode && !onlineService.isHost) return;
+                                  if (
+                                    onlineService.lobbyCode &&
+                                    !onlineService.isHost
+                                  )
+                                    return;
                                   setGameState((p) => ({
                                     ...p,
                                     status: "build_battle_setup",
                                   }));
-                                  if (onlineService.lobbyCode && onlineService.isHost) {
-                                    onlineService.broadcastLobbyState(undefined, undefined, undefined, undefined, undefined, "build_battle_setup", undefined, undefined, undefined, undefined, undefined, undefined);
+                                  if (
+                                    onlineService.lobbyCode &&
+                                    onlineService.isHost
+                                  ) {
+                                    onlineService.broadcastLobbyState(
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      "build_battle_setup",
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                      undefined,
+                                    );
                                   }
                                 }}
                                 className="py-2.5 px-6 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-white font-bold rounded-xl text-[10px] tracking-wider uppercase transition-all font-arcade text-center"
@@ -13817,6 +14200,11 @@ const App: React.FC = () => {
 
                               <button
                                 onClick={() => {
+                                  if (onlineService.lobbyCode) {
+                                    if (onlineService.isHost)
+                                      onlineService.closeLobby();
+                                    else onlineService.disconnect();
+                                  }
                                   setGameState((p) => ({
                                     ...p,
                                     status: "menu",
@@ -15165,23 +15553,26 @@ const App: React.FC = () => {
                       if (onlineService.lobbyCode && gameState.isHost) {
                         const firstLevel = selectedLevels[0];
                         setLevel(firstLevel);
-                        
+
                         let nextStatus = undefined;
-                        if (gameState.status === "vs_setup") nextStatus = "vs_playing";
-                        else if (gameState.status === "brawler_setup") nextStatus = "brawler_powerup_setup";
-                        else if (gameState.status === "build_battle_setup") nextStatus = "build_battle_vote";
+                        if (gameState.status === "vs_setup")
+                          nextStatus = "vs_playing";
+                        else if (gameState.status === "brawler_setup")
+                          nextStatus = "brawler_powerup_setup";
+                        else if (gameState.status === "build_battle_setup")
+                          nextStatus = "build_battle_vote";
 
                         setGameState((p) => ({
                           ...p,
                           customLevelsQueue: selectedLevels,
                           currentLevelIndex: 0,
-                          ...(nextStatus ? { status: nextStatus } : {})
+                          ...(nextStatus ? { status: nextStatus } : {}),
                         }));
-                        
+
                         if (nextStatus === "build_battle_vote") {
-                           setBuildBattleVotes({ P1: null, P2: null });
-                           setBuildBattleVoteSelection({ P1: 0, P2: 1 });
-                           setBuildBattleVoteTimer(null);
+                          setBuildBattleVotes({ P1: null, P2: null });
+                          setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+                          setBuildBattleVoteTimer(null);
                         }
 
                         onlineService.broadcastLobbyState(
