@@ -2768,7 +2768,7 @@ const App: React.FC = () => {
       return false;
     };
 
-    const handlePlayerAction = (slot: string, action: "up" | "down" | "left" | "right" | "rotate" | "confirm") => {
+    const handlePlayerAction = (slot: string, action: "up" | "down" | "left" | "right" | "rotate" | "confirm", overrideX?: number, overrideY?: number) => {
       if (gameState.status === "build_battle_vote") {
         const totalLevels = BUILD_BATTLE_LEVELS.length;
         if (!buildBattleVotes[slot]) {
@@ -2888,8 +2888,8 @@ const App: React.FC = () => {
           if (action === "confirm") {
             const itm = buildBattleItems[buildBattleSelection[slot] ?? 0];
             if (itm) {
-              const px = buildBattleCursors[slot]?.x ?? 480;
-              const py = buildBattleCursors[slot]?.y ?? 270;
+              const px = overrideX ?? buildBattleCursors[slot]?.x ?? 480;
+              const py = overrideY ?? buildBattleCursors[slot]?.y ?? 270;
               let w = itm.args?.w || 30;
               let h = itm.args?.h || 30;
               if (buildBattleRotation[slot] && itm.type !== "orbit") {
@@ -2956,8 +2956,8 @@ const App: React.FC = () => {
       }
     };
 
-    buildBattleActionRef.current = (slot, action) => {
-      handlePlayerAction(slot, action as any);
+    buildBattleActionRef.current = (slot, action, x, y) => {
+      handlePlayerAction(slot, action as any, x, y);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3281,7 +3281,7 @@ const App: React.FC = () => {
   const [voteConfirmType, setVoteConfirmType] = useState<VoteType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const buildBattleActionRef = useRef<((slot: string, action: string) => void) | null>(null);
+  const buildBattleActionRef = useRef<((slot: string, action: string, x?: number, y?: number) => void) | null>(null);
 
   const [onlineSuggestions, setOnlineSuggestions] = useState<any[]>([]);
   const [showSuggestionMenu, setShowSuggestionMenu] = useState(false);
@@ -6611,7 +6611,7 @@ const App: React.FC = () => {
             [slot]: { x: gx, y: gy },
           }));
           if (buildBattleActionRef.current) {
-            buildBattleActionRef.current(slot, "confirm");
+            buildBattleActionRef.current(slot, "confirm", gx, gy);
           }
         } else if (bAction === "rightclick") {
           if (buildBattleActionRef.current) {
@@ -8855,17 +8855,31 @@ const App: React.FC = () => {
                     buildBattleSurrenders={buildBattleSurrenders}
                     onBuildBattleMouseAction={(x, y, action) => {
                       if (
-                        onlineService.lobbyCode &&
                         !gameState.isSpectating &&
                         buildBattlePhase === "build"
                       ) {
                         const localSlot = onlineService.lobbyCode
                           ? getPlayerKey(onlineService.localPlayer?.id || "")
                           : "P1";
-                        const gx = Math.round(x / 30) * 30;
-                        const gy = Math.round(y / 30) * 30;
+                          
+                        const selectedIdx = buildBattleSelection[localSlot] ?? 0;
+                        const itm = buildBattleItems[selectedIdx];
+                        let w = 30;
+                        let h = 30;
+                        if (itm && itm.args) {
+                          w = itm.args.w || 30;
+                          h = itm.args.h || 30;
+                        }
+                        if (buildBattleRotation[localSlot] && itm?.type !== "orbit") {
+                          const tmp = w;
+                          w = h;
+                          h = tmp;
+                        }
 
-                        if (onlineService.isHost) {
+                        const gx = Math.floor((x - w / 2 + 15) / 30) * 30;
+                        const gy = Math.floor((y - h / 2 + 15) / 30) * 30;
+
+                        if (!onlineService.lobbyCode || onlineService.isHost) {
                           if (action === "move") {
                             setBuildBattleCursors((prev) => ({
                               ...prev,
@@ -8877,7 +8891,7 @@ const App: React.FC = () => {
                               [localSlot]: { x: gx, y: gy },
                             }));
                             if (buildBattleActionRef.current) {
-                              buildBattleActionRef.current(localSlot, "confirm");
+                              buildBattleActionRef.current(localSlot, "confirm", gx, gy);
                             }
                           } else if (action === "rightclick") {
                             if (buildBattleActionRef.current) {

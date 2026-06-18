@@ -2550,7 +2550,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       y: (screenY - GAME_HEIGHT / 2) / zoom + cy,
     }; // Raw for hook
 
-    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction) {
+    if (status === "build_battle_playing" && onBuildBattleMouseAction) {
       onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "move");
     }
   };
@@ -2558,11 +2558,25 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (paused || isStartingRef.current) return;
     hasStartedMoving.current = true;
+    
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = GAME_WIDTH / rect.width;
+      const scaleY = GAME_HEIGHT / rect.height;
+      const screenX = (e.clientX - rect.left) * scaleX;
+      const screenY = (e.clientY - rect.top) * scaleY;
+      const cx = cameraRef.current.x + GAME_WIDTH / 2;
+      const cy = cameraRef.current.y + GAME_HEIGHT / 2;
+      const zoom = cameraZoom.current || 1.0;
+      mouseRef.current = {
+        x: (screenX - GAME_WIDTH / 2) / zoom + cx,
+        y: (screenY - GAME_HEIGHT / 2) / zoom + cy,
+      };
+    }
 
-    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction && e.button === 0) {
-      setTimeout(() => {
-        onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "click");
-      }, 0);
+    if (status === "build_battle_playing" && onBuildBattleMouseAction) {
+      onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "click");
     }
 
     const pLocal = players.current.find(
@@ -2580,7 +2594,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     if (gameMode === "brawler") return;
 
-    const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = GAME_WIDTH / rect.width;
@@ -2741,7 +2754,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction) {
+    if (status === "build_battle_playing" && onBuildBattleMouseAction) {
       setTimeout(() => {
         onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "rightclick");
       }, 0);
