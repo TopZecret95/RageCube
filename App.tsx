@@ -2171,6 +2171,22 @@ const App: React.FC = () => {
   const [currentVote, setCurrentVote] = useState<VoteData | null>(null);
 
   // --- BUILD-BATTLE STATES ---
+  const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
+
+  const getPlayerKey = useCallback((playerId: string) => {
+    if (!onlineService.lobbyCode) return "P1";
+    const sorted = [...onlinePlayers].sort((a, b) => a.id.localeCompare(b.id));
+    const idx = sorted.findIndex((p) => p.id === playerId);
+    return idx !== -1 ? `P${idx + 1}` : "P1";
+  }, [onlinePlayers]);
+
+  const activeSlots = useMemo(() => {
+    if (onlineService.lobbyCode) {
+      return onlinePlayers.map((_, idx) => `P${idx + 1}`);
+    }
+    return ["P1", "P2"];
+  }, [onlinePlayers]);
+
   const [buildBattlePhase, setBuildBattlePhase] = useState<
     "select" | "build" | "countdown" | "run"
   >("select");
@@ -2215,25 +2231,21 @@ const App: React.FC = () => {
   const [buildBattleItems, setBuildBattleItems] = useState<
     { id: string; type: string; args?: any; label: string; icon: string }[]
   >([]);
-  const [buildBattleSelection, setBuildBattleSelection] = useState<{
-    P1: number;
-    P2: number;
-  }>({ P1: 0, P2: 1 });
-  const [buildBattleConfirmed, setBuildBattleConfirmed] = useState<{
-    P1: boolean;
-    P2: boolean;
-  }>({ P1: false, P2: false });
+  const [buildBattleSelection, setBuildBattleSelection] = useState<
+    Record<string, number>
+  >({ P1: 0, P2: 1 });
+  const [buildBattleConfirmed, setBuildBattleConfirmed] = useState<
+    Record<string, boolean>
+  >({ P1: false, P2: false });
   const [buildBattleSurrenders, setBuildBattleSurrenders] = useState<
     Record<string, boolean>
   >({});
-  const [buildBattleRotation, setBuildBattleRotation] = useState<{
-    P1: boolean;
-    P2: boolean;
-  }>({ P1: false, P2: false });
-  const [buildBattleCursors, setBuildBattleCursors] = useState<{
-    P1: { x: number; y: number };
-    P2: { x: number; y: number };
-  }>({ P1: { x: 480, y: 270 }, P2: { x: 480, y: 270 } });
+  const [buildBattleRotation, setBuildBattleRotation] = useState<
+    Record<string, boolean>
+  >({ P1: false, P2: false });
+  const [buildBattleCursors, setBuildBattleCursors] = useState<
+    Record<string, { x: number; y: number }>
+  >({ P1: { x: 480, y: 270 }, P2: { x: 480, y: 270 } });
 
   const [buildTurn, setBuildTurn] = useState<number>(0); // 0 = Player 1, 1 = Player 2 (may be unused now)
   const [selectedBuildItem, setSelectedBuildItem] = useState<string>("wall");
@@ -2492,21 +2504,20 @@ const App: React.FC = () => {
     if (gameState.status === "build_battle_playing") {
       if (
         (buildBattlePhase === "select" || buildBattlePhase === "build") &&
-        buildBattleConfirmed.P1 &&
-        buildBattleConfirmed.P2
+        activeSlots.every(slot => buildBattleConfirmed[slot])
       ) {
         setBuildBattlePhaseTimer(0);
       }
     }
-  }, [buildBattleConfirmed, buildBattlePhase, gameState.status]);
+  }, [buildBattleConfirmed, buildBattlePhase, gameState.status, activeSlots]);
 
   // Build Battle Keyboard Handling
   useEffect(() => {
     if (gameState.status !== "build_battle_playing") return;
 
-    const moveCursor = (player: "P1" | "P2", dx: number, dy: number) => {
+    const moveCursor = (player: string, dx: number, dy: number) => {
       setBuildBattleCursors((prev) => {
-        const cur = prev[player];
+        const cur = prev[player] || { x: 480, y: 270 };
         let nx = cur.x + dx * 30;
         let ny = cur.y + dy * 30;
         const maxW = level.width ? level.width - 30 : 1470;
@@ -2515,23 +2526,6 @@ const App: React.FC = () => {
         ny = Math.max(0, Math.min(ny, maxH));
         return { ...prev, [player]: { x: nx, y: ny } };
       });
-    };
-
-    const getNextAvailableIndex = (
-      current: number,
-      dir: number,
-      otherConfirmed: boolean,
-      otherSelectionIndex: number,
-      total: number,
-    ) => {
-      let check = current;
-      for (let i = 0; i < total; i++) {
-        check = (check + dir + total) % total;
-        if (!(otherConfirmed && otherSelectionIndex === check)) {
-          return check;
-        }
-      }
-      return current;
     };
 
     const isProtectedLevelBlock = (ent: any) => {
@@ -2565,14 +2559,13 @@ const App: React.FC = () => {
     };
 
     const applyModifier = (
-      player: "P1" | "P2",
+      player: string,
       itm: any,
       px: number,
       py: number,
       w: number,
       h: number,
     ) => {
-      // 1. Find in buildBattlePlacedEntities
       let pIdx = buildBattlePlacedEntities.findIndex(
         (ent) =>
           px < ent.x + ent.w &&
@@ -2610,7 +2603,6 @@ const App: React.FC = () => {
         return true;
       }
 
-      // 2. Find in level.entities (static blocks)
       const lEnt = level.entities?.find(
         (ent) =>
           (ent.type === "wall" ||
@@ -2656,7 +2648,7 @@ const App: React.FC = () => {
       return false;
     };
 
-    const applyBomb = (player: "P1" | "P2", px: number, py: number) => {
+    const applyBomb = (player: string, px: number, py: number) => {
       const overlapW = 30;
       const overlapH = 30;
 
@@ -2712,7 +2704,6 @@ const App: React.FC = () => {
         return pieces;
       };
 
-      // Use the smart snappable bomb finder
       const allBlocks = [
         ...(level.entities || []),
         ...buildBattlePlacedEntities,
@@ -2721,7 +2712,6 @@ const App: React.FC = () => {
 
       if (snapResult.found) {
         const ent = snapResult.target;
-        // Check if it exists in battle placed entities
         const pIdx = buildBattlePlacedEntities.findIndex(
           (e) => e.id === ent.id,
         );
@@ -2745,7 +2735,6 @@ const App: React.FC = () => {
           return true;
         }
 
-        // Check if it exists in level entities
         const lIdx = level.entities?.findIndex(
           (e) =>
             e.id === ent.id ||
@@ -2782,157 +2771,104 @@ const App: React.FC = () => {
       return false;
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (onlineService.lobbyCode && !onlineService.isHost) {
-        let sendCode = e.code;
-        let sendKey = e.key;
-        if (e.code === "KeyW") {
-          sendCode = "ArrowUp";
-          sendKey = "ArrowUp";
+    const handlePlayerAction = (slot: string, action: "up" | "down" | "left" | "right" | "rotate" | "confirm") => {
+      if (gameState.status === "build_battle_vote") {
+        const totalLevels = BUILD_BATTLE_LEVELS.length;
+        if (!buildBattleVotes[slot]) {
+          if (action === "up" || action === "left") {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              [slot]: ((p[slot] ?? 0) - 1 + totalLevels) % totalLevels,
+            }));
+          }
+          if (action === "down" || action === "right") {
+            setBuildBattleVoteSelection((p) => ({
+              ...p,
+              [slot]: ((p[slot] ?? 0) + 1) % totalLevels,
+            }));
+          }
+          if (action === "confirm") {
+            const lvl = BUILD_BATTLE_LEVELS[buildBattleVoteSelection[slot] ?? 0];
+            if (lvl) {
+              setBuildBattleVotes((prev) => ({ ...prev, [slot]: lvl.id }));
+              audio.playCoin && audio.playCoin();
+            }
+          }
+        } else {
+          if (action === "confirm") {
+            setBuildBattleVotes((prev) => ({ ...prev, [slot]: null }));
+            audio.playDie && audio.playDie();
+          }
         }
-        if (e.code === "KeyS") {
-          sendCode = "ArrowDown";
-          sendKey = "ArrowDown";
-        }
-        if (e.code === "KeyA") {
-          sendCode = "ArrowLeft";
-          sendKey = "ArrowLeft";
-        }
-        if (e.code === "KeyD") {
-          sendCode = "ArrowRight";
-          sendKey = "ArrowRight";
-        }
-        if (e.code === "Space" || e.code === "KeyQ") {
-          sendCode = "Enter";
-          sendKey = "Enter";
-        }
-        if (e.code === "KeyE") {
-          sendCode = "ControlRight";
-          sendKey = "Control";
-        }
-        onlineService.sendEvent("bb_remote_key", {
-          code: sendCode,
-          key: sendKey,
-        });
         return;
       }
+
       if (buildBattleIntroCountdown > 0) return;
 
+      // Select Phase
       if (buildBattlePhase === "select") {
         const totalItems = buildBattleItems.length;
-        if (!buildBattleConfirmed.P1) {
-          if (e.code === "KeyW" || e.code === "KeyA") {
+        if (!buildBattleConfirmed[slot]) {
+          if (action === "up" || action === "left") {
             setBuildBattleSelection((p) => {
-              const next = getNextAvailableIndex(
-                p.P1,
-                -1,
-                buildBattleConfirmed.P2,
-                p.P2,
-                totalItems,
-              );
-              return { ...p, P1: next };
+              const isOtherConfirmed = (idxToCheck: number) => {
+                return activeSlots.some(otherSlot => 
+                  otherSlot !== slot && 
+                  buildBattleConfirmed[otherSlot] && 
+                  buildBattleSelection[otherSlot] === idxToCheck
+                );
+              };
+              let next = p[slot] ?? 0;
+              for (let i = 0; i < totalItems; i++) {
+                next = (next - 1 + totalItems) % totalItems;
+                if (!isOtherConfirmed(next)) break;
+              }
+              return { ...p, [slot]: next };
             });
           }
-          if (e.code === "KeyS" || e.code === "KeyD") {
+          if (action === "down" || action === "right") {
             setBuildBattleSelection((p) => {
-              const next = getNextAvailableIndex(
-                p.P1,
-                1,
-                buildBattleConfirmed.P2,
-                p.P2,
-                totalItems,
-              );
-              return { ...p, P1: next };
+              const isOtherConfirmed = (idxToCheck: number) => {
+                return activeSlots.some(otherSlot => 
+                  otherSlot !== slot && 
+                  buildBattleConfirmed[otherSlot] && 
+                  buildBattleSelection[otherSlot] === idxToCheck
+                );
+              };
+              let next = p[slot] ?? 0;
+              for (let i = 0; i < totalItems; i++) {
+                next = (next + 1) % totalItems;
+                if (!isOtherConfirmed(next)) break;
+              }
+              return { ...p, [slot]: next };
             });
           }
-          if (e.code === "Space" || e.code === "KeyQ") {
-            if (
-              buildBattleConfirmed.P2 &&
-              buildBattleSelection.P2 === buildBattleSelection.P1
-            ) {
+          if (action === "confirm") {
+            const currentSelection = buildBattleSelection[slot] ?? 0;
+            const isTaken = activeSlots.some(otherSlot => 
+              otherSlot !== slot && 
+              buildBattleConfirmed[otherSlot] && 
+              buildBattleSelection[otherSlot] === currentSelection
+            );
+            if (isTaken) {
               showToast("Bereits gewaehlt!");
             } else {
-              setBuildBattleConfirmed((p) => ({ ...p, P1: true }));
-              setBuildBattleSelection((prev) => {
-                if (prev.P2 === prev.P1) {
-                  return {
-                    ...prev,
-                    P2: getNextAvailableIndex(
-                      prev.P2,
-                      1,
-                      true,
-                      prev.P1,
-                      totalItems,
-                    ),
-                  };
-                }
-                return prev;
-              });
+              setBuildBattleConfirmed((p) => ({ ...p, [slot]: true }));
             }
           }
         }
-        if (!buildBattleConfirmed.P2) {
-          if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
-            setBuildBattleSelection((p) => {
-              const next = getNextAvailableIndex(
-                p.P2,
-                -1,
-                buildBattleConfirmed.P1,
-                p.P1,
-                totalItems,
-              );
-              return { ...p, P2: next };
-            });
-          }
-          if (e.code === "ArrowDown" || e.code === "ArrowRight") {
-            setBuildBattleSelection((p) => {
-              const next = getNextAvailableIndex(
-                p.P2,
-                1,
-                buildBattleConfirmed.P1,
-                p.P1,
-                totalItems,
-              );
-              return { ...p, P2: next };
-            });
-          }
-          if (e.code === "Enter" || e.code === "ShiftRight") {
-            if (
-              buildBattleConfirmed.P1 &&
-              buildBattleSelection.P1 === buildBattleSelection.P2
-            ) {
-              showToast("Bereits gewaehlt!");
-            } else {
-              setBuildBattleConfirmed((p) => ({ ...p, P2: true }));
-              setBuildBattleSelection((prev) => {
-                if (prev.P1 === prev.P2) {
-                  return {
-                    ...prev,
-                    P1: getNextAvailableIndex(
-                      prev.P1,
-                      1,
-                      true,
-                      prev.P2,
-                      totalItems,
-                    ),
-                  };
-                }
-                return prev;
-              });
-            }
-          }
-        }
-      } else if (buildBattlePhase === "build") {
+        return;
+      }
+
+      // Build Phase
+      if (buildBattlePhase === "build") {
         const isTooClose = (x: number, y: number, w: number, h: number) => {
-          const lvl = BUILD_BATTLE_LEVELS.find(
-            (l) => l.id === gameState.levelId,
-          );
+          const lvl = BUILD_BATTLE_LEVELS.find((l) => l.id === gameState.levelId);
           if (!lvl) return false;
           const cx = x + w / 2;
           const cy = y + h / 2;
           if (lvl.start) {
-            const dx = cx - lvl.start.x,
-              dy = cy - lvl.start.y;
+            const dx = cx - lvl.start.x, dy = cy - lvl.start.y;
             if (Math.hypot(dx, dy) < 100) return true;
           }
           const goal = lvl.entities.find((e) => e.type === "goal");
@@ -2944,184 +2880,30 @@ const App: React.FC = () => {
           return false;
         };
 
-        if (!buildBattleConfirmed.P1) {
-          if (e.code === "KeyW") moveCursor("P1", 0, -1);
-          if (e.code === "KeyS") moveCursor("P1", 0, 1);
-          if (e.code === "KeyA") moveCursor("P1", -1, 0);
-          if (e.code === "KeyD") moveCursor("P1", 1, 0);
-          if (e.code === "KeyE")
-            setBuildBattleRotation((p) => ({ ...p, P1: !p.P1 }));
-          if (e.code === "Space" || e.code === "KeyQ") {
-            const itm = buildBattleItems[buildBattleSelection.P1];
-            if (itm) {
-              const px = buildBattleCursors.P1.x;
-              const py = buildBattleCursors.P1.y;
-              let w = itm.args?.w || 30;
-              let h = itm.args?.h || 30;
-              if (buildBattleRotation.P1 && itm.type !== "orbit") {
-                const tmp = w;
-                w = h;
-                h = tmp;
-              }
-              if (itm.type === "bomb") {
-                applyBomb("P1", px, py);
-              } else if (isTooClose(px, py, w, h)) {
-                showToast("P1: Zu nah an Start/Ziel!");
-              } else {
-                let finalX = px;
-                let finalY = py;
-                if (itm.type === "glue") {
-                  const allBlocks = [
-                    ...(level.entities || []),
-                    ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1
-                      ? [buildBattlePlacedThisRound.P1]
-                      : []),
-                    ...(buildBattlePlacedThisRound.P2
-                      ? [buildBattlePlacedThisRound.P2]
-                      : []),
-                  ];
-                  const snap = getGlueSnappedPosition(px, py, w, h, allBlocks);
-                  if (!snap.success) {
-                    showToast(
-                      "P1: Kleber benötigt einen benachbarten Block zum Anheften!",
-                    );
-                    return;
-                  }
-                  finalX = snap.finalX;
-                  finalY = snap.finalY;
-                } else {
-                  const bookkeepingBlocks = [
-                    ...(level.entities || []),
-                    ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1
-                      ? [buildBattlePlacedThisRound.P1]
-                      : []),
-                    ...(buildBattlePlacedThisRound.P2
-                      ? [buildBattlePlacedThisRound.P2]
-                      : []),
-                  ];
-                  const snap = getBlockSnappedToGluePosition(
-                    px,
-                    py,
-                    w,
-                    h,
-                    bookkeepingBlocks,
-                  );
-                  if (snap.success) {
-                    finalX = snap.finalX;
-                    finalY = snap.finalY;
-                  }
-                }
-                if (false && itm.type === "glue") {
-                  const allBlocks = [
-                    ...(level.entities || []),
-                    ...buildBattlePlacedEntities,
-                  ].filter(
-                    (e) =>
-                      e.type === "wall" ||
-                      e.type === "ice" ||
-                      e.type === "slime" ||
-                      e.type === "trampoline" ||
-                      e.type === "fragile" ||
-                      e.type.startsWith("moving_platform_"),
-                  );
-                  let touchedBelow = false;
-                  let touchedAbove = false;
-                  let touchedLeft = false;
-                  let touchedRight = false;
-                  if (w > h) {
-                    touchedBelow = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const hOverlap =
-                        Math.min(px + 60, b.x + bw) - Math.max(px, b.x);
-                      return hOverlap >= 15 && Math.abs(b.y - (py + 30)) <= 2;
-                    });
-                    touchedAbove = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const hOverlap =
-                        Math.min(px + 60, b.x + bw) - Math.max(px, b.x);
-                      return hOverlap >= 15 && Math.abs(b.y + bh - py) <= 2;
-                    });
-                    if (!touchedBelow && !touchedAbove) {
-                      showToast(
-                        "P1: Kleber benötigt flach anliegenden Block darüber oder darunter!",
-                      );
-                      return;
-                    }
-                    finalY = touchedBelow ? py + 24 : py;
-                  } else {
-                    touchedRight = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const vOverlap =
-                        Math.min(py + 60, b.y + bh) - Math.max(py, b.y);
-                      return vOverlap >= 15 && Math.abs(b.x - (px + 30)) <= 2;
-                    });
-                    touchedLeft = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const vOverlap =
-                        Math.min(py + 60, b.y + bh) - Math.max(py, b.y);
-                      return vOverlap >= 15 && Math.abs(b.x + bw - px) <= 2;
-                    });
-                    if (!touchedLeft && !touchedRight) {
-                      showToast(
-                        "P1: Kleber benötigt flach anliegenden Block links oder rechts!",
-                      );
-                      return;
-                    }
-                    finalX = touchedRight ? px + 24 : px;
-                  }
-                }
-
-                if (itm.isModifier) {
-                  applyModifier("P1", itm, px, py, w, h);
-                } else {
-                  setBuildBattlePlacedThisRound((p) => ({
-                    ...p,
-                    P1: {
-                      ...itm.args,
-                      x: finalX,
-                      y: finalY,
-                      w,
-                      h,
-                      type: itm.type,
-                      ...(itm.type === "orbit" && buildBattleRotation.P1
-                        ? { moveSpeed: -(itm.args?.moveSpeed || 0.0025) }
-                        : {}),
-                    },
-                  }));
-                  setBuildBattleConfirmed((p) => ({ ...p, P1: true }));
-                }
-              }
-            }
+        if (!buildBattleConfirmed[slot]) {
+          if (action === "up") moveCursor(slot, 0, -1);
+          if (action === "down") moveCursor(slot, 0, 1);
+          if (action === "left") moveCursor(slot, -1, 0);
+          if (action === "right") moveCursor(slot, 1, 0);
+          if (action === "rotate") {
+            setBuildBattleRotation((p) => ({ ...p, [slot]: !p[slot] }));
           }
-        }
-        if (!buildBattleConfirmed.P2) {
-          if (e.code === "ArrowUp") moveCursor("P2", 0, -1);
-          if (e.code === "ArrowDown") moveCursor("P2", 0, 1);
-          if (e.code === "ArrowLeft") moveCursor("P2", -1, 0);
-          if (e.code === "ArrowRight") moveCursor("P2", 1, 0);
-          if (e.code === "ControlRight" || e.code === "Numpad0")
-            setBuildBattleRotation((p) => ({ ...p, P2: !p.P2 }));
-          if (e.code === "Enter" || e.code === "ShiftRight") {
-            const itm = buildBattleItems[buildBattleSelection.P2];
+          if (action === "confirm") {
+            const itm = buildBattleItems[buildBattleSelection[slot] ?? 0];
             if (itm) {
-              const px = buildBattleCursors.P2.x;
-              const py = buildBattleCursors.P2.y;
+              const px = buildBattleCursors[slot]?.x ?? 480;
+              const py = buildBattleCursors[slot]?.y ?? 270;
               let w = itm.args?.w || 30;
               let h = itm.args?.h || 30;
-              if (buildBattleRotation.P2 && itm.type !== "orbit") {
+              if (buildBattleRotation[slot] && itm.type !== "orbit") {
                 const tmp = w;
                 w = h;
                 h = tmp;
               }
               if (itm.type === "bomb") {
-                applyBomb("P2", px, py);
+                applyBomb(slot, px, py);
               } else if (isTooClose(px, py, w, h)) {
-                showToast("P2: Zu nah an Start/Ziel!");
+                showToast(`${slot}: Zu nah an Start/Ziel!`);
               } else {
                 let finalX = px;
                 let finalY = py;
@@ -3129,18 +2911,11 @@ const App: React.FC = () => {
                   const allBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1
-                      ? [buildBattlePlacedThisRound.P1]
-                      : []),
-                    ...(buildBattlePlacedThisRound.P2
-                      ? [buildBattlePlacedThisRound.P2]
-                      : []),
+                    ...activeSlots.map(s => buildBattlePlacedThisRound[s]).filter(Boolean),
                   ];
                   const snap = getGlueSnappedPosition(px, py, w, h, allBlocks);
                   if (!snap.success) {
-                    showToast(
-                      "P2: Kleber benötigt einen benachbarten Block zum Anheften!",
-                    );
+                    showToast(`${slot}: Kleber benötigt einen benachbarten Block zum Anheften!`);
                     return;
                   }
                   finalX = snap.finalX;
@@ -3149,106 +2924,33 @@ const App: React.FC = () => {
                   const bookkeepingBlocks = [
                     ...(level.entities || []),
                     ...buildBattlePlacedEntities,
-                    ...(buildBattlePlacedThisRound.P1
-                      ? [buildBattlePlacedThisRound.P1]
-                      : []),
-                    ...(buildBattlePlacedThisRound.P2
-                      ? [buildBattlePlacedThisRound.P2]
-                      : []),
+                    ...activeSlots.map(s => buildBattlePlacedThisRound[s]).filter(Boolean),
                   ];
-                  const snap = getBlockSnappedToGluePosition(
-                    px,
-                    py,
-                    w,
-                    h,
-                    bookkeepingBlocks,
-                  );
+                  const snap = getBlockSnappedToGluePosition(px, py, w, h, bookkeepingBlocks);
                   if (snap.success) {
                     finalX = snap.finalX;
                     finalY = snap.finalY;
                   }
                 }
-                if (false && itm.type === "glue") {
-                  const allBlocks = [
-                    ...(level.entities || []),
-                    ...buildBattlePlacedEntities,
-                  ].filter(
-                    (e) =>
-                      e.type === "wall" ||
-                      e.type === "ice" ||
-                      e.type === "slime" ||
-                      e.type === "trampoline" ||
-                      e.type === "fragile" ||
-                      e.type.startsWith("moving_platform_"),
-                  );
-                  let touchedBelow = false;
-                  let touchedAbove = false;
-                  let touchedLeft = false;
-                  let touchedRight = false;
-                  if (w > h) {
-                    touchedBelow = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const hOverlap =
-                        Math.min(px + 60, b.x + bw) - Math.max(px, b.x);
-                      return hOverlap >= 15 && Math.abs(b.y - (py + 30)) <= 2;
-                    });
-                    touchedAbove = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const hOverlap =
-                        Math.min(px + 60, b.x + bw) - Math.max(px, b.x);
-                      return hOverlap >= 15 && Math.abs(b.y + bh - py) <= 2;
-                    });
-                    if (!touchedBelow && !touchedAbove) {
-                      showToast(
-                        "P2: Kleber benötigt flach anliegenden Block darüber oder darunter!",
-                      );
-                      return;
-                    }
-                    finalY = touchedBelow ? py + 24 : py;
-                  } else {
-                    touchedRight = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const vOverlap =
-                        Math.min(py + 60, b.y + bh) - Math.max(py, b.y);
-                      return vOverlap >= 15 && Math.abs(b.x - (px + 30)) <= 2;
-                    });
-                    touchedLeft = allBlocks.some((b) => {
-                      const bw = b.w || 30;
-                      const bh = b.h || 30;
-                      const vOverlap =
-                        Math.min(py + 60, b.y + bh) - Math.max(py, b.y);
-                      return vOverlap >= 15 && Math.abs(b.x + bw - px) <= 2;
-                    });
-                    if (!touchedLeft && !touchedRight) {
-                      showToast(
-                        "P2: Kleber benötigt flach anliegenden Block links oder rechts!",
-                      );
-                      return;
-                    }
-                    finalX = touchedRight ? px + 24 : px;
-                  }
-                }
 
                 if (itm.isModifier) {
-                  applyModifier("P2", itm, px, py, w, h);
+                  applyModifier(slot, itm, px, py, w, h);
                 } else {
                   setBuildBattlePlacedThisRound((p) => ({
                     ...p,
-                    P2: {
+                    [slot]: {
                       ...itm.args,
                       x: finalX,
                       y: finalY,
                       w,
                       h,
                       type: itm.type,
-                      ...(itm.type === "orbit" && buildBattleRotation.P2
+                      ...(itm.type === "orbit" && buildBattleRotation[slot]
                         ? { moveSpeed: -(itm.args?.moveSpeed || 0.0025) }
                         : {}),
                     },
                   }));
-                  setBuildBattleConfirmed((p) => ({ ...p, P2: true }));
+                  setBuildBattleConfirmed((p) => ({ ...p, [slot]: true }));
                 }
               }
             }
@@ -3256,8 +2958,59 @@ const App: React.FC = () => {
         }
       }
     };
+
+    buildBattleActionRef.current = (slot, action) => {
+      handlePlayerAction(slot, action as any);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (onlineService.lobbyCode && !onlineService.isHost) {
+        let action: "up" | "down" | "left" | "right" | "rotate" | "confirm" | null = null;
+        if (e.code === "KeyW" || e.code === "ArrowUp") action = "up";
+        if (e.code === "KeyS" || e.code === "ArrowDown") action = "down";
+        if (e.code === "KeyA" || e.code === "ArrowLeft") action = "left";
+        if (e.code === "KeyD" || e.code === "ArrowRight") action = "right";
+        if (e.code === "KeyE" || e.code === "ControlRight") action = "rotate";
+        if (e.code === "Space" || e.code === "Enter" || e.code === "KeyQ") action = "confirm";
+
+        if (action) {
+          onlineService.sendEvent("bb_remote_key", { action });
+        }
+        return;
+      }
+
+      // Local keys for P1 (WASD + Space/Q + E)
+      let p1Action: "up" | "down" | "left" | "right" | "rotate" | "confirm" | null = null;
+      if (e.code === "KeyW") p1Action = "up";
+      if (e.code === "KeyS") p1Action = "down";
+      if (e.code === "KeyA") p1Action = "left";
+      if (e.code === "KeyD") p1Action = "right";
+      if (e.code === "KeyE") p1Action = "rotate";
+      if (e.code === "Space" || e.code === "KeyQ") p1Action = "confirm";
+
+      if (p1Action) {
+        handlePlayerAction("P1", p1Action);
+      }
+
+      // Local keys for P2 (Arrows + Enter/Shift + Ctrl)
+      let p2Action: "up" | "down" | "left" | "right" | "rotate" | "confirm" | null = null;
+      if (e.code === "ArrowUp") p2Action = "up";
+      if (e.code === "ArrowDown") p2Action = "down";
+      if (e.code === "ArrowLeft") p2Action = "left";
+      if (e.code === "ArrowRight") p2Action = "right";
+      if (e.code === "ControlRight" || e.code === "Numpad0") p2Action = "rotate";
+      if (e.code === "Enter" || e.code === "ShiftRight") p2Action = "confirm";
+
+      if (p2Action) {
+        handlePlayerAction("P2", p2Action);
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      buildBattleActionRef.current = null;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [
     gameState.status,
     buildBattlePhase,
@@ -3338,8 +3091,7 @@ const App: React.FC = () => {
       return;
     }
 
-    const allVoted =
-      buildBattleVotes.P1 !== null && buildBattleVotes.P2 !== null;
+    const allVoted = activeSlots.every((slot) => buildBattleVotes[slot] !== null && buildBattleVotes[slot] !== undefined);
     if (allVoted) {
       if (buildBattleVoteTimer === null) {
         setBuildBattleVoteTimer(5);
@@ -3359,7 +3111,7 @@ const App: React.FC = () => {
         );
       }
     }
-  }, [gameState.status, buildBattleVotes, buildBattleVoteTimer]);
+  }, [gameState.status, buildBattleVotes, buildBattleVoteTimer, activeSlots]);
 
   // Countdown decrement and map choice logic
   useEffect(() => {
@@ -3373,8 +3125,11 @@ const App: React.FC = () => {
       if (onlineService.lobbyCode && !onlineService.isHost) return;
       // Determine winner map
       const votes: string[] = [];
-      if (buildBattleVotes.P1) votes.push(buildBattleVotes.P1);
-      if (buildBattleVotes.P2) votes.push(buildBattleVotes.P2);
+      activeSlots.forEach((slot) => {
+        if (buildBattleVotes[slot]) {
+          votes.push(buildBattleVotes[slot]!);
+        }
+      });
 
       let finalLevelId = "build1";
       if (votes.length > 0) {
@@ -3407,11 +3162,24 @@ const App: React.FC = () => {
 
       const newItems = get8UniqueBuildBattleItems(buildBattleAllowedItems);
       setBuildBattleItems(newItems);
-      setBuildBattleSelection({ P1: 0, P2: 1 });
-      setBuildBattleConfirmed({ P1: false, P2: false });
+
+      const newSelections: Record<string, number> = {};
+      const newConfirmed: Record<string, boolean> = {};
+      const newRotation: Record<string, boolean> = {};
+      const newCursors: Record<string, { x: number; y: number }> = {};
+
+      activeSlots.forEach((slot, sIdx) => {
+        newSelections[slot] = sIdx % 8;
+        newConfirmed[slot] = false;
+        newRotation[slot] = false;
+        newCursors[slot] = { x: 400 + sIdx * 30, y: 270 };
+      });
+
+      setBuildBattleSelection(newSelections);
+      setBuildBattleConfirmed(newConfirmed);
       setBuildBattleSurrenders({});
-      setBuildBattleRotation({ P1: false, P2: false });
-      setBuildBattleCursors({ P1: { x: 480, y: 270 }, P2: { x: 510, y: 270 } });
+      setBuildBattleRotation(newRotation);
+      setBuildBattleCursors(newCursors);
       setBuildBattlePhase("select");
       setBuildBattlePhaseTimer(buildBattleSelectTimerConfig);
       setBuildTurn(0);
@@ -3515,7 +3283,9 @@ const App: React.FC = () => {
     useState<OnlinePlayer | null>(null);
   const [voteConfirmType, setVoteConfirmType] = useState<VoteType | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [onlinePlayers, setOnlinePlayers] = useState<OnlinePlayer[]>([]);
+
+  const buildBattleActionRef = useRef<((slot: string, action: string) => void) | null>(null);
+
   const [onlineSuggestions, setOnlineSuggestions] = useState<any[]>([]);
   const [showSuggestionMenu, setShowSuggestionMenu] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -5293,32 +5063,18 @@ const App: React.FC = () => {
           }));
       } else if (status === "build_battle_vote") {
         if (onlineService.lobbyCode && !onlineService.isHost) {
-          let sendCode = e.code;
-          let sendKey = e.key;
-          if (e.code === "KeyW") {
-            sendCode = "ArrowUp";
-            sendKey = "ArrowUp";
+          let action: "up" | "down" | "left" | "right" | "confirm" | null = null;
+          if (e.code === "KeyW" || e.code === "ArrowUp" || e.code === "KeyA" || e.code === "ArrowLeft") action = "up";
+          if (e.code === "KeyS" || e.code === "ArrowDown" || e.code === "KeyD" || e.code === "ArrowRight") action = "down";
+          if (e.code === "Space" || e.code === "Enter" || e.code === "KeyQ") action = "confirm";
+
+          if (action) {
+            onlineService.sendEvent("bb_remote_key", {
+              action,
+              code: e.code,
+              key: e.key,
+            });
           }
-          if (e.code === "KeyS") {
-            sendCode = "ArrowDown";
-            sendKey = "ArrowDown";
-          }
-          if (e.code === "KeyA") {
-            sendCode = "ArrowLeft";
-            sendKey = "ArrowLeft";
-          }
-          if (e.code === "KeyD") {
-            sendCode = "ArrowRight";
-            sendKey = "ArrowRight";
-          }
-          if (e.code === "Space" || e.code === "KeyQ") {
-            sendCode = "Enter";
-            sendKey = "Enter";
-          }
-          onlineService.sendEvent("bb_remote_key", {
-            code: sendCode,
-            key: sendKey,
-          });
           return;
         }
         const totalLevels = BUILD_BATTLE_LEVELS.length;
@@ -6797,9 +6553,19 @@ const App: React.FC = () => {
 
     onlineService.onAppEvent = (id, event, data) => {
       if (event === "bb_remote_key" && onlineService.isHost) {
-        window.dispatchEvent(
-          new KeyboardEvent("keydown", { code: data.code, key: data.key }),
-        );
+        const slot = getPlayerKey(id);
+        let action = data.action;
+        if (!action && data.code) {
+          if (data.code === "KeyW" || data.code === "ArrowUp") action = "up";
+          if (data.code === "KeyS" || data.code === "ArrowDown") action = "down";
+          if (data.code === "KeyA" || data.code === "ArrowLeft") action = "left";
+          if (data.code === "KeyD" || data.code === "ArrowRight") action = "right";
+          if (data.code === "KeyE" || data.code === "ControlRight") action = "rotate";
+          if (data.code === "Space" || data.code === "Enter" || data.code === "KeyQ") action = "confirm";
+        }
+        if (action) {
+          buildBattleActionRef.current?.(slot, action);
+        }
       }
       if (event === "bb_sync" && !onlineService.isHost) {
         setBuildBattlePhase(data.phase);
@@ -7268,14 +7034,11 @@ const App: React.FC = () => {
         (gameState.status === "paused" &&
           gameState.previousStatus === "build_battle_playing")
       ) {
-        let p1Coins = 0;
-        let p2Coins = 0;
-        let p1ScoreAdded = 0;
-        let p2ScoreAdded = 0;
-        let p1Kills = 0;
-        let p2Kills = 0;
+        const actualSlots = onlineService.lobbyCode
+          ? onlinePlayers.map((_, idx) => `P${idx + 1}`)
+          : ["P1", "P2"];
 
-        let winnerKey: "P1" | "P2" | null = null;
+        let winnerKey: string | null = null;
         if (
           winnerName &&
           winnerName !== "EVERYONE_FINISHED" &&
@@ -7284,63 +7047,79 @@ const App: React.FC = () => {
           !winnerName.startsWith("AUFGEBEN") &&
           winnerName !== "GAVE UP"
         ) {
-          const customName = customization.name || "P1";
-          const isPlayer1 =
-            winnerName === customName ||
-            winnerName === "Player 1" ||
-            winnerName === "P1" ||
-            (winnerName && winnerName.toLowerCase().includes("1"));
-          winnerKey = isPlayer1 ? "P1" : "P2";
+          const foundSlotIndex = actualSlots.findIndex((slot, idx) => {
+            const displayNm = onlineService.lobbyCode && onlinePlayers[idx]
+              ? onlinePlayers[idx].name
+              : slot === "P1" ? (customization.name || "P1") : slot === "P2" ? (customizationP2.name || "P2") : slot;
+            return (
+              winnerName === displayNm ||
+              winnerName === slot ||
+              winnerName === `Player ${idx + 1}`
+            );
+          });
+          if (foundSlotIndex !== -1) {
+            winnerKey = actualSlots[foundSlotIndex];
+          } else {
+            winnerKey = "P1";
+          }
         }
 
-        if (winnerName === "EVERYONE_FINISHED" || winnerName === "HOST_ENDED") {
-          p1Coins = 0;
-          p2Coins = 0;
-          p1ScoreAdded = 0;
-          p2ScoreAdded = 0;
-        } else {
+        const slotCoins: Record<string, number> = {};
+        const slotScoreAdded: Record<string, number> = {};
+        const slotKills: Record<string, number> = {};
+
+        actualSlots.forEach(slot => {
+          slotCoins[slot] = 0;
+          slotScoreAdded[slot] = 0;
+          slotKills[slot] = 0;
+        });
+
+        if (winnerName !== "EVERYONE_FINISHED" && winnerName !== "HOST_ENDED") {
           if (winnerKey) {
-            if (winnerKey === "P1") p1ScoreAdded += 1;
-            if (winnerKey === "P2") p2ScoreAdded += 1;
+            slotScoreAdded[winnerKey] += 1;
           }
 
-          const p1CoinsBrought = broughtCoins?.["P1"] || [];
-          const p2CoinsBrought = broughtCoins?.["P2"] || [];
-          p1Coins = p1CoinsBrought.length;
-          p2Coins = p2CoinsBrought.length;
-          p1ScoreAdded += p1Coins;
-          p2ScoreAdded += p2Coins;
+          actualSlots.forEach(slot => {
+            const coinsBrought = broughtCoins?.[slot] || [];
+            slotCoins[slot] = coinsBrought.length;
+            slotScoreAdded[slot] += slotCoins[slot];
 
-          if (killedByBlocks) {
-            if (winnerKey === "P1" && killedByBlocks["P2"] === "P1") {
-              p1Kills = 1;
-              p1ScoreAdded += 1;
+            if (killedByBlocks && winnerKey) {
+              if (winnerKey === slot && Object.values(killedByBlocks).includes(slot)) {
+                const killCount = Object.values(killedByBlocks).filter(killer => killer === slot).length;
+                slotKills[slot] = killCount;
+                slotScoreAdded[slot] += killCount;
+              }
             }
-            if (winnerKey === "P2" && killedByBlocks["P1"] === "P2") {
-              p2Kills = 1;
-              p2ScoreAdded += 1;
-            }
-          }
+          });
         }
 
         setLastBuildBattleRoundStats({
           winner: winnerName || null,
-          p1Coins,
-          p2Coins,
-          p1ScoreAdded,
-          p2ScoreAdded,
-          p1Kills,
-          p2Kills,
+          p1Coins: slotCoins["P1"] || 0,
+          p2Coins: slotCoins["P2"] || 0,
+          p1ScoreAdded: slotScoreAdded["P1"] || 0,
+          p2ScoreAdded: slotScoreAdded["P2"] || 0,
+          p1Kills: slotKills["P1"] || 0,
+          p2Kills: slotKills["P2"] || 0,
+          scoresAdded: slotScoreAdded,
+          coins: slotCoins,
+          kills: slotKills,
         });
 
-        setBuildBattleScores((prev) => ({
-          P1: (prev.P1 || 0) + p1ScoreAdded,
-          P2: (prev.P2 || 0) + p2ScoreAdded,
-        }));
+        setBuildBattleScores((prev) => {
+          const nextScores = { ...prev };
+          actualSlots.forEach(slot => {
+            nextScores[slot] = (nextScores[slot] || 0) + (slotScoreAdded[slot] || 0);
+          });
+          return nextScores;
+        });
 
-        const p1CoinsBrought = broughtCoins?.["P1"] || [];
-        const p2CoinsBrought = broughtCoins?.["P2"] || [];
-        const allBroughtCoinIds = [...p1CoinsBrought, ...p2CoinsBrought];
+        const allBroughtCoinIds: string[] = [];
+        actualSlots.forEach(slot => {
+          const coinsBrought = broughtCoins?.[slot] || [];
+          allBroughtCoinIds.push(...coinsBrought);
+        });
         if (allBroughtCoinIds.length > 0) {
           setBuildBattlePlacedEntities((prev) =>
             prev.filter((ent) => !allBroughtCoinIds.includes(ent.id)),
@@ -7393,13 +7172,24 @@ const App: React.FC = () => {
           }));
         } else {
           let msg = `Ziel erreicht! Punkt für ${winnerName}!`;
-          if (p1Coins > 0 || p2Coins > 0) {
-            msg = `Rundensieg: ${winnerName}! Münzen ins Ziel gebracht: P1 (+${p1Coins}), P2 (+${p2Coins})`;
+          const coinDetails: string[] = [];
+          actualSlots.forEach(slot => {
+            const coins = slotCoins[slot] || 0;
+            if (coins > 0) {
+              const name = onlineService.lobbyCode
+                ? (onlinePlayers[parseInt(slot.replace("P", "")) - 1]?.name || slot)
+                : slot === "P1" ? (customization.name || "P1") : slot === "P2" ? (customizationP2.name || "P2") : slot;
+              coinDetails.push(`${name} (+${coins})`);
+            }
+          });
+          if (coinDetails.length > 0) {
+            msg = `Rundensieg: ${winnerName}! Münzen ins Ziel gebracht: ${coinDetails.join(", ")}`;
           }
-          if (winnerKey === "P1" && p1Kills > 0) {
-            msg += ` 💥 Bonuspunkt für Block-Kill!`;
-          } else if (winnerKey === "P2" && p2Kills > 0) {
-            msg += ` 💥 Bonuspunkt für Block-Kill!`;
+          if (winnerKey) {
+            const winnerKills = slotKills[winnerKey] || 0;
+            if (winnerKills > 0) {
+              msg += ` 💥 Bonuspunkt für Block-Kill!`;
+            }
           }
           showToast(msg);
           setGameState((p) => ({
@@ -7959,273 +7749,149 @@ const App: React.FC = () => {
     let activeLevel = level;
     if (gameState.status.includes("build_battle")) {
       const extraEntities = [...buildBattlePlacedEntities];
-      const itm1 = !buildBattleConfirmed.P1
-        ? buildBattleItems[buildBattleSelection.P1]
-        : null;
-      const itm2 = !buildBattleConfirmed.P2
-        ? buildBattleItems[buildBattleSelection.P2]
-        : null;
+      const hoveredIdsBySlot: Record<string, string | null> = {};
+      const hoveredCoordsBySlot: Record<string, string | null> = {};
 
-      let hoveredP1Id: string | null = null;
-      let hoveredP1Coords: string | null = null;
-      if (itm1 && itm1.isModifier) {
-        let w = itm1.args?.w || 30;
-        let h = itm1.args?.h || 30;
-        if (buildBattleRotation.P1 && itm1.type !== "orbit") {
-          const tmp = w;
-          w = h;
-          h = tmp;
-        }
-        const px = buildBattleCursors.P1.x;
-        const py = buildBattleCursors.P1.y;
+      activeSlots.forEach((slot) => {
+        hoveredIdsBySlot[slot] = null;
+        hoveredCoordsBySlot[slot] = null;
 
-        const match = buildBattlePlacedEntities.find(
-          (ent) =>
-            px < ent.x + ent.w &&
-            px + w > ent.x &&
-            py < ent.y + ent.h &&
-            py + h > ent.y,
-        );
-        if (match) {
-          hoveredP1Id = match.id || `${match.x}_${match.y}`;
-        } else {
-          const matchL = level.entities?.find(
+        const itm = !buildBattleConfirmed[slot]
+          ? buildBattleItems[buildBattleSelection[slot] ?? 0]
+          : null;
+
+        if (itm && itm.isModifier) {
+          let w = itm.args?.w || 30;
+          let h = itm.args?.h || 30;
+          if (buildBattleRotation[slot] && itm.type !== "orbit") {
+            const tmp = w;
+            w = h;
+            h = tmp;
+          }
+          const px = buildBattleCursors[slot]?.x ?? 480;
+          const py = buildBattleCursors[slot]?.y ?? 270;
+
+          const match = buildBattlePlacedEntities.find(
             (ent) =>
-              (ent.type === "wall" ||
-                ent.type === "ice" ||
-                ent.type === "slime" ||
-                ent.type === "hazard") &&
               px < ent.x + ent.w &&
               px + w > ent.x &&
               py < ent.y + ent.h &&
               py + h > ent.y,
           );
-          if (matchL) {
-            hoveredP1Coords = `${matchL.x}_${matchL.y}`;
+          if (match) {
+            hoveredIdsBySlot[slot] = match.id || `${match.x}_${match.y}`;
+          } else {
+            const matchL = level.entities?.find(
+              (ent) =>
+                (ent.type === "wall" ||
+                  ent.type === "ice" ||
+                  ent.type === "slime" ||
+                  ent.type === "hazard") &&
+                px < ent.x + ent.w &&
+                px + w > ent.x &&
+                py < ent.y + ent.h &&
+                py + h > ent.y,
+            );
+            if (matchL) {
+              hoveredCoordsBySlot[slot] = `${matchL.x}_${matchL.y}`;
+            }
           }
         }
-      }
-
-      let hoveredP2Id: string | null = null;
-      let hoveredP2Coords: string | null = null;
-      if (itm2 && itm2.isModifier) {
-        let w = itm2.args?.w || 30;
-        let h = itm2.args?.h || 30;
-        if (buildBattleRotation.P2 && itm2.type !== "orbit") {
-          const tmp = w;
-          w = h;
-          h = tmp;
-        }
-        const px = buildBattleCursors.P2.x;
-        const py = buildBattleCursors.P2.y;
-
-        const match = buildBattlePlacedEntities.find(
-          (ent) =>
-            px < ent.x + ent.w &&
-            px + w > ent.x &&
-            py < ent.y + ent.h &&
-            py + h > ent.y,
-        );
-        if (match) {
-          hoveredP2Id = match.id || `${match.x}_${match.y}`;
-        } else {
-          const matchL = level.entities?.find(
-            (ent) =>
-              (ent.type === "wall" ||
-                ent.type === "ice" ||
-                ent.type === "slime" ||
-                ent.type === "hazard") &&
-              px < ent.x + ent.w &&
-              px + w > ent.x &&
-              py < ent.y + ent.h &&
-              py + h > ent.y,
-          );
-          if (matchL) {
-            hoveredP2Coords = `${matchL.x}_${matchL.y}`;
-          }
-        }
-      }
+      });
 
       if (
         gameState.status === "build_battle_playing" &&
         buildBattlePhase === "build"
       ) {
-        if (buildBattlePlacedThisRound.P1)
-          extraEntities.push({
-            ...buildBattlePlacedThisRound.P1,
-            isBuildPreview: true,
-          });
-        if (buildBattlePlacedThisRound.P2)
-          extraEntities.push({
-            ...buildBattlePlacedThisRound.P2,
-            isBuildPreview: true,
-          });
-        if (!buildBattleConfirmed.P1) {
-          if (itm1) {
-            let w = itm1.args?.w || 30;
-            let h = itm1.args?.h || 30;
-            if (buildBattleRotation.P1 && itm1.type !== "orbit") {
-              const tmp = w;
-              w = h;
-              h = tmp;
-            }
-            let pX = buildBattleCursors.P1.x;
-            let pY = buildBattleCursors.P1.y;
-            if (itm1 && itm1.type === "bomb") {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getBombSnappedPosition(pX, pY, allBlocks);
-              pX = snap.snapX;
-              pY = snap.snapY;
-            }
-            if (itm1.type === "glue") {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getGlueSnappedPosition(pX, pY, w, h, allBlocks);
-              pX = snap.finalX;
-              pY = snap.finalY;
-            } else if (itm1.type !== "bomb" && !itm1.isModifier) {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getBlockSnappedToGluePosition(
-                pX,
-                pY,
-                w,
-                h,
-                allBlocks,
-              );
-              if (snap.success) {
-                pX = snap.finalX;
-                pY = snap.finalY;
-              }
-            }
+        activeSlots.forEach((slot) => {
+          if (buildBattlePlacedThisRound[slot]) {
             extraEntities.push({
-              ...itm1.args,
-              x: pX,
-              y: pY,
-              w,
-              h,
-              type: itm1.type,
-              isFake: true,
-              isP1Cursor: true,
+              ...buildBattlePlacedThisRound[slot],
               isBuildPreview: true,
-              ...(itm1.type === "orbit" && buildBattleRotation.P1
-                ? { moveSpeed: -(itm1.args?.moveSpeed || 0.0025) }
-                : {}),
             });
           }
-        }
-        if (!buildBattleConfirmed.P2) {
-          if (itm2) {
-            let w = itm2.args?.w || 30;
-            let h = itm2.args?.h || 30;
-            if (buildBattleRotation.P2 && itm2.type !== "orbit") {
-              const tmp = w;
-              w = h;
-              h = tmp;
-            }
-            let pX = buildBattleCursors.P2.x;
-            let pY = buildBattleCursors.P2.y;
-            if (itm2 && itm2.type === "bomb") {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getBombSnappedPosition(pX, pY, allBlocks);
-              pX = snap.snapX;
-              pY = snap.snapY;
-            }
-            if (itm2.type === "glue") {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getGlueSnappedPosition(pX, pY, w, h, allBlocks);
-              pX = snap.finalX;
-              pY = snap.finalY;
-            } else if (itm2.type !== "bomb" && !itm2.isModifier) {
-              const allBlocks = [
-                ...(level.entities || []),
-                ...buildBattlePlacedEntities,
-                ...(buildBattlePlacedThisRound.P1
-                  ? [buildBattlePlacedThisRound.P1]
-                  : []),
-                ...(buildBattlePlacedThisRound.P2
-                  ? [buildBattlePlacedThisRound.P2]
-                  : []),
-              ];
-              const snap = getBlockSnappedToGluePosition(
-                pX,
-                pY,
-                w,
-                h,
-                allBlocks,
-              );
-              if (snap.success) {
+        });
+
+        activeSlots.forEach((slot) => {
+          if (!buildBattleConfirmed[slot]) {
+            const itm = buildBattleItems[buildBattleSelection[slot] ?? 0];
+            if (itm) {
+              let w = itm.args?.w || 30;
+              let h = itm.args?.h || 30;
+              if (buildBattleRotation[slot] && itm.type !== "orbit") {
+                const tmp = w;
+                w = h;
+                h = tmp;
+              }
+              let pX = buildBattleCursors[slot]?.x ?? 480;
+              let pY = buildBattleCursors[slot]?.y ?? 270;
+              if (itm && itm.type === "bomb") {
+                const allBlocks = [
+                  ...(level.entities || []),
+                  ...buildBattlePlacedEntities,
+                  ...activeSlots.map(s => buildBattlePlacedThisRound[s]).filter(Boolean),
+                ];
+                const snap = getBombSnappedPosition(pX, pY, allBlocks);
+                pX = snap.snapX;
+                pY = snap.snapY;
+              }
+              if (itm.type === "glue") {
+                const allBlocks = [
+                  ...(level.entities || []),
+                  ...buildBattlePlacedEntities,
+                  ...activeSlots.map(s => buildBattlePlacedThisRound[s]).filter(Boolean),
+                ];
+                const snap = getGlueSnappedPosition(pX, pY, w, h, allBlocks);
                 pX = snap.finalX;
                 pY = snap.finalY;
+              } else if (itm.type !== "bomb" && !itm.isModifier) {
+                const allBlocks = [
+                  ...(level.entities || []),
+                  ...buildBattlePlacedEntities,
+                  ...activeSlots.map(s => buildBattlePlacedThisRound[s]).filter(Boolean),
+                ];
+                const snap = getBlockSnappedToGluePosition(
+                  pX,
+                  pY,
+                  w,
+                  h,
+                  allBlocks,
+                );
+                if (snap.success) {
+                  pX = snap.finalX;
+                  pY = snap.finalY;
+                }
               }
+              extraEntities.push({
+                ...itm.args,
+                x: pX,
+                y: pY,
+                w,
+                h,
+                type: itm.type,
+                isFake: true,
+                [`is${slot}Cursor`]: true,
+                isBuildPreview: true,
+                ...(itm.type === "orbit" && buildBattleRotation[slot]
+                  ? { moveSpeed: -(itm.args?.moveSpeed || 0.0025) }
+                  : {}),
+              });
             }
-            extraEntities.push({
-              ...itm2.args,
-              x: pX,
-              y: pY,
-              w,
-              h,
-              type: itm2.type,
-              isFake: true,
-              isP2Cursor: true,
-              isBuildPreview: true,
-              ...(itm2.type === "orbit" && buildBattleRotation.P2
-                ? { moveSpeed: -(itm2.args?.moveSpeed || 0.0025) }
-                : {}),
-            });
           }
-        }
+        });
       }
 
       const processedPlaced = extraEntities.map((ent) => {
         const key = ent.id || `${ent.x}_${ent.y}`;
+        const hoverState: Record<string, boolean> = {};
+        activeSlots.forEach((slot) => {
+          hoverState[`isHoveredByModifier${slot}`] = key === hoveredIdsBySlot[slot];
+        });
         return {
           ...ent,
-          isHoveredByModifierP1: key === hoveredP1Id,
-          isHoveredByModifierP2: key === hoveredP2Id,
+          ...hoverState,
+          isHoveredByModifierP1: key === hoveredIdsBySlot["P1"],
+          isHoveredByModifierP2: key === hoveredIdsBySlot["P2"],
         };
       });
 
@@ -8243,10 +7909,15 @@ const App: React.FC = () => {
         })
         .map((ent) => {
           const key = `${ent.x}_${ent.y}`;
+          const hoverState: Record<string, boolean> = {};
+          activeSlots.forEach((slot) => {
+            hoverState[`isHoveredByModifier${slot}`] = key === hoveredCoordsBySlot[slot];
+          });
           return {
             ...ent,
-            isHoveredByModifierP1: key === hoveredP1Coords,
-            isHoveredByModifierP2: key === hoveredP2Coords,
+            ...hoverState,
+            isHoveredByModifierP1: key === hoveredCoordsBySlot["P1"],
+            isHoveredByModifierP2: key === hoveredCoordsBySlot["P2"],
           };
         });
 
@@ -9265,29 +8936,36 @@ const App: React.FC = () => {
                         </h2>
                         <div className="flex gap-4 mb-12 flex-wrap max-w-4xl justify-center">
                           {buildBattleItems.map((item, idx) => {
-                            const isP1 = buildBattleSelection.P1 === idx;
+                            const activeSelectingSlots = activeSlots.filter(
+                              (slot) => buildBattleSelection[slot] === idx
+                            );
+
+                            const isTakenBySomeone = activeSlots.find(
+                              (slot) =>
+                                buildBattleConfirmed[slot] &&
+                                buildBattleSelection[slot] === idx
+                            );
+
                             const showSecret = buildBattleIntroCountdown > 0;
-                            const isTakenByP1 =
-                              buildBattleConfirmed.P1 &&
-                              buildBattleSelection.P1 === idx;
-                            const isTakenByP2 =
-                              buildBattleConfirmed.P2 &&
-                              buildBattleSelection.P2 === idx;
-                            const isTaken = isTakenByP1 || isTakenByP2;
-                            const isP2 = buildBattleSelection.P2 === idx;
+
+                            let borderClass = "border-neutral-700";
+                            if (activeSelectingSlots.length > 0) {
+                              if (activeSelectingSlots.includes("P1") && activeSelectingSlots.includes("P2")) {
+                                borderClass = "border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]";
+                              } else if (activeSelectingSlots.includes("P1")) {
+                                borderClass = "border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]";
+                              } else if (activeSelectingSlots.includes("P2")) {
+                                borderClass = "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]";
+                              } else {
+                                borderClass = "border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]";
+                              }
+                            }
+
                             return (
                               <div
                                 key={item.id}
                                 className={`w-20 h-20 bg-neutral-900 border-2 flex flex-col items-center justify-center relative rounded-lg
-                                 ${
-                                   isP1 && isP2
-                                     ? "border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
-                                     : isP1
-                                       ? "border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-                                       : isP2
-                                         ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
-                                         : "border-neutral-700"
-                                 }
+                                 ${borderClass}
                                  transition-all`}
                               >
                                 <span className="text-3xl mb-1">
@@ -9298,24 +8976,40 @@ const App: React.FC = () => {
                                     ? t.bbSecret || "GEHEIM"
                                     : getBbItemTranslation(item.label, lang)}
                                 </span>
-                                {isP1 && (
-                                  <div className="absolute -top-3 -left-3 bg-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
-                                    P1 {buildBattleConfirmed.P1 ? "✓" : ""}
-                                  </div>
-                                )}
-                                {isP2 && (
-                                  <div className="absolute -bottom-3 -right-3 bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
-                                    P2 {buildBattleConfirmed.P2 ? "✓" : ""}
-                                  </div>
-                                )}
-                                {isTaken && !showSecret && (
+
+                                {activeSelectingSlots.map((slot, sIdx) => {
+                                  const name = onlineService.lobbyCode
+                                    ? (onlinePlayers[parseInt(slot.replace("P", "")) - 1]?.name || slot)
+                                    : slot === "P1" ? (customization.name || "P1") : slot === "P2" ? (customizationP2.name || "P2") : slot;
+                                  const colors = slot === "P1" ? "bg-cyan-600" : slot === "P2" ? "bg-amber-600" : "bg-purple-600";
+                                  const offsetStyle = sIdx === 0
+                                    ? "absolute -top-3 -left-3"
+                                    : sIdx === 1
+                                      ? "absolute -bottom-3 -right-3"
+                                      : sIdx === 2
+                                        ? "absolute -top-3 -right-3"
+                                        : "absolute -bottom-3 -left-3";
+                                  return (
+                                    <div
+                                      key={slot}
+                                      className={`${offsetStyle} ${colors} text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg max-w-[60px] truncate`}
+                                    >
+                                      {name} {buildBattleConfirmed[slot] ? "✓" : ""}
+                                    </div>
+                                  );
+                                })}
+
+                                {isTakenBySomeone && !showSecret && (
                                   <div className="absolute inset-0 bg-red-950/85 flex flex-col items-center justify-center rounded-lg border border-red-500 z-10 animate-fade-in shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                                     <span className="text-[10px] font-arcade text-red-400 font-bold tracking-wider">
                                       {t.bbTaken || "WEG!"}
                                     </span>
-                                    <span className="text-[8px] font-arcade text-white mt-1">
-                                      {(t.bbByPrefix || "BY ") +
-                                        (isTakenByP1 ? "P1" : "P2")}
+                                    <span className="text-[8px] font-arcade text-white mt-1 max-w-[70px] truncate">
+                                      {(t.bbByPrefix || "BY ") + (
+                                        onlineService.lobbyCode
+                                          ? (onlinePlayers[parseInt(isTakenBySomeone.replace("P", "")) - 1]?.name || isTakenBySomeone)
+                                          : isTakenBySomeone === "P1" ? (customization.name || "P1") : isTakenBySomeone === "P2" ? (customizationP2.name || "P2") : isTakenBySomeone
+                                      )}
                                     </span>
                                   </div>
                                 )}
@@ -9324,68 +9018,79 @@ const App: React.FC = () => {
                           })}
                         </div>
                         <div className="flex gap-16 font-arcade text-xs text-neutral-400 bg-neutral-900 border border-neutral-800 p-6 rounded-2xl">
-                          <div className="flex flex-col items-center">
-                            <div className="text-cyan-400 mb-2 font-bold text-sm">
-                              {t.bbPlayer1 || "SPIELER 1"}
+                          {onlineService.lobbyCode ? (
+                            <div className="flex flex-col items-start gap-2 max-h-48 overflow-y-auto min-w-[200px]">
+                              <span className="text-yellow-400 font-bold uppercase mb-1">{t.lobbyPlayers || "LOBBY SPIELER"}:</span>
+                              {activeSlots.map((slot, idx) => {
+                                const name = onlinePlayers[idx]?.name || slot;
+                                const isReady = buildBattleConfirmed[slot];
+                                return (
+                                  <div key={slot} className="flex items-center gap-2 text-[10px]">
+                                    <span className={slot === "P1" ? "text-cyan-400" : slot === "P2" ? "text-amber-400" : "text-purple-400"}>
+                                      ● {name}:
+                                    </span>
+                                    <span className={isReady ? "text-green-400" : "text-neutral-500 animate-pulse"}>
+                                      {isReady ? "READY ✓" : "SELECTING..."}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <div className="text-center whitespace-pre-line leading-relaxed">
-                              {t.bbSelectControlsP1}
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-center">
-                            <div className="text-amber-400 mb-2 font-bold text-sm">
-                              {t.bbPlayer2 || "SPIELER 2"}
-                            </div>
-                            <div className="text-center whitespace-pre-line leading-relaxed">
-                              {t.bbSelectControlsP2}
-                            </div>
-                          </div>
+                          ) : (
+                            <>
+                              <div className="flex flex-col items-center">
+                                <div className="text-cyan-400 mb-2 font-bold text-sm">
+                                  {t.bbPlayer1 || "SPIELER 1"}
+                                </div>
+                                <div className="text-center whitespace-pre-line leading-relaxed">
+                                  {t.bbSelectControlsP1}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <div className="text-amber-400 mb-2 font-bold text-sm">
+                                  {t.bbPlayer2 || "SPIELER 2"}
+                                </div>
+                                <div className="text-center whitespace-pre-line leading-relaxed">
+                                  {t.bbSelectControlsP2}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
 
                     {buildBattlePhase === "build" && (
                       <div className="absolute inset-0 pointer-events-none z-30">
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-12 font-arcade text-[10px] bg-neutral-900/90 p-4 border border-neutral-800 rounded-2xl backdrop-blur">
-                          <div className="flex flex-col items-center">
-                            <div className="text-cyan-400 mb-2 font-bold text-sm">
-                              P1:{" "}
-                              {getBbItemTranslation(
-                                buildBattleItems[buildBattleSelection.P1]
-                                  ?.label || "",
-                                lang,
-                              )}
-                            </div>
-                            {buildBattleConfirmed.P1 ? (
-                              <div className="text-green-400 font-bold">
-                                {t.bbPlaced || "PLATZIERT"}
-                              </div>
-                            ) : (
-                              <div className="text-neutral-400 text-center whitespace-pre-line leading-relaxed">
-                                {t.bbControlsP1}
-                              </div>
-                            )}
-                          </div>
-                          <div className="w-px bg-neutral-800 h-12" />
-                          <div className="flex flex-col items-center">
-                            <div className="text-amber-400 mb-2 font-bold text-sm">
-                              P2:{" "}
-                              {getBbItemTranslation(
-                                buildBattleItems[buildBattleSelection.P2]
-                                  ?.label || "",
-                                lang,
-                              )}
-                            </div>
-                            {buildBattleConfirmed.P2 ? (
-                              <div className="text-green-400 font-bold">
-                                {t.bbPlaced || "PLATZIERT"}
-                              </div>
-                            ) : (
-                              <div className="text-neutral-400 text-center whitespace-pre-line leading-relaxed">
-                                {t.bbControlsP2}
-                              </div>
-                            )}
-                          </div>
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 max-w-full overflow-x-auto font-arcade text-[10px] bg-neutral-900/90 p-4 border border-neutral-800 rounded-2xl backdrop-blur">
+                          {activeSlots.map((slot, sIdx) => {
+                            const name = onlineService.lobbyCode
+                              ? (onlinePlayers[sIdx]?.name || slot)
+                              : slot === "P1" ? (customization.name || "P1") : slot === "P2" ? (customizationP2.name || "P2") : slot;
+                            const itm = buildBattleItems[buildBattleSelection[slot] ?? 0];
+                            const isReady = buildBattleConfirmed[slot];
+                            const colorClass = slot === "P1" ? "text-cyan-400" : slot === "P2" ? "text-amber-400" : "text-purple-400";
+                            return (
+                              <React.Fragment key={slot}>
+                                {sIdx > 0 && <div className="w-px bg-neutral-800 h-10 self-center shrink-0" />}
+                                <div className="flex flex-col items-center shrink-0 min-w-[80px]">
+                                  <div className={`${colorClass} mb-1 font-bold text-[10px] truncate max-w-[120px]`}>
+                                    {name}:{" "}
+                                    {itm ? getBbItemTranslation(itm.label, lang) : "🚫"}
+                                  </div>
+                                  {isReady ? (
+                                    <div className="text-green-400 font-bold">
+                                      {t.bbPlaced || "PLATZIERT"}
+                                    </div>
+                                  ) : (
+                                    <div className="text-neutral-400 text-center text-[8px] whitespace-pre-line leading-relaxed">
+                                      {onlineService.lobbyCode ? "BAUEN..." : (slot === "P1" ? t.bbControlsP1 : t.bbControlsP2)}
+                                    </div>
+                                  )}
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
