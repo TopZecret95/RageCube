@@ -2265,14 +2265,12 @@ const App: React.FC = () => {
     Record<string, number>
   >({});
   const [buildBattleRound, setBuildBattleRound] = useState<number>(1);
-  const [buildBattleVotes, setBuildBattleVotes] = useState<{
-    P1: string | null;
-    P2: string | null;
-  }>({ P1: null, P2: null });
-  const [buildBattleVoteSelection, setBuildBattleVoteSelection] = useState<{
-    P1: number;
-    P2: number;
-  }>({ P1: 0, P2: 1 });
+  const [buildBattleVotes, setBuildBattleVotes] = useState<
+    Record<string, string | null>
+  >({ P1: null, P2: null });
+  const [buildBattleVoteSelection, setBuildBattleVoteSelection] = useState<
+    Record<string, number>
+  >({ P1: 0, P2: 1 });
   const [buildBattleVoteTimer, setBuildBattleVoteTimer] = useState<
     number | null
   >(null);
@@ -6207,7 +6205,7 @@ const App: React.FC = () => {
       setLevel(initialLevel);
       setGameState((p) => ({
         ...p,
-        status: mode === "build_battle" ? "build_battle_setup" : "online_lobby",
+        status: "online_lobby",
         lobbyCode: code,
         isHost: true,
         onlineMode: mode,
@@ -6222,7 +6220,7 @@ const App: React.FC = () => {
         [],
         brawlerTeamMode,
         brawlerHazardMode,
-        mode === "build_battle" ? "build_battle_setup" : "lobby",
+        "lobby",
       );
       setSelectedLevels([]);
     } catch (err: any) {
@@ -6412,10 +6410,24 @@ const App: React.FC = () => {
       }
 
       if (gameMode === "build_battle") {
-        setBuildBattleVotes({ P1: null, P2: null });
-        setBuildBattleVoteSelection({ P1: 0, P2: 1 });
+        const initVotes: Record<string, string | null> = {};
+        const initVoteSelection: Record<string, number> = {};
+        const initScores: Record<string, number> = {};
+        const slots = onlineService.lobbyCode
+          ? stateRef.current.onlinePlayersCount > 0
+            ? Array.from({ length: stateRef.current.onlinePlayersCount }).map((_, idx) => `P${idx + 1}`)
+            : ["P1", "P2"]
+          : ["P1", "P2"];
+        slots.forEach((slot, sIdx) => {
+          initVotes[slot] = null;
+          initVoteSelection[slot] = sIdx % slots.length;
+          initScores[slot] = 0;
+        });
+
+        setBuildBattleVotes(initVotes);
+        setBuildBattleVoteSelection(initVoteSelection);
         setBuildBattleVoteTimer(null);
-        setBuildBattleScores({ P1: 0, P2: 0 });
+        setBuildBattleScores(initScores);
         setBuildBattleRound(1);
       }
 
@@ -6552,6 +6564,18 @@ const App: React.FC = () => {
     }, 250);
 
     onlineService.onAppEvent = (id, event, data) => {
+      if (event === "bb_direct_vote" && onlineService.isHost) {
+        const slot = getPlayerKey(id);
+        const index = data.index;
+        const isLocked = data.isLocked;
+        if (index !== undefined) {
+          setBuildBattleVoteSelection((prev) => ({ ...prev, [slot]: index }));
+        }
+        if (isLocked !== undefined) {
+          const lvl = BUILD_BATTLE_LEVELS[index];
+          setBuildBattleVotes((prev) => ({ ...prev, [slot]: isLocked ? lvl.id : null }));
+        }
+      }
       if (event === "bb_remote_key" && onlineService.isHost) {
         const slot = getPlayerKey(id);
         let action = data.action;
@@ -10601,314 +10625,559 @@ const App: React.FC = () => {
 
                       {/* Voting grid and controller status */}
                       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full">
-                        {/* Player 1 Col */}
-                        <div className="lg:col-span-1 bg-red-950/20 border border-red-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(239,68,68,0.05)]">
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
-                              <h3 className="text-xs sm:text-sm font-arcade text-red-500 uppercase font-black">
-                                PLAYER 1 (P1)
-                              </h3>
-                            </div>
-                            <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
-                              <div>
-                                <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">
-                                  {lang === "de"
-                                    ? "Aktuelle Auswahl:"
-                                    : "Current selection:"}
-                                </span>
-                                <span className="text-xs font-arcade text-white tracking-wide">
-                                  {
-                                    BUILD_BATTLE_LEVELS[
-                                      buildBattleVoteSelection.P1
-                                    ]?.name
-                                  }
-                                </span>
+                        {onlineService.lobbyCode || activeSlots.length > 2 ? (
+                          <>
+                            {/* Map election list */}
+                            <div className="lg:col-span-3 bg-neutral-950/50 border border-neutral-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[300px] max-h-[420px] overflow-y-auto">
+                              <div className="text-[10px] font-arcade text-neutral-400 tracking-wider mb-1 uppercase">
+                                {lang === "de"
+                                  ? "Wähle aus 10 offiziellen Maps:"
+                                  : "Select from 10 official maps:"}
                               </div>
-                              {BUILD_BATTLE_LEVELS[
-                                buildBattleVoteSelection.P1
-                              ] && (
-                                <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] relative mt-1 select-none">
-                                  <LevelPreview
-                                    level={
-                                      BUILD_BATTLE_LEVELS[
-                                        buildBattleVoteSelection.P1
-                                      ]
-                                    }
-                                    width={180}
-                                    height={100}
-                                    className="w-full h-full object-contain"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                              <div className="flex flex-col gap-2">
+                                {BUILD_BATTLE_LEVELS.map((lvl, index) => {
+                                  const hoveredPlayers = activeSlots.filter(
+                                    (slot) => buildBattleVoteSelection[slot] === index
+                                  );
+                                  const votedPlayers = activeSlots.filter(
+                                    (slot) => buildBattleVotes[slot] === lvl.id
+                                  );
 
-                          <div>
-                            <div className="mb-4">
-                              <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">
-                                {lang === "de" ? "Status:" : "Status:"}
-                              </span>
-                              {buildBattleVotes.P1 ? (
-                                <span className="inline-block py-1 px-3 bg-red-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-red-700">
-                                  🔒 LOCKED IN!
-                                </span>
-                              ) : (
-                                <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
-                                  ⏳ WÄHLT...
-                                </span>
-                              )}
-                            </div>
-                            <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
-                              <div className="flex justify-between border-b border-neutral-800/50 pb-1">
-                                <span>W / S / A / D</span>
-                                <span>
-                                  {lang === "de" ? "Navigation" : "Navigate"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between border-b border-neutral-800/50 pt-1 pb-1">
-                                <span>E</span>
-                                <span>
-                                  {lang === "de" ? "Drehen" : "Rotate"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between pt-1">
-                                <span>SPACE / Q</span>
-                                <span className="text-red-400 font-bold">
-                                  {lang === "de"
-                                    ? "Einloggen / Zurück"
-                                    : "Lock / Unlock"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                                  const localSlot = onlineService.lobbyCode
+                                    ? getPlayerKey(onlineService.localPlayer?.id || "")
+                                    : "P1";
 
-                        {/* Map election list */}
-                        <div className="lg:col-span-2 bg-neutral-950/50 border border-neutral-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[300px] max-h-[420px] overflow-y-auto">
-                          <div className="text-[10px] font-arcade text-neutral-400 tracking-wider mb-1 uppercase">
-                            {lang === "de"
-                              ? "Wähle aus 10 offiziellen Maps:"
-                              : "Select from 10 official maps:"}
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            {BUILD_BATTLE_LEVELS.map((lvl, index) => {
-                              const isP1Hovered =
-                                buildBattleVoteSelection.P1 === index;
-                              const isP2Hovered =
-                                buildBattleVoteSelection.P2 === index;
-                              const hasP1VotedThis =
-                                buildBattleVotes.P1 === lvl.id;
-                              const hasP2VotedThis =
-                                buildBattleVotes.P2 === lvl.id;
+                                  const hasLocalVotedThis = buildBattleVotes[localSlot] === lvl.id;
+                                  const isLocalHovered = buildBattleVoteSelection[localSlot] === index;
 
-                              // Calculate vote counts
-                              let votesAmt = 0;
-                              if (hasP1VotedThis) votesAmt++;
-                              if (hasP2VotedThis) votesAmt++;
+                                  const votesAmt = votedPlayers.length;
 
-                              return (
-                                <div
-                                  key={lvl.id}
-                                  onClick={() => {
-                                    if (buildBattleVotes.P1 === lvl.id) {
-                                      setBuildBattleVotes((prev) => ({
-                                        ...prev,
-                                        P1: null,
-                                      }));
-                                      audio.playDie && audio.playDie();
-                                    } else {
-                                      setBuildBattleVotes((prev) => ({
-                                        ...prev,
-                                        P1: lvl.id,
-                                      }));
-                                      setBuildBattleVoteSelection((p) => ({
-                                        ...p,
-                                        P1: index,
-                                      }));
-                                      audio.playCoin && audio.playCoin();
-                                    }
-                                  }}
-                                  className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
-                                    hasP1VotedThis && hasP2VotedThis
-                                      ? "bg-purple-950/30 border-purple-500/70 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
-                                      : hasP1VotedThis
-                                        ? "bg-red-950/30 border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                                        : hasP2VotedThis
-                                          ? "bg-blue-950/30 border-blue-500/70 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
-                                          : isP1Hovered && isP2Hovered
-                                            ? "bg-neutral-800/80 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.1)]"
-                                            : isP1Hovered
-                                              ? "bg-neutral-800/80 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
-                                              : isP2Hovered
-                                                ? "bg-neutral-800/80 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
-                                                : "bg-neutral-900 border-neutral-800 hover:border-neutral-700"
-                                  } relative`}
-                                >
-                                  {isP1Hovered && (
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500 rounded-l-xl" />
-                                  )}
-                                  {isP2Hovered && (
-                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-500 rounded-r-xl" />
-                                  )}
-
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex flex-col">
-                                      <span className="text-xs font-arcade text-white tracking-wide flex items-center gap-2">
-                                        {lvl.name}
-                                        {votesAmt > 0 && (
-                                          <span className="font-sans text-[10px] bg-yellow-500 text-neutral-950 font-black px-1.5 py-0.5 rounded-full">
-                                            {votesAmt}{" "}
-                                            {votesAmt === 1
-                                              ? lang === "de"
-                                                ? "Stimme"
-                                                : "Vote"
-                                              : lang === "de"
-                                                ? "Stimmen"
-                                                : "Votes"}
-                                          </span>
-                                        )}
-                                      </span>
-                                      <span className="text-[10px] text-neutral-500 font-mono tracking-tight uppercase">
-                                        {lang === "de"
-                                          ? "Dimensionen:"
-                                          : "Dimensions:"}{" "}
-                                        {lvl.width || 960}x{lvl.height || 540} ·{" "}
-                                        {lvl.entities?.length || 0}{" "}
-                                        {lang === "de"
-                                          ? "Elemente"
-                                          : "Entities"}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-1">
-                                      {hasP1VotedThis && (
-                                        <span className="py-0.5 px-2 bg-red-500 border border-red-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
-                                          P1
-                                        </span>
+                                  return (
+                                    <div
+                                      key={lvl.id}
+                                      onClick={() => {
+                                        const isLocked = buildBattleVotes[localSlot] !== lvl.id;
+                                        
+                                        if (onlineService.lobbyCode) {
+                                          if (onlineService.isHost) {
+                                            setBuildBattleVoteSelection((prev) => ({ ...prev, [localSlot]: index }));
+                                            setBuildBattleVotes((prev) => ({ ...prev, [localSlot]: isLocked ? lvl.id : null }));
+                                            audio.playCoin && audio.playCoin();
+                                          } else {
+                                            onlineService.sendEvent("bb_direct_vote", { index, isLocked });
+                                          }
+                                        } else {
+                                          if (buildBattleVotes.P1 === lvl.id) {
+                                            setBuildBattleVotes((prev) => ({ ...prev, P1: null }));
+                                            audio.playDie && audio.playDie();
+                                          } else {
+                                            setBuildBattleVoteSelection((prev) => ({ ...prev, P1: index }));
+                                            setBuildBattleVotes((prev) => ({ ...prev, P1: lvl.id }));
+                                            audio.playCoin && audio.playCoin();
+                                          }
+                                        }
+                                      }}
+                                      className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
+                                        isLocalHovered
+                                          ? "bg-neutral-800/80 border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.1)]"
+                                          : hasLocalVotedThis
+                                            ? "bg-yellow-950/30 border-yellow-500/70 shadow-[0_0_15px_rgba(234,179,8,0.15)] animate-pulse"
+                                            : "bg-neutral-900 border-neutral-800 hover:border-neutral-700"
+                                      } relative`}
+                                    >
+                                      {hoveredPlayers.length > 0 && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-500/60 rounded-l-xl" />
                                       )}
-                                      {hasP2VotedThis && (
-                                        <span className="py-0.5 px-2 bg-blue-500 border border-blue-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
-                                          P2
-                                        </span>
-                                      )}
-                                    </div>
 
-                                    {!hasP1VotedThis && !hasP2VotedThis && (
-                                      <div className="flex gap-1">
-                                        {isP1Hovered && (
-                                          <span className="text-[9px] font-mono text-red-500/90 font-bold tracking-tight lowercase">
-                                            P1 [Space]
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-arcade text-white tracking-wide flex items-center gap-2">
+                                            {lvl.name}
+                                            {votesAmt > 0 && (
+                                              <span className="font-sans text-[10px] bg-yellow-500 text-neutral-950 font-black px-1.5 py-0.5 rounded-full">
+                                                {votesAmt}{" "}
+                                                {votesAmt === 1
+                                                  ? lang === "de"
+                                                    ? "Stimme"
+                                                    : "Vote"
+                                                  : lang === "de"
+                                                    ? "Stimmen"
+                                                    : "Votes"}
+                                              </span>
+                                            )}
                                           </span>
-                                        )}
-                                        {isP2Hovered && (
-                                          <span className="text-[9px] font-mono text-blue-500/90 font-bold tracking-tight lowercase">
-                                            P2 [Enter]
+                                          <span className="text-[10px] text-neutral-500 font-mono tracking-tight uppercase">
+                                            {lang === "de"
+                                              ? "Dimensionen:"
+                                              : "Dimensions:"}{" "}
+                                            {lvl.width || 960}x{lvl.height || 540} ·{" "}
+                                            {lvl.entities?.length || 0}{" "}
+                                            {lang === "de"
+                                              ? "Elemente"
+                                              : "Entities"}
                                           </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-1 justify-end max-w-[200px]">
+                                          {votedPlayers.map((slot) => {
+                                            const pIdx = parseInt(slot.replace("P", "")) - 1;
+                                            const pName = onlineService.lobbyCode
+                                              ? (onlinePlayers[pIdx]?.name || slot)
+                                              : slot === "P1" ? (customization.name || "P1") : (customizationP2.name || "P2");
+                                            const colorsBadge = [
+                                              "bg-red-500/20 text-red-400 border border-red-500/20",
+                                              "bg-blue-500/20 text-blue-400 border border-blue-500/20",
+                                              "bg-green-500/20 text-green-400 border border-green-500/20",
+                                              "bg-yellow-500/20 text-yellow-400 border border-yellow-500/20",
+                                              "bg-purple-500/20 text-purple-400 border border-purple-500/20",
+                                              "bg-pink-500/20 text-pink-400 border border-pink-500/20",
+                                              "bg-cyan-500/20 text-cyan-400 border border-cyan-500/20",
+                                              "bg-amber-500/20 text-amber-400 border border-amber-500/20"
+                                            ];
+                                            const badgeStyle = colorsBadge[pIdx % 8] || "bg-neutral-600 text-white border border-transparent";
+                                            return (
+                                              <span key={slot} className={`py-0.5 px-1.5 ${badgeStyle} rounded-md font-arcade text-[7px] uppercase font-black tracking-wider animate-pulse truncate max-w-[60px]`} title={pName}>
+                                                {pName}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+
+                                        {votedPlayers.length === 0 && hoveredPlayers.length > 0 && (
+                                          <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
+                                            {hoveredPlayers.map(slot => {
+                                              const pIdx = parseInt(slot.replace("P", "")) - 1;
+                                              const pName = onlineService.lobbyCode
+                                                ? (onlinePlayers[pIdx]?.name || slot)
+                                                : slot === "P1" ? (customization.name || "P1") : (customizationP2.name || "P2");
+                                              return (
+                                                <span key={slot} className="text-[7px] font-mono text-neutral-400 font-bold tracking-tight px-1 bg-white/5 rounded border border-white/5 truncate max-w-[50px]" title={pName}>
+                                                  {pName}...
+                                                </span>
+                                              );
+                                            })}
+                                          </div>
                                         )}
                                       </div>
-                                    )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Players list for up to 8 players */}
+                            <div className="lg:col-span-1 bg-neutral-900/60 border border-neutral-800 rounded-2xl p-4 flex flex-col gap-4 max-h-[420px] overflow-y-auto">
+                              <h3 className="text-xs sm:text-sm font-arcade text-yellow-500 uppercase font-black">
+                                {lang === "de" ? "SPIELER" : "PLAYERS"} ({activeSlots.length}/8)
+                              </h3>
+                              <div className="flex flex-col gap-3">
+                                {activeSlots.map((slot) => {
+                                  const pNum = parseInt(slot.replace("P", "")) || 1;
+                                  const pIdx = pNum - 1;
+                                  const player = onlineService.lobbyCode ? onlinePlayers[pIdx] : null;
+
+                                  const name = onlineService.lobbyCode
+                                    ? (player?.name || `Player ${pNum}`)
+                                    : slot === "P1" ? (customization.name || "P1") : (customizationP2.name || "P2");
+
+                                  const custom = onlineService.lobbyCode
+                                    ? (player?.customization || customization)
+                                    : slot === "P1" ? customization : customizationP2;
+
+                                  const isLocked = !!buildBattleVotes[slot];
+                                  const currentSel = buildBattleVoteSelection[slot] ?? 0;
+                                  const selLevel = BUILD_BATTLE_LEVELS[currentSel];
+
+                                  const colors = [
+                                    "border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.05)]",
+                                    "border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.05)]",
+                                    "border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.05)]",
+                                    "border-yellow-500/30 shadow-[0_0_10px_rgba(245,158,11,0.05)]",
+                                    "border-purple-500/30 shadow-[0_0_10px_rgba(139,92,246,0.05)]",
+                                    "border-pink-500/30 shadow-[0_0_10px_rgba(236,72,153,0.05)]",
+                                    "border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.05)]",
+                                    "border-amber-500/30 shadow-[0_0_10px_rgba(217,119,6,0.05)]"
+                                  ];
+
+                                  const colorsBadge = [
+                                    "bg-red-500/10 text-red-400 border-red-500/20",
+                                    "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                                    "bg-green-500/10 text-green-400 border-green-500/20",
+                                    "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+                                    "bg-purple-500/10 text-purple-400 border-purple-500/20",
+                                    "bg-pink-500/10 text-pink-400 border-pink-500/20",
+                                    "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+                                    "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                  ];
+
+                                  const borderClassName = colors[pIdx % 8];
+                                  const badgeClassName = colorsBadge[pIdx % 8];
+
+                                  return (
+                                    <div
+                                      key={slot}
+                                      className={`flex items-center gap-3 p-2 bg-neutral-950/40 border rounded-xl ${borderClassName}`}
+                                    >
+                                      {/* Compact character preview */}
+                                      <div className="w-10 h-10 bg-neutral-950 border border-neutral-800 rounded-lg flex items-center justify-center shrink-0 relative overflow-hidden">
+                                        <CharacterPreview
+                                          customization={custom}
+                                          scale={1.5}
+                                        />
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className="text-xs font-arcade text-white truncate">
+                                            {name}
+                                          </span>
+                                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-black border uppercase tracking-wider ${badgeClassName}`}>
+                                            {slot}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[8px] font-mono text-neutral-400 mt-0.5">
+                                          <span className="truncate max-w-[100px]" title={selLevel?.name}>
+                                            {selLevel?.name || "..."}
+                                          </span>
+                                          {isLocked ? (
+                                            <span className="text-green-400 font-bold uppercase shrink-0">🔒 LOCKED</span>
+                                          ) : (
+                                            <span className="text-neutral-500 shrink-0">Choosing</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Classic Player 1 Col */}
+                            <div className="lg:col-span-1 bg-red-950/20 border border-red-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(239,68,68,0.05)]">
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                                  <h3 className="text-xs sm:text-sm font-arcade text-red-500 uppercase font-black">
+                                    PLAYER 1 (P1)
+                                  </h3>
+                                </div>
+                                <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
+                                  <div>
+                                    <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">
+                                      {lang === "de"
+                                        ? "Aktuelle Auswahl:"
+                                        : "Current selection:"}
+                                    </span>
+                                    <span className="text-xs font-arcade text-white tracking-wide">
+                                      {
+                                        BUILD_BATTLE_LEVELS[
+                                          buildBattleVoteSelection.P1
+                                        ]?.name
+                                      }
+                                    </span>
+                                  </div>
+                                  {BUILD_BATTLE_LEVELS[
+                                    buildBattleVoteSelection.P1
+                                  ] && (
+                                    <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] relative mt-1 select-none">
+                                      <LevelPreview
+                                        level={
+                                          BUILD_BATTLE_LEVELS[
+                                            buildBattleVoteSelection.P1
+                                          ]
+                                        }
+                                        width={180}
+                                        height={100}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="mb-4">
+                                  <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">
+                                    Status:
+                                  </span>
+                                  {buildBattleVotes.P1 ? (
+                                    <span className="inline-block py-1 px-3 bg-red-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-red-700">
+                                      🔒 LOCKED IN!
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
+                                      ⏳ WÄHLT...
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
+                                  <div className="flex justify-between border-b border-neutral-800/50 pb-1">
+                                    <span>W / S / A / D</span>
+                                    <span>
+                                      {lang === "de" ? "Navigation" : "Navigate"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-neutral-800/50 pt-1 pb-1">
+                                    <span>E</span>
+                                    <span>
+                                      {lang === "de" ? "Drehen" : "Rotate"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between pt-1">
+                                    <span>SPACE / Q</span>
+                                    <span className="text-red-400 font-bold">
+                                      {lang === "de"
+                                        ? "Einloggen / Zurück"
+                                        : "Lock / Unlock"}
+                                    </span>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Player 2 Col */}
-                        <div className="lg:col-span-1 bg-blue-950/20 border border-blue-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(59,130,246,0.05)]">
-                          <div>
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" />
-                              <h3 className="text-xs sm:text-sm font-arcade text-blue-400 uppercase font-black">
-                                PLAYER 2 (P2)
-                              </h3>
+                              </div>
                             </div>
-                            <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
+
+                            {/* Classic Map election list */}
+                            <div className="lg:col-span-2 bg-neutral-950/50 border border-neutral-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[300px] max-h-[420px] overflow-y-auto">
+                              <div className="text-[10px] font-arcade text-neutral-400 tracking-wider mb-1 uppercase">
+                                {lang === "de"
+                                  ? "Wähle aus 10 offiziellen Maps:"
+                                  : "Select from 10 official maps:"}
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                {BUILD_BATTLE_LEVELS.map((lvl, index) => {
+                                  const isP1Hovered =
+                                    buildBattleVoteSelection.P1 === index;
+                                  const isP2Hovered =
+                                    buildBattleVoteSelection.P2 === index;
+                                  const hasP1VotedThis =
+                                    buildBattleVotes.P1 === lvl.id;
+                                  const hasP2VotedThis =
+                                    buildBattleVotes.P2 === lvl.id;
+
+                                  // Calculate vote counts
+                                  let votesAmt = 0;
+                                  if (hasP1VotedThis) votesAmt++;
+                                  if (hasP2VotedThis) votesAmt++;
+
+                                  return (
+                                    <div
+                                      key={lvl.id}
+                                      onClick={() => {
+                                        if (buildBattleVotes.P1 === lvl.id) {
+                                          setBuildBattleVotes((prev) => ({
+                                            ...prev,
+                                            P1: null,
+                                          }));
+                                          audio.playDie && audio.playDie();
+                                        } else {
+                                          setBuildBattleVotes((prev) => ({
+                                            ...prev,
+                                            P1: lvl.id,
+                                          }));
+                                          setBuildBattleVoteSelection((p) => ({
+                                            ...p,
+                                            P1: index,
+                                          }));
+                                          audio.playCoin && audio.playCoin();
+                                        }
+                                      }}
+                                      className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
+                                        hasP1VotedThis && hasP2VotedThis
+                                          ? "bg-purple-950/30 border-purple-500/70 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                                          : hasP1VotedThis
+                                            ? "bg-red-950/30 border-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                                            : hasP2VotedThis
+                                              ? "bg-blue-950/30 border-blue-500/70 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                                              : isP1Hovered && isP2Hovered
+                                                ? "bg-neutral-800/80 border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+                                                : isP1Hovered
+                                                  ? "bg-neutral-800/80 border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                                                  : isP2Hovered
+                                                    ? "bg-neutral-800/80 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                                                    : "bg-neutral-900 border-neutral-800 hover:border-neutral-700"
+                                      } relative`}
+                                    >
+                                      {isP1Hovered && (
+                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500 rounded-l-xl" />
+                                      )}
+                                      {isP2Hovered && (
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-blue-500 rounded-r-xl" />
+                                      )}
+
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-arcade text-white tracking-wide flex items-center gap-2">
+                                            {lvl.name}
+                                            {votesAmt > 0 && (
+                                              <span className="font-sans text-[10px] bg-yellow-500 text-neutral-950 font-black px-1.5 py-0.5 rounded-full">
+                                                {votesAmt}{" "}
+                                                {votesAmt === 1
+                                                  ? lang === "de"
+                                                    ? "Stimme"
+                                                    : "Vote"
+                                                  : lang === "de"
+                                                    ? "Stimmen"
+                                                    : "Votes"}
+                                              </span>
+                                            )}
+                                          </span>
+                                          <span className="text-[10px] text-neutral-500 font-mono tracking-tight uppercase">
+                                            {lang === "de"
+                                              ? "Dimensionen:"
+                                              : "Dimensions:"}{" "}
+                                            {lvl.width || 960}x{lvl.height || 540} ·{" "}
+                                            {lvl.entities?.length || 0}{" "}
+                                            {lang === "de"
+                                              ? "Elemente"
+                                              : "Entities"}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1">
+                                          {hasP1VotedThis && (
+                                            <span className="py-0.5 px-2 bg-red-500 border border-red-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
+                                              P1
+                                            </span>
+                                          )}
+                                          {hasP2VotedThis && (
+                                            <span className="py-0.5 px-2 bg-blue-500 border border-blue-600 rounded-md font-arcade text-[8px] text-neutral-950 uppercase font-black tracking-wider animate-pulse">
+                                              P2
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {!hasP1VotedThis && !hasP2VotedThis && (
+                                          <div className="flex gap-1">
+                                            {isP1Hovered && (
+                                              <span className="text-[9px] font-mono text-red-500/90 font-bold tracking-tight lowercase">
+                                                P1 [Space]
+                                              </span>
+                                            )}
+                                            {isP2Hovered && (
+                                              <span className="text-[9px] font-mono text-blue-500/90 font-bold tracking-tight lowercase">
+                                                P2 [Enter]
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Classic Player 2 Col */}
+                            <div className="lg:col-span-1 bg-blue-950/20 border border-blue-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_15px_rgba(59,130,246,0.05)]">
                               <div>
-                                <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">
-                                  {lang === "de"
-                                    ? "Aktuelle Auswahl:"
-                                    : "Current selection:"}
-                                </span>
-                                <span className="text-xs font-arcade text-white tracking-wide">
-                                  {
-                                    BUILD_BATTLE_LEVELS[
-                                      buildBattleVoteSelection.P2
-                                    ]?.name
-                                  }
-                                </span>
-                              </div>
-                              {BUILD_BATTLE_LEVELS[
-                                buildBattleVoteSelection.P2
-                              ] && (
-                                <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] mt-1 select-none">
-                                  <LevelPreview
-                                    level={
-                                      BUILD_BATTLE_LEVELS[
-                                        buildBattleVoteSelection.P2
-                                      ]
-                                    }
-                                    width={180}
-                                    height={100}
-                                    className="w-full h-full object-contain"
-                                  />
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-3 h-3 rounded-full bg-blue-500 animate-ping" />
+                                  <h3 className="text-xs sm:text-sm font-arcade text-blue-400 uppercase font-black">
+                                    PLAYER 2 (P2)
+                                  </h3>
                                 </div>
-                              )}
-                            </div>
-                          </div>
+                                <div className="bg-neutral-950/60 p-3 rounded-xl border border-neutral-800 mb-4 flex flex-col gap-1.5 justify-between">
+                                  <div>
+                                    <span className="text-[10px] text-neutral-400 block mb-1 font-mono uppercase tracking-wider">
+                                      {lang === "de"
+                                        ? "Aktuelle Auswahl:"
+                                        : "Current selection:"}
+                                    </span>
+                                    <span className="text-xs font-arcade text-white tracking-wide">
+                                      {
+                                        BUILD_BATTLE_LEVELS[
+                                          buildBattleVoteSelection.P2
+                                        ]?.name
+                                      }
+                                    </span>
+                                  </div>
+                                  {BUILD_BATTLE_LEVELS[
+                                    buildBattleVoteSelection.P2
+                                  ] && (
+                                    <div className="w-full aspect-video bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800/80 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] mt-1 select-none">
+                                      <LevelPreview
+                                        level={
+                                          BUILD_BATTLE_LEVELS[
+                                            buildBattleVoteSelection.P2
+                                          ]
+                                        }
+                                        width={180}
+                                        height={100}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
 
-                          <div>
-                            <div className="mb-4">
-                              <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">
-                                {lang === "de" ? "Status:" : "Status:"}
-                              </span>
-                              {buildBattleVotes.P2 ? (
-                                <span className="inline-block py-1 px-3 bg-blue-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-blue-700">
-                                  🔒 LOCKED IN!
-                                </span>
-                              ) : (
-                                <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
-                                  ⏳ WÄHLT...
-                                </span>
-                              )}
+                              <div>
+                                <div className="mb-4">
+                                  <span className="text-[10px] text-neutral-500 block font-mono uppercase mb-1">
+                                    Status:
+                                  </span>
+                                  {buildBattleVotes.P2 ? (
+                                    <span className="inline-block py-1 px-3 bg-blue-500 text-neutral-950 font-arcade text-[9px] rounded-lg tracking-wider font-extrabold uppercase animate-pulse border border-blue-700">
+                                      🔒 LOCKED IN!
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block py-1 px-3 bg-neutral-800 text-neutral-400 font-arcade text-[9px] rounded-lg tracking-wider uppercase border border-neutral-700">
+                                      ⏳ WÄHLT...
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
+                                  <div className="flex justify-between border-b border-neutral-800/50 pb-1">
+                                    <span>▲ / ▼ / ◀ / ▶</span>
+                                    <span>
+                                      {lang === "de" ? "Navigation" : "Navigate"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-neutral-800/50 pt-1 pb-1">
+                                    <span>CTRL / NUM0</span>
+                                    <span>
+                                      {lang === "de" ? "Drehen" : "Rotate"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between pt-1">
+                                    <span>ENTER / SHIFT</span>
+                                    <span className="text-blue-400 font-bold">
+                                      {lang === "de"
+                                        ? "Einloggen / Zurück"
+                                        : "Lock / Unlock"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div className="bg-neutral-950/40 p-2.5 rounded-xl border border-neutral-800/50 text-[10px] font-mono text-neutral-400 space-y-1">
-                              <div className="flex justify-between border-b border-neutral-800/50 pb-1">
-                                <span>▲ / ▼ / ◀ / ▶</span>
-                                <span>
-                                  {lang === "de" ? "Navigation" : "Navigate"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between border-b border-neutral-800/50 pt-1 pb-1">
-                                <span>CTRL / NUM0</span>
-                                <span>
-                                  {lang === "de" ? "Drehen" : "Rotate"}
-                                </span>
-                              </div>
-                              <div className="flex justify-between pt-1">
-                                <span>ENTER / SHIFT</span>
-                                <span className="text-blue-400 font-bold">
-                                  {lang === "de"
-                                    ? "Einloggen / Zurück"
-                                    : "Lock / Unlock"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Bottom Actions Row */}
                       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-neutral-800 pt-5 mt-2">
                         <button
                           onClick={() => {
-                            setGameState((p) => ({
-                              ...p,
-                              status: "build_battle_setup",
-                            }));
+                            if (onlineService.lobbyCode) {
+                              if (onlineService.isHost) {
+                                onlineService.returnToLobby();
+                              } else {
+                                onlineService.disconnect();
+                                setGameState((p) => ({
+                                  ...p,
+                                  status: "online_menu",
+                                }));
+                              }
+                            } else {
+                              setGameState((p) => ({
+                                ...p,
+                                status: "build_battle_setup",
+                              }));
+                            }
                           }}
                           className="py-2.5 px-5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-arcade text-[10px] tracking-wider uppercase transition-all border-b-4 border-neutral-950 active:translate-y-px active:border-b-0 cursor-pointer"
                         >
@@ -12083,7 +12352,9 @@ const App: React.FC = () => {
                               ? "COOP EDITOR"
                               : onlineService.currentMode === "vs"
                                 ? t.vsTitle
-                                : t.brawlerMode}
+                                : onlineService.currentMode === "build_battle"
+                                  ? "BUILD-BATTLE"
+                                  : t.brawlerMode}
                           </h2>
                           <p className="text-neutral-500 font-bold uppercase tracking-tighter text-sm mt-1">
                             {t.lobby}:{" "}
