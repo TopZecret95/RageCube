@@ -6563,8 +6563,14 @@ const App: React.FC = () => {
     }, 250);
 
     onlineService.onAppEvent = (id, event, data) => {
+      let slot = "P1";
+      if (onlineService.lobbyCode) {
+        const playersArray = Array.from(onlineService.players.values());
+        const idx = playersArray.findIndex((p) => p.id === id);
+        slot = idx !== -1 ? `P${idx + 1}` : "P1";
+      }
+
       if (event === "bb_direct_vote" && onlineService.isHost) {
-        const slot = getPlayerKey(id);
         const index = data.index;
         const isLocked = data.isLocked;
         if (index !== undefined) {
@@ -6576,7 +6582,6 @@ const App: React.FC = () => {
         }
       }
       if (event === "bb_remote_key" && onlineService.isHost) {
-        const slot = getPlayerKey(id);
         let action = data.action;
         if (!action && data.code) {
           if (data.code === "KeyW" || data.code === "ArrowUp") action = "up";
@@ -6588,6 +6593,14 @@ const App: React.FC = () => {
         }
         if (action) {
           buildBattleActionRef.current?.(slot, action);
+        }
+      }
+      if (event === "bb_direct_select" && onlineService.isHost) {
+        if (data.index !== undefined) {
+          setBuildBattleSelection((prev) => ({ ...prev, [slot]: data.index }));
+          setTimeout(() => {
+            buildBattleActionRef.current?.(slot, "confirm");
+          }, 0);
         }
       }
       if (event === "bb_sync" && !onlineService.isHost) {
@@ -9017,7 +9030,26 @@ const App: React.FC = () => {
                             return (
                               <div
                                 key={item.id}
-                                className={`w-20 h-20 bg-neutral-900 border-2 flex flex-col items-center justify-center relative rounded-lg
+                                onClick={() => {
+                                  if (showSecret) return;
+                                  const localSlot = onlineService.lobbyCode
+                                    ? getPlayerKey(onlineService.localPlayer?.id || "")
+                                    : "P1";
+                                    
+                                  if (buildBattleConfirmed[localSlot]) return;
+
+                                  if (onlineService.lobbyCode && !onlineService.isHost) {
+                                    onlineService.sendEvent("bb_direct_select", { index: idx });
+                                  } else {
+                                    setBuildBattleSelection((prev) => ({ ...prev, [localSlot]: idx }));
+                                    setTimeout(() => {
+                                      if (buildBattleActionRef.current) {
+                                        buildBattleActionRef.current(localSlot, "confirm");
+                                      }
+                                    }, 0);
+                                  }
+                                }}
+                                className={`w-20 h-20 bg-neutral-900 border-2 flex flex-col items-center justify-center relative rounded-lg cursor-pointer hover:bg-neutral-800 active:scale-95
                                  ${borderClass}
                                  transition-all`}
                               >
@@ -10685,25 +10717,15 @@ const App: React.FC = () => {
                                     <div
                                       key={lvl.id}
                                       onClick={() => {
+                                        if (!onlineService.lobbyCode) return;
                                         const isLocked = buildBattleVotes[localSlot] !== lvl.id;
                                         
-                                        if (onlineService.lobbyCode) {
-                                          if (onlineService.isHost) {
-                                            setBuildBattleVoteSelection((prev) => ({ ...prev, [localSlot]: index }));
-                                            setBuildBattleVotes((prev) => ({ ...prev, [localSlot]: isLocked ? lvl.id : null }));
-                                            audio.playCoin && audio.playCoin();
-                                          } else {
-                                            onlineService.sendEvent("bb_direct_vote", { index, isLocked });
-                                          }
+                                        if (onlineService.isHost) {
+                                          setBuildBattleVoteSelection((prev) => ({ ...prev, [localSlot]: index }));
+                                          setBuildBattleVotes((prev) => ({ ...prev, [localSlot]: isLocked ? lvl.id : null }));
+                                          audio.playCoin && audio.playCoin();
                                         } else {
-                                          if (buildBattleVotes.P1 === lvl.id) {
-                                            setBuildBattleVotes((prev) => ({ ...prev, P1: null }));
-                                            audio.playDie && audio.playDie();
-                                          } else {
-                                            setBuildBattleVoteSelection((prev) => ({ ...prev, P1: index }));
-                                            setBuildBattleVotes((prev) => ({ ...prev, P1: lvl.id }));
-                                            audio.playCoin && audio.playCoin();
-                                          }
+                                          onlineService.sendEvent("bb_direct_vote", { index, isLocked });
                                         }
                                       }}
                                       className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
@@ -10995,23 +11017,7 @@ const App: React.FC = () => {
                                     <div
                                       key={lvl.id}
                                       onClick={() => {
-                                        if (buildBattleVotes.P1 === lvl.id) {
-                                          setBuildBattleVotes((prev) => ({
-                                            ...prev,
-                                            P1: null,
-                                          }));
-                                          audio.playDie && audio.playDie();
-                                        } else {
-                                          setBuildBattleVotes((prev) => ({
-                                            ...prev,
-                                            P1: lvl.id,
-                                          }));
-                                          setBuildBattleVoteSelection((p) => ({
-                                            ...p,
-                                            P1: index,
-                                          }));
-                                          audio.playCoin && audio.playCoin();
-                                        }
+                                        return;
                                       }}
                                       className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 select-none ${
                                         hasP1VotedThis && hasP2VotedThis
@@ -12597,7 +12603,7 @@ const App: React.FC = () => {
                             })}
                           </div>
 
-                          {true && (
+                          {gameState.onlineMode !== "build_battle" && (
                             <div className="w-full max-w-lg border-t border-neutral-700 pt-4 flex flex-col items-center mb-4">
                               <div className="text-[10px] text-neutral-400 font-bold mb-2 uppercase tracking-widest">
                                 {t.selectedLevels || "Selected Level(s)"}
