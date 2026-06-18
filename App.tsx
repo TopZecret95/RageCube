@@ -6595,6 +6595,30 @@ const App: React.FC = () => {
           buildBattleActionRef.current?.(slot, action);
         }
       }
+      if (event === "bb_remote_mouse" && onlineService.isHost) {
+        const gx = data.x;
+        const gy = data.y;
+        const bAction = data.action;
+
+        if (bAction === "move") {
+          setBuildBattleCursors((prev) => ({
+            ...prev,
+            [slot]: { x: gx, y: gy },
+          }));
+        } else if (bAction === "click") {
+          setBuildBattleCursors((prev) => ({
+            ...prev,
+            [slot]: { x: gx, y: gy },
+          }));
+          if (buildBattleActionRef.current) {
+            buildBattleActionRef.current(slot, "confirm");
+          }
+        } else if (bAction === "rightclick") {
+          if (buildBattleActionRef.current) {
+            buildBattleActionRef.current(slot, "rotate");
+          }
+        }
+      }
       if (event === "bb_direct_select" && onlineService.isHost) {
         if (data.index !== undefined) {
           setBuildBattleSelection((prev) => ({ ...prev, [slot]: data.index }));
@@ -8835,27 +8859,33 @@ const App: React.FC = () => {
                         !gameState.isSpectating &&
                         buildBattlePhase === "build"
                       ) {
-                        const slot = onlineService.isHost ? "P1" : "P2";
+                        const localSlot = onlineService.lobbyCode
+                          ? getPlayerKey(onlineService.localPlayer?.id || "")
+                          : "P1";
                         const gx = Math.round(x / 30) * 30;
                         const gy = Math.round(y / 30) * 30;
 
-                        if (action === "move") {
-                          setBuildBattleCursors((prev) => ({
-                            ...prev,
-                            [slot]: { x: gx, y: gy },
-                          }));
-                        } else if (action === "click") {
-                          setBuildBattleCursors((prev) => ({
-                            ...prev,
-                            [slot]: { x: gx, y: gy },
-                          }));
-                          if (buildBattleActionRef.current) {
-                            buildBattleActionRef.current(slot, "confirm");
+                        if (onlineService.isHost) {
+                          if (action === "move") {
+                            setBuildBattleCursors((prev) => ({
+                              ...prev,
+                              [localSlot]: { x: gx, y: gy },
+                            }));
+                          } else if (action === "click") {
+                            setBuildBattleCursors((prev) => ({
+                              ...prev,
+                              [localSlot]: { x: gx, y: gy },
+                            }));
+                            if (buildBattleActionRef.current) {
+                              buildBattleActionRef.current(localSlot, "confirm");
+                            }
+                          } else if (action === "rightclick") {
+                            if (buildBattleActionRef.current) {
+                              buildBattleActionRef.current(localSlot, "rotate");
+                            }
                           }
-                        } else if (action === "rightclick") {
-                          if (buildBattleActionRef.current) {
-                            buildBattleActionRef.current(slot, "rotate");
-                          }
+                        } else {
+                          onlineService.sendEvent("bb_remote_mouse", { x: gx, y: gy, action });
                         }
                       }
                     }}
