@@ -2175,8 +2175,7 @@ const App: React.FC = () => {
 
   const getPlayerKey = useCallback((playerId: string) => {
     if (!onlineService.lobbyCode) return "P1";
-    const sorted = [...onlinePlayers].sort((a, b) => a.id.localeCompare(b.id));
-    const idx = sorted.findIndex((p) => p.id === playerId);
+    const idx = onlinePlayers.findIndex((p) => p.id === playerId);
     return idx !== -1 ? `P${idx + 1}` : "P1";
   }, [onlinePlayers]);
 
@@ -12425,12 +12424,14 @@ const App: React.FC = () => {
                             >
                               ⚙️ {t.settings || "SETTINGS"}
                             </button>
-                            <button
-                              onClick={() => setShowLevelMenu(true)}
-                              className="px-6 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-400 active:translate-y-1 active:border-b-0"
-                            >
-                              {t.openLevelMenu || "LEVEL MENÜ"}
-                            </button>
+                            {gameState.onlineMode !== "build_battle" && (
+                              <button
+                                onClick={() => setShowLevelMenu(true)}
+                                className="px-6 py-2 bg-white text-black hover:bg-neutral-200 rounded-lg font-arcade text-[10px] transition-all border-b-4 border-neutral-400 active:translate-y-1 active:border-b-0"
+                              >
+                                {t.openLevelMenu || "LEVEL MENÜ"}
+                              </button>
+                            )}
                             {gameState.onlineMode === "brawler" && (
                               <button
                                 onClick={() =>
@@ -12833,6 +12834,7 @@ const App: React.FC = () => {
                                 if (gameState.isHost) {
                                   if (
                                     gameState.onlineMode !== "editor" &&
+                                    gameState.onlineMode !== "build_battle" &&
                                     (!gameState.customLevelsQueue ||
                                       gameState.customLevelsQueue.length === 0)
                                   ) {

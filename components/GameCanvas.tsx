@@ -221,12 +221,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const isSpectatingNowLocal =
         isOnline &&
         (liveLocalPlayer
-          ? liveLocalPlayer.finished
+          ? (liveLocalPlayer.finished || liveLocalPlayer.dead || (liveLocalPlayer.lives !== undefined && liveLocalPlayer.lives <= 0))
           : isSpectating ||
             (players.current.length > 0 && status.includes("playing")));
       if (!isSpectatingNowLocal) return;
 
-      const activePlayers = players.current.filter((p) => !p.finished);
+      const activePlayers = players.current.filter((p) => !p.finished && !p.dead && (p.lives === undefined || p.lives > 0));
       if (activePlayers.length === 0) return;
 
       const keys = [
@@ -1126,6 +1126,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (localP && localP.lives !== undefined) {
             localP.lives--;
             if (localP.lives <= 0) {
+              localP.finished = true;
               checkBrawlerWinCondition();
               onlineService.sendEvent("lose", { killerName: data.killerName });
             } else {
@@ -3385,14 +3386,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const isSpectatingNowLocal =
         isOnline &&
         (liveLocalPlayer
-          ? liveLocalPlayer.finished
+          ? (liveLocalPlayer.finished || liveLocalPlayer.dead || (liveLocalPlayer.lives !== undefined && liveLocalPlayer.lives <= 0))
           : isSpectating ||
             (players.current.length > 0 && status.includes("playing")));
 
       // Calculate scrollWallX for the followed player so it can be used for drawing
       let followedPlayer: PlayerState | undefined = liveLocalPlayer;
       if (isSpectatingNowLocal) {
-        const activePlayers = players.current.filter((p) => !p.finished);
+        const activePlayers = players.current.filter((p) => !p.finished && !p.dead && (p.lives === undefined || p.lives > 0));
         if (activePlayers.length > 0) {
           followedPlayer =
             activePlayers[spectateTargetIdx % activePlayers.length];
@@ -5851,7 +5852,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const isSpectatingNowLocal =
         isOnline &&
         (liveLocalPlayer
-          ? liveLocalPlayer.finished
+          ? (liveLocalPlayer.finished || liveLocalPlayer.dead || (liveLocalPlayer.lives !== undefined && liveLocalPlayer.lives <= 0))
           : isSpectating ||
             (players.current.length > 0 && status.includes("playing")));
 
@@ -6924,7 +6925,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Draw Players
-      const activePlayers = players.current.filter((pl) => !pl.finished);
+      const activePlayers = players.current.filter((pl) => !pl.finished && !pl.dead && (pl.lives === undefined || pl.lives > 0));
 
       players.current.forEach((p, i) => {
         if (!p) return;
@@ -8131,7 +8132,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.fillText(t.spectatorMode, GAME_WIDTH / 2, 16);
         ctx.shadowBlur = 0;
 
-        const activePlayers = players.current.filter((p) => !p.finished);
+        const activePlayers = players.current.filter((p) => !p.finished && !p.dead && (p.lives === undefined || p.lives > 0));
         ctx.fillStyle = "white";
         if (activePlayers.length > 0) {
           const target =
