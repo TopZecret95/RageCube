@@ -8816,6 +8816,36 @@ const App: React.FC = () => {
                     geometryDashMode={!!gameState.geometryDashMode}
                     levelDeaths={gameState.levelDeaths}
                     buildBattleSurrenders={buildBattleSurrenders}
+                    onBuildBattleMouseAction={(x, y, action) => {
+                      if (
+                        onlineService.lobbyCode &&
+                        !gameState.isSpectating &&
+                        buildBattlePhase === "build"
+                      ) {
+                        const slot = onlineService.isHost ? "P1" : "P2";
+                        const gx = Math.round(x / 30) * 30;
+                        const gy = Math.round(y / 30) * 30;
+
+                        if (action === "move") {
+                          setBuildBattleCursors((prev) => ({
+                            ...prev,
+                            [slot]: { x: gx, y: gy },
+                          }));
+                        } else if (action === "click") {
+                          setBuildBattleCursors((prev) => ({
+                            ...prev,
+                            [slot]: { x: gx, y: gy },
+                          }));
+                          if (buildBattleActionRef.current) {
+                            buildBattleActionRef.current(slot, "confirm");
+                          }
+                        } else if (action === "rightclick") {
+                          if (buildBattleActionRef.current) {
+                            buildBattleActionRef.current(slot, "rotate");
+                          }
+                        }
+                      }
+                    }}
                   />
                 )}
 

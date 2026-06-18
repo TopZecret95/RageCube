@@ -56,6 +56,7 @@ export interface GameCanvasProps {
   gdSpeedMode?: number;
   levelDeaths?: number;
   suppressCountdown?: boolean;
+  onBuildBattleMouseAction?: (x: number, y: number, action: "move" | "click" | "rightclick") => void;
 }
 
 export interface TempBlock extends Entity {

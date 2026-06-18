@@ -184,6 +184,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   gdSpeedMode = 1,
   levelDeaths = 0,
   suppressCountdown = false,
+  onBuildBattleMouseAction,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keys = useRef<{ [key: string]: boolean }>({});
@@ -2548,11 +2549,21 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       x: (screenX - GAME_WIDTH / 2) / zoom + cx,
       y: (screenY - GAME_HEIGHT / 2) / zoom + cy,
     }; // Raw for hook
+
+    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction) {
+      onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "move");
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (paused || isStartingRef.current) return;
     hasStartedMoving.current = true;
+
+    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction && e.button === 0) {
+      setTimeout(() => {
+        onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "click");
+      }, 0);
+    }
 
     const pLocal = players.current.find(
       (pl) => !isOnline || pl.onlineId === onlineService.localPlayer?.id,
@@ -2730,6 +2741,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (status === "build_battle_playing" && isOnline && onBuildBattleMouseAction) {
+      setTimeout(() => {
+        onBuildBattleMouseAction(mouseRef.current.x, mouseRef.current.y, "rightclick");
+      }, 0);
+    }
   };
 
   // Improved Collision Detection with "Generous Hitboxes" for Hazards
